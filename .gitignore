@@ -50,3 +50,6 @@ ui/com.simulte.configeditor/bin/
 /simulations/*/scenario*/
 /simulations/*/eval*/
 /simulations/*/.cmdenv-log
+
+# ignore cLion editor
+.idea/
