@@ -68,6 +68,8 @@ protected:
      */
     // We aren't going to do this as it's primarily used for asking the eNodeb for access
     // which we don't do.
+    // But what we will do is when we get a message saying you can send we will do the
+    // same action as if an RAC was a success i.e. bsrD2DMulticastTriggered_ is set to true.
 //    virtual void checkRAC();
     /*
      * Receives and handles RAC responses

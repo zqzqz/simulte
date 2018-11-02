@@ -26,6 +26,7 @@
 #include "stack/mac/layer/LteMacUeMode4D2D.h"
 #include "stack/phy/packet/SpsCandidateResources.h"
 #include "stack/mac/scheduler/LteSchedulerUeUl.h"
+#include <random>
 
 Define_Module(LteMacUeMode4D2D);
 
@@ -533,11 +534,10 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     std::vector<simtime_t> crStartTimes = candidatesPacket -> getCrStartTimes();
 
     // Select random element from vector
-    int index;
-    do {
-        index = rand();
-    } while (index >= (RAND_MAX - RAND_MAX % possibleCrs.size()));
-    index %= possibleCrs.size();
+    std::random_device rand_dev;
+    std::mt19937 generator(rand_dev());
+    std::uniform_int_distribution<int> distr(0, possibleCrs.size());
+    int index = distr(generator);
 
     RbMap selectedCr = possibleCrs.at(index);
     simtime_t selectedStartTime = crStartTimes.at(index);
@@ -549,8 +549,10 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
 //    mode4Grant -> setSubchannels(candidatesPacket -> getNumSubchannels()); Might not need this as I need to think about this part really.
     mode4Grant -> setGrantedBlocks(selectedCr);
 
-    unsigned int resourceReselectionCounter = 1;
-    unsigned int period = 100;
+    // Based on restrictResourceReservation interval But will be between 1 and 15
+    std::uniform_int_distribution<int> range(5, 15);
+    int resourceReselectionCounter = range(generator);
+    int period = 100;
 
     mode4Grant -> setExpiration(resourceReselectionCounter);
     mode4Grant -> setPeriod(period);
@@ -565,6 +567,7 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
      * 3. Also resource reservation interval determines the period of messages (but generally we will always have 100ms as ours due to Release 14's own constraints.)
      * 4. Agh I'm just done with this :P
      */
+
 }
 
 
