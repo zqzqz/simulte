@@ -32,7 +32,7 @@ class LteMacUe : public LteMacBase
     // current H-ARQ process counter
     unsigned char currentHarq_;
 
-    // perodic grant handling
+    // periodic grant handling
     unsigned int periodCounter_;
     unsigned int expirationCounter_;
 
