@@ -17,6 +17,7 @@
 #define STACK_MAC_LAYER_LTEMACUEMODE4D2D_H_
 
 #include "stack/mac/layer/LteMacUeRealisticD2D.h"
+#include <random>
 
 //class LteMode4SchedulingGrant;
 
@@ -29,10 +30,20 @@ protected:
    // Multicast D2D BSR handling
    bool bsrD2DMulticastTriggered_;
 
+   double reserveChance;
+   int messagePriority;
+   int resourceReservationInterval ;
+
+   int subchannelSize;
+   int subchannelsPerSubFrame;
+
    // if true, use the preconfigured TX params for transmission, else use that signaled by the eNB
    bool usePreconfiguredTxParams_;
    UserTxParams* preconfiguredTxParams_;
    UserTxParams* getPreconfiguredTxParams();  // build and return new user tx params
+
+   std::random_device rand_dev;
+   std::mt19937 generator;
 
     /**
      * Generate a scheduling grant
@@ -90,6 +101,8 @@ protected:
      * containing the size of its buffer (for that CID)
      */
     virtual void macPduMake();
+
+    virtual void handleUpperMessage(cPacket* pkt);
 
 public:
     LteMacUeMode4D2D();

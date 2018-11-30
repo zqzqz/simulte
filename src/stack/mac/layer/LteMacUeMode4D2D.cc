@@ -33,7 +33,7 @@ Define_Module(LteMacUeMode4D2D);
 LteMacUeMode4D2D::LteMacUeMode4D2D() :
     LteMacUeRealisticD2D()
 {
-
+    std::mt19937 generator(rand_dev());
 }
 
 LteMacUeMode4D2D::~LteMacUeMode4D2D()
@@ -394,13 +394,24 @@ void LteMacUeMode4D2D::handleSelfMessage()
     else if (schedulingGrant_->getPeriodic())
     {
         // Periodic checks
-        if(--expirationCounter_ < 0)
+        if(expirationCounter_ <= 0)
         {
             // Periodic grant is expired
-            delete schedulingGrant_;
-            schedulingGrant_ = NULL;
-            // if necessary, a RAC request will be sent to obtain a grant
-            macGenerateSchedulingGrant();
+            std::uniform_real_distribution<float> floatdist(0, 1);
+            float randomReReserve = floatdist(generator);
+            if (randomReReserve < reserveChance) //reserveChance needs a rename and also a param in ini.
+            {
+                delete schedulingGrant_;
+                schedulingGrant_ = NULL;
+                // if necessary, a RAC request will be sent to obtain a grant
+                macGenerateSchedulingGrant();
+            }
+            else
+            {
+                std::uniform_int_distribution<int> range(5, 15);
+                int expiration = range(generator);
+                schedulingGrant_ -> setExpiration(expiration);
+            }
         }
         else if (--periodCounter_>0)
         {
@@ -534,8 +545,6 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     std::vector<simtime_t> crStartTimes = candidatesPacket -> getCrStartTimes();
 
     // Select random element from vector
-    std::random_device rand_dev;
-    std::mt19937 generator(rand_dev());
     std::uniform_int_distribution<int> distr(0, possibleCrs.size());
     int index = distr(generator);
 
@@ -546,17 +555,51 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
 
     mode4Grant -> setStartTime(selectedStartTime);
     mode4Grant -> setPeriodic(true);
-//    mode4Grant -> setSubchannels(candidatesPacket -> getNumSubchannels()); Might not need this as I need to think about this part really.
+//    mode4Grant -> setSubchannels(candidatesPacket -> getNumSubchannels()); Might not need this I need to think about this part really.
     mode4Grant -> setGrantedBlocks(selectedCr);
 
     // Based on restrictResourceReservation interval But will be between 1 and 15
+    // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
     std::uniform_int_distribution<int> range(5, 15);
     int resourceReselectionCounter = range(generator);
-    int period = 100;
+    int period = 100; // Determined by RistrictResourceCounter param (but always 100) though needs to still be configurable
 
     mode4Grant -> setExpiration(resourceReselectionCounter);
     mode4Grant -> setPeriod(period);
 
+    // Trigger a self message at the correct simtime_t (i.e. startTime for a message to be sent)
+
+}
+
+void LteMacUeMode4D2D::handleUpperMessage(cPacket* pkt)
+{
+    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pkt->getControlInfo());
+    MacCid cid = idToMacCid(lteInfo->getDestId(), lteInfo->getLcid());
+
+    // bufferize packet
+    bufferizePacket(pkt);
+
+    if (strcmp(pkt->getName(), "lteRlcFragment") == 0)
+    {
+        // new MAC SDU has been received
+        if (pkt->getByteLength() == 0)
+            delete pkt;
+
+        if (pkt->getByteLength() > schedulingGrant_ -> getCapacity())
+        {
+            generateSchedulingGrant(); // This means we've broken our reservation due to size. Need to think about how you capture reservation breaks due to triggered cams?
+        }
+
+        // creates pdus from schedule list and puts them in harq buffers
+        macPduMake();
+
+        EV << NOW << " LteMacUeRealistic::handleUpperMessage - incrementing counter for HARQ processes " << (unsigned int)currentHarq_ << " --> " << (currentHarq_+1)%harqProcesses_ << endl;
+        currentHarq_ = (currentHarq_+1)%harqProcesses_;
+    }
+    else
+    {
+        delete pkt;
+    }
 }
 
 void LteMacUeMode4D2D::macGenerateSchedulingGrant()
@@ -565,8 +608,45 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
      * 1. Get packet priority as this impacts on what we ask the PHY layer for
      * 2. Get resource reservation interval as this determines our expiration time
      * 3. Also resource reservation interval determines the period of messages (but generally we will always have 100ms as ours due to Release 14's own constraints.)
-     * 4. Agh I'm just done with this :P
      */
+
+    LteMode4SchedulingGrant* grant = new LteMode4SchedulingGrant("LteGrant");
+
+    grant -> setMessagePriority(messagePriority);
+    grant -> setResourceReservationInterval(resourceReservationInterval);
+
+    /*
+     * Need to calculate the number of subchannels I need for this message.
+     * 1. Get the actual message
+     * 2. Get the length of the message
+     * 3. check the size of our subchannels
+     * 4. Check how many subchannels is required for this guy to fit.
+     */
+
+    int currentCapacity = schedulingGrant_ -> getNumSubchannels();
+    const std::set<Remote>& antennas = ui.readAntennaSet();
+    std::set<Remote>::const_iterator antenna_it = antennas.begin(),
+    antenna_et = antennas.end();
+    const unsigned int logicalBands = deployer_->getNumBands();
+    //  HANDLE MULTICW
+    for (; cw < codewords; ++cw)
+    {
+        unsigned int grantedBytes = 0;
+
+        for (Band b = 0; b < logicalBands; ++b)
+        {
+            unsigned int bandAllocatedBlocks = 0;
+           // for (; antenna_it != antenna_et; ++antenna_it) // OLD FOR
+           for (antenna_it = antennas.begin(); antenna_it != antenna_et; ++antenna_it)
+           {
+               bandAllocatedBlocks += enbSchedulerUl_->readPerUeAllocatedBlocks(nodeId,*antenna_it, b);
+           }
+           grantedBytes += amc_->computeBytesOnNRbs(nodeId, b, cw, bandAllocatedBlocks, dir );
+        }
+
+        grant->setGrantedCwBytes(cw, grantedBytes);
+        EV << NOW << " LteMacEnbRealisticD2D::sendGrants - granting " << grantedBytes << " on cw " << cw << endl;
+    }
 
 }
 

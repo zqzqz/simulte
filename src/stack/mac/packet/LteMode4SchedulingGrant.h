@@ -7,6 +7,7 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
         simtime_t startTime;
         unsigned int messagePriority;
         unsigned int numSubchannels;
+        unsigned int resourceReservationInterval;
 
     public:
 
@@ -66,5 +67,13 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
         unsigned int getNumSubchannels() const
         {
             return numSubchannels;
+        }
+        void setResourceReservationInterval(unsigned int resourceResInterval)
+        {
+            resourceReservationInterval = resourceResInterval;
+        }
+        unsigned int getResourceReservationInterval() const
+        {
+            return resourceReservationInterval;
         }
 };
