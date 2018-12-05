@@ -5,9 +5,10 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
 {
     protected:
         simtime_t startTime;
-        unsigned int messagePriority;
+        unsigned int spsPriority;
         unsigned int numSubchannels;
-        unsigned int resourceReservationInterval;
+        //unsigned int resourceReservationInterval;
+        unsigned int maximumLatency;
 
     public:
 
@@ -15,7 +16,8 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
             LteSchedulingGrant(name, kind)
         {
             numSubchannels = 0;
-            messagePriority = 0;
+            spsPriority = 0;
+            maximumLatency = 0;
             startTime = simTime();
         }
 
@@ -33,7 +35,7 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
         LteMode4SchedulingGrant& operator=(const LteMode4SchedulingGrant& other)
         {
             numSubchannels = other.numSubchannels;
-            messagePriority = other.messagePriority;
+            spsPriority = other.spsPriority;
             startTime = other.startTime;
             LteSchedulingGrant::operator=(other);
             return *this;
@@ -52,13 +54,13 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
         {
             return startTime;
         }
-        void setMessagePriority(unsigned int priority)
+        void setSpsPriority(unsigned int priority)
         {
-            messagePriority = priority;
+            spsPriority = priority;
         }
-        unsigned int getMessagePriority() const
+        unsigned int getSpsPriority() const
         {
-            return messagePriority;
+            return spsPriority;
         }
         void setNumberSubchannels(unsigned int subchannels)
         {
@@ -68,12 +70,21 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
         {
             return numSubchannels;
         }
-        void setResourceReservationInterval(unsigned int resourceResInterval)
+//        void setResourceReservationInterval(unsigned int resourceResInterval)
+//        {
+//            resourceReservationInterval = resourceResInterval;
+//        }
+//        unsigned int getResourceReservationInterval() const
+//        {
+//            return resourceReservationInterval;
+//        }
+
+        void setMaximumLatency(unsigned int maxLatency)
         {
-            resourceReservationInterval = resourceResInterval;
+            maximumLatency = maxLatency;
         }
-        unsigned int getResourceReservationInterval() const
+        unsigned int getMaximumLatency() const
         {
-            return resourceReservationInterval;
+            return maximumLatency;
         }
 };
