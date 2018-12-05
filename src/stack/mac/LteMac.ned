@@ -233,6 +233,23 @@ simple LteMacUeRealisticD2D extends LteMacUeRealistic
     int d2dCqi = default(7);
 }
 
+simple LteMacUeMode4D2D extends LteMacUeRealisticD2D
+{
+	parameters:
+	    
+	    @class("LteMacUeMode4D2D");
+	    
+	    int resourceReservationInterval = default(1);
+	    int maximumLatency = default(100);
+	    int numSubchannels = default(10);
+	    int subchannelSize = default(5);
+	    int minSubchannelNumberPSSCH = default(1);
+	    int maxSubchannelNumberPSSCH = default(10);
+	    int minMCSPSSCH = default(1);
+	    int maxMCSPSSCH = default(28);
+	    double probResourceKeep = default(0.4);
+}
+
 //
 // eNodeB MAC layer of LTE stack
 //
