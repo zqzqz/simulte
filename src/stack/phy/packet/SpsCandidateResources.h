@@ -23,8 +23,8 @@ class SpsCandidateResources: public SpsCandidateResources_Base
 {
   protected:
 
-    std::vector<RbMap> possibleCrs;
-    std::vector<simtime_t> crStartTime;
+    std::vector<RbMap> possibleCSRs;
+    std::vector<simtime_t> CSRStartTimes;
     LteMode4SchedulingGrant schedulingGrant;
 
   public:
@@ -46,8 +46,8 @@ class SpsCandidateResources: public SpsCandidateResources_Base
     SpsCandidateResources& operator=(const SpsCandidateResources& other)
     {
         schedulingGrant = other.schedulingGrant;
-        possibleCrs = other.possibleCrs;
-        crStartTime = other.crStartTime;
+        possibleCSRs = other.possibleCSRs;
+        CSRStartTime = other.CSRStartTime;
         SpsCandidateResources_Base::operator=(other);
         return *this;
     }
@@ -57,24 +57,24 @@ class SpsCandidateResources: public SpsCandidateResources_Base
         return new SpsCandidateResources(*this);
     }
 
-    virtual void setPossibleCrs(const std::vector<RbMap>& possibleCrList )
+    virtual void setPossibleCSRs(const std::vector<RbMap>& possibleCSRsList )
     {
-        possibleCrs = possibleCrList;
+        possibleCSRs = possibleCSRsList;
     }
 
-    virtual std::vector<RbMap>& getPossibleCrs()
+    virtual std::vector<RbMap>& getPossibleCSRs()
     {
-        return possibleCrs;
+        return possibleCSRs;
     }
 
-    virtual void setCrStartTimes(const std::vector<simtime_t>& crStartTimeList)
+    virtual void setCSRStartTimes(const std::vector<simtime_t>& CSRStartTimesList)
     {
-        crStartTime = crStartTimeList;
+        CSRStartTimes = CSRStartTimesList;
     }
 
-    virtual std::vector<simtime_t>& getCrStartTimes()
+    virtual std::vector<simtime_t>& getCSRStartTimes()
     {
-        return crStartTime;
+        return CSRStartTime;
     }
 
 };
