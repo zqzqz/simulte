@@ -30,12 +30,15 @@ protected:
    // Multicast D2D BSR handling
    bool bsrD2DMulticastTriggered_;
 
-   double reserveChance;
+   // All of the following should be configurable by the OMNet++ ini file and maybe even taken from higher layers if that's possible.
+   double probResourceKeep;
    int messagePriority;
    int resourceReservationInterval ;
-
+   int minSubchannel;
+   int maxSubchannel;
+   int maximumLatency;
    int subchannelSize;
-   int subchannelsPerSubFrame;
+   int numSubchannels;
 
    // if true, use the preconfigured TX params for transmission, else use that signaled by the eNB
    bool usePreconfiguredTxParams_;
