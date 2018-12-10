@@ -17,6 +17,7 @@
 #define STACK_MAC_LAYER_LTEMACUEMODE4D2D_H_
 
 #include "stack/mac/layer/LteMacUeRealisticD2D.h"
+#include "stack/mac/amc/AmcPilotD2D.h"
 #include <random>
 
 //class LteMode4SchedulingGrant;
@@ -47,6 +48,9 @@ protected:
 
    std::random_device rand_dev;
    std::mt19937 generator;
+
+//   // Lte AMC module
+//   LteAmc *amc_;
 
     /**
      * Generate a scheduling grant
