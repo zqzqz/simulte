@@ -26,6 +26,7 @@
 #include "stack/mac/layer/LteMacUeMode4D2D.h"
 #include "stack/phy/packet/SpsCandidateResources.h"
 #include "stack/mac/scheduler/LteSchedulerUeUl.h"
+#include "stack/mac/amc/AmcPilotD2D.h"
 #include <random>
 
 Define_Module(LteMacUeMode4D2D);
@@ -389,6 +390,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
     // no harq counter is updated since no transmission is sent.
 
     bool generateNewSchedulingGrant = false;
+    bool reservationBreak = false;
 
     if (schedulingGrant_ == NULL)
     {
@@ -466,32 +468,48 @@ void LteMacUeMode4D2D::handleSelfMessage()
         // if no retx is needed, proceed with normal scheduling
         if(!retx)
         {
-            scheduleList_ = lcgScheduler_->schedule();
-            if (scheduleList_->empty())
+             scheduleList_ = lcgScheduler_->schedule();
+             macPduMake();
+        }
+
+
+
+        HarqTxBuffers::iterator it3;
+        for(it3 = harqTxBuffers_.begin(); it3 != harqTxBuffers_.end(); it3++)
+        {
+            LteHarqBufferTx* currHarq = it3->second;
+            LteHarqProcessTx* selectedProc = currHarq->getSelectedProcess();
+
+            std::list<Codeword>::iterator cit;
+            CwList unitIds = selectedProc->selectedUnitsIds();
+
+            // This isn't currently working but in principle this is the idea of
+            // getting the pdus to be sent and ensuring they fit within the schedulingGrant
+            for(cit = unitIds.begin(); cit != unitIds.end(); cit++)
             {
-                // no connection scheduled, but probably can make a PDU (not sure but we can see)
-                macPduMake();
-            }
-            else
-            {
-                requestSdu = macSduRequest(); // return a bool
+
+                int64 pduSize = selectedProc -> getPduLength(cit);
+
+                if (pduSize > schedulingGrant_->getGrantedCwBytes(cit)
+                {
+                    reservationBreak = true;
+                    generateNewSchedulingGrant = true;
+                    // It might be an idea to say that the minMCS
+                }
             }
 
         }
 
-        // Message that triggers flushing of Tx H-ARQ buffers for all users
-        // This way, flushing is performed after the (possible) reception of new MAC PDUs
-        cMessage* flushHarqMsg = new cMessage("flushHarqMsg");
-        flushHarqMsg->setSchedulingPriority(1);        // after other messages
-        scheduleAt(NOW, flushHarqMsg);
+        if(!reservationBreak){
+            // send the selected units to lower layers
+            for(it2 = harqTxBuffers_.begin(); it2 != harqTxBuffers_.end(); it2++)
+            it2->second->sendSelectedDown();
+        }
 
-        // Ensure that the period of the schedulingGrant is one resourceReserationInterval away
-        // Also make sure RRI is on the same scale at TTI
-        schedulingGrant_->setPeriod(NOW+ (resourceReservationInterval*TTI));
     }
     if (schedulingGrant_ == NULL || generateNewSchedulingGrant)
     {
-        generateNewSchedulingGrant();
+        macGenerateSchedulingGrant();
     }
 
     //============================ DEBUG ==========================
@@ -570,9 +588,6 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
 
     mode4Grant -> setExpiration(resourceReselectionCounter);
     mode4Grant -> setPeriod(period);
-
-    // Trigger a self message at the correct simtime_t (i.e. startTime for a message to be sent)
-
 }
 
 void LteMacUeMode4D2D::handleUpperMessage(cPacket* pkt)
@@ -626,7 +641,7 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
 
-    sendLowerMessage(mode4Grant);
+    sendLowerPackets(mode4Grant);
 
     schedulingGrant_ = mode4Grant;
 
