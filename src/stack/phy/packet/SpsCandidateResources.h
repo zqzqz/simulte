@@ -47,7 +47,7 @@ class SpsCandidateResources: public SpsCandidateResources_Base
     {
         schedulingGrant = other.schedulingGrant;
         possibleCSRs = other.possibleCSRs;
-        CSRStartTime = other.CSRStartTime;
+        CSRStartTimes = other.CSRStartTimes;
         SpsCandidateResources_Base::operator=(other);
         return *this;
     }
@@ -74,7 +74,7 @@ class SpsCandidateResources: public SpsCandidateResources_Base
 
     virtual std::vector<simtime_t>& getCSRStartTimes()
     {
-        return CSRStartTime;
+        return CSRStartTimes;
     }
 
 };
