@@ -176,7 +176,7 @@ void LtePhyUeD2D::handleAirFrame(cMessage* msg)
         result = channelModel_->error(frame,lteInfo);
     }
 
-            // update statistics
+    // update statistics
     if (result)
         numAirFrameReceived_++;
     else
