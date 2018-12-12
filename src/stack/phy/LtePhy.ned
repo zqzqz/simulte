@@ -84,6 +84,14 @@ simple LtePhyUeD2D extends LtePhyUe {
          @statistic[averageCqiD2D](title="Average Cqi reported in D2D"; unit="cqi"; source="averageCqiD2D"; record=mean,vector);
 }
 
+simple LtePhyUeMode4D2D extends LtePhyUe {
+	parameters:   
+	    @class("LtePhyUeMode4D2D");
+	    
+	    bool adjacencyPSCCHPSSCH = default(true);
+	    int pStep = default(100); 
+}
+
 // 
 // eNodeB LtePhy module of PHY Layer
 //
