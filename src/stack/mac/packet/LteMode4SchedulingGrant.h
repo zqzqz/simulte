@@ -5,10 +5,6 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
 {
     protected:
         simtime_t startTime;
-        unsigned int spsPriority;
-        unsigned int numSubchannels;
-        //unsigned int resourceReservationInterval;
-        unsigned int maximumLatency;
 
     public:
 
@@ -70,15 +66,6 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
         {
             return numSubchannels;
         }
-//        void setResourceReservationInterval(unsigned int resourceResInterval)
-//        {
-//            resourceReservationInterval = resourceResInterval;
-//        }
-//        unsigned int getResourceReservationInterval() const
-//        {
-//            return resourceReservationInterval;
-//        }
-
         void setMaximumLatency(unsigned int maxLatency)
         {
             maximumLatency = maxLatency;

@@ -29,3 +29,12 @@ packet LteSchedulingGrant
     //# RbMap grantedBlocks;
     //#
 }
+
+packet LteMode4SchedulingGrant extends LteSchedulingGrant
+{
+    @customize(true);
+
+    unsigned int spsPriority;
+    unsigned int numSubchannels;
+    unsigned int maximumLatency;
+}
