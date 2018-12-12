@@ -490,7 +490,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
 
                 int64 pduSize = selectedProc -> getPduLength(cit);
 
-                if (pduSize > schedulingGrant_->getGrantedCwBytes(cit)
+                if (pduSize > schedulingGrant_->getGrantedCwBytes(cit))
                 {
                     reservationBreak = true;
                     generateNewSchedulingGrant = true;
