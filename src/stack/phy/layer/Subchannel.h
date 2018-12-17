@@ -7,9 +7,6 @@
 // and cannot be removed from it.
 //
 
-#ifndef _LTE_AIRPHYUED2D_H_
-#define _LTE_AIRPHYUED2D_H_
-
 #include "common/LteCommon.h"
 #include "stack/phy/packet/SidelinkControlInformation_m.h"
 
@@ -20,18 +17,20 @@ class Subchannel
         RbMap usedRbs;
         bool reserved;
         simtime_t subframeTime;
-        SidelinkControlInformation SCI;
+        std::vector<SidelinkControlInformation> SCIs;
         double averageRSRP;
         double averageRSSI;
+        std::vector<Band> occupiedBands;
 
     public:
         Subchannel(const int subchannelSize)
         {
             numRbs = subchannelSize;
-            usedRbs = NULL;
             reserved = false;
             subframeTime = simTime();
             SCI = NULL;
+            // TODO: I need to find a way of logically setting these? Is it a simple as setting them to the UE Noise level?
+            // Or maybe in the channel model we determine a background noise level and use that as a basis.
             averageRSRP = 0;
             averageRSSI = 0;
         }
@@ -41,8 +40,7 @@ class Subchannel
         {
         }
 
-        Subchannel(const Subchannel& other) :
-            Subchannel(other.getName())
+        Subchannel(const Subchannel& other)
         {
             operator=(other);
         }
@@ -88,13 +86,13 @@ class Subchannel
         {
             return reserved;
         }
-        void setSCIMessage(SidelinkControlInformation SCI)
+        void addSCI(SidelinkControlInformation SCI)
         {
-            this->SCI = SCI;
+            SCIs.push_back(SCI);
         }
-        SidelinkControlInformation getSCIMessage() const
+        std::vector<SidelinkControlInformation> getSCIMessage() const
         {
-            return SCI;
+            return SCIs;
         }
         void setAverageRSRP(double averageRSRP)
         {
@@ -111,6 +109,14 @@ class Subchannel
         double getAverageRSSI() const
         {
             return averageRSSI;
+        }
+        std::vector getOccupiedBands() const
+        {
+            return occupiedBands;
+        }
+        void setOccupiedBands(std::vector occupiedBands)
+        {
+            this->occupiedBands = occupiedBands;
         }
 
 };
