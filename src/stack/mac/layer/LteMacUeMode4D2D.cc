@@ -27,6 +27,7 @@
 #include "stack/phy/packet/SpsCandidateResources.h"
 #include "stack/mac/scheduler/LteSchedulerUeUl.h"
 #include "stack/mac/amc/AmcPilotD2D.h"
+#include "common/LteCommon.h"
 #include <random>
 
 Define_Module(LteMacUeMode4D2D);
@@ -35,6 +36,14 @@ LteMacUeMode4D2D::LteMacUeMode4D2D() :
     LteMacUeRealisticD2D()
 {
     std::mt19937 generator(rand_dev());
+    resourceReservationInterval_ = par("resourceReservationInterval");
+    minSubchannelNumberPSSCH_ = par("minSubchannelNumberPSSCH_");
+    maxSubchannelNumberPSSCH_ = par("maxSubchannelNumberPSSCH_");
+    maximumLatency_ = par("maximumLatency_");
+    subchannelSize_ = par("subchannelSize_");
+    numSubchannels_ = par("numSubchannels_");
+    minMCSPSSCH_ = par("minMCSPSSCH_");
+    maxMCSPSSCH_ = par("maxMCSPSSCH_");
 }
 
 LteMacUeMode4D2D::~LteMacUeMode4D2D()
@@ -72,69 +81,6 @@ void LteMacUeMode4D2D::macPduMake()
     int64 size = 0;
 
     macPduList_.clear();
-
-    /*
-     * The following section generates a BSR which is in essence a request to the eNodeB for access to the medium
-     * This obviously is something we don't need here and needs to be removed completely
-     */
-
-//    bool bsrAlreadyMade = false;
-//    // UE is in D2D-mode but it received an UL grant (for BSR)
-//    if ((bsrTriggered_ || bsrD2DMulticastTriggered_) && schedulingGrant_->getDirection() == UL && scheduleList_->empty())
-//    {
-//        // Compute BSR size taking into account only DM flows
-//        int sizeBsr = 0;
-//        LteMacBufferMap::const_iterator itbsr;
-//        for (itbsr = macBuffers_.begin(); itbsr != macBuffers_.end(); itbsr++)
-//        {
-//            MacCid cid = itbsr->first;
-//            Direction connDir = (Direction)connDesc_[cid].getDirection();
-//
-//            // if the bsr was triggered by D2D (D2D_MULTI), only account for D2D (D2D_MULTI) connections
-//            if (bsrTriggered_ && connDir != D2D)
-//                continue;
-//            if (bsrD2DMulticastTriggered_ && connDir != D2D_MULTI)
-//                continue;
-//
-//            sizeBsr += itbsr->second->getQueueOccupancy();
-//
-//            // take into account the RLC header size
-//            if (sizeBsr > 0)
-//            {
-//                if (connDesc_[cid].getRlcType() == UM)
-//                    sizeBsr += RLC_HEADER_UM;
-//                else if (connDesc_[cid].getRlcType() == AM)
-//                    sizeBsr += RLC_HEADER_AM;
-//            }
-//        }
-//
-//        if (sizeBsr > 0)
-//        {
-//            // Call the appropriate function for make a BSR for a D2D communication
-//            LteMacPdu* macPktBsr = makeBsr(sizeBsr);
-//            UserControlInfo* info = check_and_cast<UserControlInfo*>(macPktBsr->getControlInfo());
-//            if (bsrD2DMulticastTriggered_)
-//            {
-//                info->setLcid(D2D_MULTI_SHORT_BSR);
-//                bsrD2DMulticastTriggered_ = false;
-//            }
-//            else
-//                info->setLcid(D2D_SHORT_BSR);
-//
-//            // Add the created BSR to the PDU List
-//            if( macPktBsr != NULL )
-//            {
-//               macPduList_[ std::pair<MacNodeId, Codeword>( getMacCellId(), 0) ] = macPktBsr;
-//               bsrAlreadyMade = true;
-//               EV << "LteMacUeRealisticD2D::macPduMake - BSR D2D created with size " << sizeBsr << "created" << endl;
-//            }
-//        }
-//        else
-//        {
-//            bsrD2DMulticastTriggered_ = false;
-//            bsrTriggered_ = false;
-//        }
-//    }
 
     // In a D2D communication if BSR was created above this part isn't executed
     // Build a MAC PDU for each scheduled user on each codeword
@@ -263,19 +209,6 @@ void LteMacUeMode4D2D::macPduMake()
         //Get a reference of the LteMacPdu from pit pointer (extract Pdu from the MAP)
         LteMacPdu* macPkt = pit->second;
 
-        // Attach BSR to PDU if RAC is won and wasn't already made
-        // Again no need for BSR type operations
-//        if ((bsrTriggered_ || bsrD2DMulticastTriggered_) && !bsrAlreadyMade )
-//        {
-//            MacBsr* bsr = new MacBsr();
-//            bsr->setTimestamp(simTime().dbl());
-//            bsr->setSize(size);
-//            macPkt->pushCe(bsr);
-//            bsrTriggered_ = false;
-//            bsrD2DMulticastTriggered_ = false;
-//            EV << "LteMacUeRealisticD2D::macPduMake - BSR created with size " << size << endl;
-//        }
-
         EV << "LteMacUeRealisticD2D: pduMaker created PDU: " << macPkt->info() << endl;
 
         // TODO: harq test
@@ -354,33 +287,6 @@ void LteMacUeMode4D2D::handleSelfMessage()
         }
     }
 
-    // I don't have an eNB so this isn't necessary.
-
-    // For each D2D communication, the status of the HARQRxBuffer must be known to the eNB
-    // For each HARQ-RX Buffer corresponding to a D2D communication, store "mirror" buffer at the eNB
-//    HarqRxBuffers::iterator buffIt = harqRxBuffers_.begin();
-//    for (; buffIt != harqRxBuffers_.end(); ++buffIt)
-//    {
-//        MacNodeId senderId = buffIt->first;
-//        LteHarqBufferRx* buff = buffIt->second;
-//
-//        // skip the H-ARQ buffer corresponding to DL transmissions
-//        if (senderId == cellId_)
-//            continue;
-//
-//        // skip the H-ARQ buffers corresponding to D2D_MULTI transmissions
-//        if (buff->isMulticast())
-//            continue;
-//
-//        //The constructor "extracts" all the useful information from the harqRxBuffer and put them in a LteHarqBufferRxD2DMirror object
-//        //That object resides in enB. Because this operation is done after the enb main loop the enb is 1 TTI backward respect to the Receiver
-//        //This means that enb will check the buffer for retransmission 3 TTI before
-//        // DANGER BELOW!
-//        // I don't have an enb_ so I suppose we can comment this bit of danger out for the moment
-//        LteHarqBufferRxD2DMirror* mirbuff = new LteHarqBufferRxD2DMirror(buff, (unsigned char)this->par("maxHarqRtx"), senderId);
-//        enb_->storeRxHarqBufferMirror(nodeId_, mirbuff);
-//    }
-
     EV << NOW << "LteMacUeMode4D2D::handleSelfMessage " << nodeId_ << " - HARQ process " << (unsigned int)currentHarq_ << endl;
     // updating current HARQ process for next TTI
 
@@ -398,34 +304,47 @@ void LteMacUeMode4D2D::handleSelfMessage()
 
         // scheduling grant needs to be generated at end of process
         generateNewSchedulingGrant = true;
-        // TODO ensure all operations done  before return ( i.e. move H-ARQ rx purge before this point)
     }
 
     // Currently set to <= imagining the case that we end up half an ms off from each other,
     // not sure if this is a likely situation but to be safe will leave it <= for now.l
-    else if (schedulingGrant_->getPeriodic() && schedulingGrant_ -> getPeriod() <= NOW)
+    else if (schedulingGrant_->getPeriodic() && schedlingGrant_->getStartTime() <= NOW)
     {
         // Periodic checks
-        if(schedulingGrant_->getExpiration() == 1)
+        if(--expirationCounter_ == schedulingGrant_->getPeriod())
         {
+            // Periodic checks
             // Periodic grant is expired
             std::uniform_real_distribution<float> floatdist(0, 1);
             float randomReReserve = floatdist(generator);
-            if (randomReReserve < probResourceKeep)
-            {
-                generateNewSchedulingGrant = true;
-            }
-            else
+            if (randomReReserve > probResourceKeep)
             {
                 std::uniform_int_distribution<int> range(5, 15);
                 int expiration = range(generator);
                 schedulingGrant_ -> setExpiration(expiration);
+                expirationCounter_ = expiration * schedulingGrant_->getPeriod();
             }
         }
+        // Periodic checks
+        else if(expirationCounter_ == 0)
+        {
+            // Periodic grant is expired
+            delete schedulingGrant_;
+            schedulingGrant_ = NULL;
+        }
+        else if (--periodCounter_>0)
+        {
+            return;
+        }
+        else
+        {
+            // resetting grant period
+            periodCounter_=schedulingGrant_->getPeriod();
+            // this is periodic grant TTI - continue with frame sending
+        }
     }
-
     bool requestSdu = false;
-    if (schedulingGrant_!=NULL && schedulingGrant_ -> getPeriod() <= NOW ) // if a grant is configured
+    if (schedulingGrant_!=NULL && schedlingGrant_->getStartTime() <= NOW) // if a grant is configured
     {
         if(!firstTx)
         {
@@ -473,31 +392,37 @@ void LteMacUeMode4D2D::handleSelfMessage()
         }
 
 
-
+        /*
+         * TODO: Not the right approach below
+         *     - Want to get the packet
+         *     - Get the allocated RBs
+         *     - Get the different possible MCS'
+         *     - Calculate the capacity based on this
+         *     - If no capacity then break the reservation
+         *     - Also need to account for Adjacency in this calculation.
+         *
+         *     LteAmc Module has the ability to do this
+         *     - Need to think about how we manage the cqi part and get around it.
+         */
         HarqTxBuffers::iterator it3;
         for(it3 = harqTxBuffers_.begin(); it3 != harqTxBuffers_.end(); it3++)
         {
             LteHarqBufferTx* currHarq = it3->second;
             LteHarqProcessTx* selectedProc = currHarq->getSelectedProcess();
 
-            std::list<Codeword>::iterator cit;
-            CwList unitIds = selectedProc->selectedUnitsIds();
-
-            // This isn't currently working but in principle this is the idea of
-            // getting the pdus to be sent and ensuring they fit within the schedulingGrant
-            for(cit = unitIds.begin(); cit != unitIds.end(); cit++)
-            {
-
-                int64 pduSize = selectedProc -> getPduLength(cit);
-
-                if (pduSize > schedulingGrant_->getGrantedCwBytes(cit))
-                {
-                    reservationBreak = true;
-                    generateNewSchedulingGrant = true;
-                    // It might be an idea to say that the minMCS
-                }
+            int totalGrantedBytes = 0;
+            int totalPDUSize = 0;
+            for(int i=0; i<MAX_CODEWORDS; i++){
+                totalPDUSize += selectedProc ->getPduLength(i);
+                totalGrantedBytes += schedulingGrant_->getGrantedCwBytes(i);
             }
 
+            if (totalPDUSize > totalGrantedBytes)
+            {
+                reservationBreak = true;
+                generateNewSchedulingGrant = true;
+                // It might be an idea to say that the minMCS
+            }
         }
 
         if(!reservationBreak){
@@ -584,10 +509,14 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
     std::uniform_int_distribution<int> range(5, 15);
     int resourceReselectionCounter = range(generator);
-    int period = 100; // Determined by RistrictResourceCounter param (but always 100) though needs to still be configurable
 
     mode4Grant -> setExpiration(resourceReselectionCounter);
-    mode4Grant -> setPeriod(period);
+
+    if (grant->getPeriodic())
+    {
+        periodCounter_=grant->getPeriod();
+        expirationCounter_=grant->getExpiration() * periodCounter_;
+    }
 }
 
 void LteMacUeMode4D2D::handleUpperMessage(cPacket* pkt)
@@ -628,23 +557,33 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
 
     LteMode4SchedulingGrant* mode4Grant = new LteMode4SchedulingGrant("LteMode4Grant");
 
-    mode4Grant -> setSpsPriority(messagePriority);
-    mode4Grant -> setPeriod(resourceReservationInterval);
-    mode4Grant -> setMaximumLatency(maximumLatency);
+    // Priority is the most difficult part to figure out, for the moment I will assign it as a fixed value
+    // TODO: Message Priority
+    mode4Grant -> setSpsPriority(4);
+    mode4Grant -> setPeriod(resourceReservationInterval_ * 100);
+
+    // TODO: Maximum Latency is also an "Application Layer" specified parameter
+    mode4Grant -> setMaximumLatency(maximumLatency_);
 
     /**
      * Need to pick the number of subchannels for this reservation
      */
-    // Select random element from vector
+    // Select random number of subchannels (this is really illogical, but we will sort it out later.
     std::uniform_int_distribution<int> distr(minSubchannel, maxSubchannel);
     int numSubchannels = distr(generator);
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
 
+    UserControlInfo* uinfo = new UserControlInfo();
+    uinfo->setSourceId(getMacNodeId());
+    uinfo->setDestId(getMacNodeId);
+    uinfo->setFrameType(GRANTPKT);
+
+    grant->setControlInfo(uinfo);
+
     sendLowerPackets(mode4Grant);
 
     schedulingGrant_ = mode4Grant;
-
 }
 
 
