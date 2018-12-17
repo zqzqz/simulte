@@ -32,14 +32,15 @@ protected:
    bool bsrD2DMulticastTriggered_;
 
    // All of the following should be configurable by the OMNet++ ini file and maybe even taken from higher layers if that's possible.
-   double probResourceKeep;
-   int messagePriority;
-   int resourceReservationInterval ;
-   int minSubchannel;
-   int maxSubchannel;
-   int maximumLatency;
-   int subchannelSize;
-   int numSubchannels;
+   double probResourceKeep_;
+   int resourceReservationInterval_;
+   int minSubchannelNumberPSSCH_;
+   int maxSubchannelNumberPSSCH_;
+   int maximumLatency_;
+   int subchannelSize_;
+   int numSubchannels_;
+   int minMCSPSSCH_;
+   int maxMCSPSSCH_;
 
    // if true, use the preconfigured TX params for transmission, else use that signaled by the eNB
    bool usePreconfiguredTxParams_;
