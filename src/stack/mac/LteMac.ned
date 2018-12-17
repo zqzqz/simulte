@@ -241,8 +241,6 @@ simple LteMacUeMode4D2D extends LteMacUeRealisticD2D
 	    
 	    int resourceReservationInterval = default(1);
 	    int maximumLatency = default(100);
-	    int numSubchannels = default(10);
-	    int subchannelSize = default(5);
 	    int minSubchannelNumberPSSCH = default(1);
 	    int maxSubchannelNumberPSSCH = default(10);
 	    int minMCSPSSCH = default(1);

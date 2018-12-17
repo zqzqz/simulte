@@ -90,6 +90,8 @@ simple LtePhyUeMode4D2D extends LtePhyUe {
 	    
 	    bool adjacencyPSCCHPSSCH = default(true);
 	    int pStep = default(100); 
+        int numSubchannels = default(10);
+	    int subchannelSize = default(5);
 }
 
 // 
