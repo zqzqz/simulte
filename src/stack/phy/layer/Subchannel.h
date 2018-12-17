@@ -8,7 +8,6 @@
 //
 
 #include "common/LteCommon.h"
-#include "stack/phy/packet/SidelinkControlInformation_m.h"
 
 class Subchannel
 {
@@ -17,10 +16,10 @@ class Subchannel
         RbMap usedRbs;
         bool reserved;
         simtime_t subframeTime;
-        std::vector<SidelinkControlInformation> SCIs;
-        double averageRSRP;
-        double averageRSSI;
-        std::vector<Band> occupiedBands;
+        cPacket sci;
+        std::vector occupiedBands;
+        std::map<Band, double> rsrpValues;
+        std::map<Band, double> rssiValues;
 
     public:
         Subchannel(const int subchannelSize)
@@ -28,11 +27,7 @@ class Subchannel
             numRbs = subchannelSize;
             reserved = false;
             subframeTime = simTime();
-            SCI = NULL;
-            // TODO: I need to find a way of logically setting these? Is it a simple as setting them to the UE Noise level?
-            // Or maybe in the channel model we determine a background noise level and use that as a basis.
-            averageRSRP = 0;
-            averageRSSI = 0;
+            sci = NULL;
         }
 
 
@@ -51,9 +46,9 @@ class Subchannel
             usedRbs = other.usedRbs;
             reserved = other.reserved;
             subframeTime = other.subframeTime;
-            SCI = other.SCI;
-            averageRSRP = other.averageRSRP;
-            averageRSSI = other.averageRSSI;
+            sci = other.sci;
+            rsrpValues = other.rsrpValues;
+            rssiValues = other.rssiValues;
             return *this;
         }
 
@@ -86,13 +81,13 @@ class Subchannel
         {
             return reserved;
         }
-        void addSCI(SidelinkControlInformation SCI)
+        void setSCI(cPacket* SCI)
         {
-            SCIs.push_back(SCI);
+            this->sci = SCI;
         }
-        std::vector<SidelinkControlInformation> getSCIMessage() const
+        cPacket* getSCIMessage() const
         {
-            return SCIs;
+            return sci;
         }
         void setAverageRSRP(double averageRSRP)
         {
@@ -100,15 +95,31 @@ class Subchannel
         }
         double getAverageRSRP() const
         {
-            return averageRSRP;
-        }
-        void setAverageRSSI(double averageRSSI)
-        {
-            this->averageRSSI = averageRSSI;
+            double sum = 0;
+            std::map<Band, double>::iterator it;
+            for(it=rsrpValues.begin(); it!=rsrpValues.end(); it++)
+            {
+                sum += it->second;
+            }
+            return sum/numRbs;
         }
         double getAverageRSSI() const
         {
-            return averageRSSI;
+            double sum = 0;
+            std::map<Band, double>::iterator it;
+            for(it=rssiValues.begin(); it!=rssiValues.end(); it++)
+            {
+                sum += it->second;
+            }
+            return sum/numRbs;
+        }
+        void addRsrpValue(double rsrpValue, Band band)
+        {
+            rsrpValues[band] = rsrpValue;
+        }
+        void addRssiValue(double rssiValue, Band band)
+        {
+            rssiValues[band] = rssiValue;
         }
         std::vector getOccupiedBands() const
         {
