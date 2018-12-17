@@ -1,7 +1,7 @@
 
-#include "stack/mac/packet/LteSchedulingGrant.h"
+#include "stack/mac/packet/LteSchedulingGrant_m.h"
 
-class LteMode4SchedulingGrant : public LteSchedulingGrant
+class LteMode4SchedulingGrant : public LteMode4SchedulingGrant_Base
 {
     protected:
         simtime_t startTime;

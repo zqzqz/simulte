@@ -16,7 +16,7 @@
 //
 
 #include "stack/phy/packet/SpsCandidateResources_m.h"
-#include "stack/mac/packet/LteMode4SchedulingGrant.h"
+#include "stack/mac/packet/LteSchedulingGrant_m.h"
 #include "common/LteCommon.h"
 
 class SpsCandidateResources: public SpsCandidateResources_Base

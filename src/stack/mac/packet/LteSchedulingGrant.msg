@@ -17,7 +17,7 @@ packet LteSchedulingGrant
     bool periodic;
        unsigned int period;
        int expiration;
-       // blocks granted on all Remotes, all Bands
+    // blocks granted on all Remotes, all Bands
     unsigned int totalGrantedBlocks;
     // number of codewords
     unsigned int codewords;
@@ -33,8 +33,9 @@ packet LteSchedulingGrant
 packet LteMode4SchedulingGrant extends LteSchedulingGrant
 {
     @customize(true);
-
+    
     unsigned int spsPriority;
     unsigned int numSubchannels;
     unsigned int maximumLatency;
+    unsigned int startingSubchannel;
 }
