@@ -7,6 +7,8 @@
 // and cannot be removed from it.
 //
 
+
+#include <math.h>
 #include <assert.h>
 #include "stack/phy/layer/LtePhyUeMode4D2D.h"
 #include "stack/phy/packet/LteFeedbackPkt.h"
@@ -36,7 +38,6 @@ void LtePhyUeMode4D2D::initialize(int stage)
         pStep_ = par("pStep");
         numSubchannels_ = par("numSubchannels");
         subchannelSize_ = par("subchannelSize");
-        d2dMulticastEnableCaptureEffect_ = par("d2dMulticastCaptureEffect");
         d2dDecodingTimer_ = NULL;
         allocator_ = new LteAllocationModule(this,"D2D");
     }
@@ -364,6 +365,7 @@ SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage(cPacket* message)
      * Mapping unknown, so possibly just take the priority max and min and map to 0-7
      *
      * Resource Interval
+     *
      * 0 -> 16
      * 0 = not reserved
      * 1 = 100ms (1) RRI [Default]
@@ -380,6 +382,9 @@ SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage(cPacket* message)
      * Log2(Nsubchannel(Nsubchannel+1)/2) (rounded up)
      * 0 - 8 bits
      * 0 - 256 different values
+     *
+     * double rivBitLimit = ceil(log2((numSubchannels_ * (numSubchannels_+1))/2));
+     * double rivValueLimit = pow(2, rivBitLimit);
      *
      * TimeGapRetrans
      * 1 - 15
@@ -488,148 +493,176 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
     lteInfo->setDeciderResult(result);
     pkt->setControlInfo(lteInfo);
 
-    // Want to record RSSI + RSRP for all the blocks allocated to this TB/SCI
-    RbMap rbMap = lteInfo->getGrantedBlocks();
-    RbMap::iterator it;
-    std::map<Band, unsigned int>::iterator jt;
-    //for each Remote unit used to transmit the packet
-
-    std::list<Subchannel> currentSubframe = sensingWindow_.front();
-
-    for (it = rbmap.begin(); it != rbmap.end(); ++it)
+    if(lteInfo->getFrameType() == SCIPKT)
     {
-        //for each logical band used to transmit the packet
-        for (jt = it->second.begin(); jt != it->second.end(); ++jt)
+        if (result)
         {
-            Band band = jt->first;
-            if (jt->second == 0) // this Rb is not allocated
-                continue;
-            // This band is in fact allocated
+            // TODO: Signal successfully decoded SCI message
+
+            std::tuple<int, int> indexAndLength = decodeRivValue(pkt);
+            int subchannelIndex = std::get<0>(indexAndLength);
+            int lengthInSubchannels = std::get<1>(indexAndLength);
+
+            bool recordSCIMeasurements = false;
+            if (adjacencyPSCCHPSSCH_)
+            {
+                recordSCIMeasurements = true;
+            }
+
             std::list<Subchannel>::iterator kt;
-            for (kt = currentSubframe.begin(); kt != currentSubframe.end(); ++kt)
+            std::list<Subchannel> currentSubframe = sensingWindow_.front();
+            for(kt=currentSubframe.begin()+subchannelIndex; kt!=currentSubframe.begin()+subchannelIndex+subchannelLength; kt++)
             {
-                // Check that the current band is in the current subchannel kt
-                // if it is
-                // Record the SCI
-                // Add this bands RSRP + RSSI value for this band
-                // Move to the next band until all bands fully done.
-                if (std::find(kt->getOccupiedBands().begin(), kt->getOccupiedBands().end(), band) != kt->getOccupiedBands().end())
+                if (recordSCIMeasurements)
                 {
-                    if (lteInfo->getFrameType() == SCIPKT && result)
-                    {
-                        // If we successfully received the SCI then record it.
-                        // TODO: This is not all that elegant, there is definitely a better solution to this.
-                        kt->setSCI(pkt);
-                    }
-                    kt->addRsrpValue(rsrpVector[band], band);
-                    kt->addRssiValue(rssiVector[band], band);
+                    // Record RSRP and RSSI for the first two RBs (bands)
+                    kt->addRsrpValue(rsrpVector[startingBand], startingBand);
+                    kt->addRsrpValue(rsrpVector[startingBand+1], startingBand+1);
+                    kt->addRssiValue(rssiVector[startingBand], startingBand);
+                    kt->addRssiValue(rssiVector[startingBand+1], startingBand+1);
+
+                    // We only need to record the SCI rsrp and rssi for the first subchannel (the rest will not have any occupied)
+                    recordSCIMeasurements = false;
                 }
+                // Record the SCI in the subchannel.
+                kt->setSCI(pkt);
             }
+            decodedScis_.push_back(pkt);
         }
-    }
-
-    // If the packet is an SCI message we need to associate it with it's subchannels
-    // This currently works by assuming adjacency (you pick the subframe corresponding to
-    // the one used by this SCI. This won't work in non-adjacent configurations. Instead you
-    // must say which RB did the SCI take this corresponds to the startingSubchannelIndex and
-    // go from there. Seems I really need to rethink this approach.
-
-    // TODO: Base this approach on RIV
-    // RIV = NsubCH(LsubCH-1)+nstartSubCH if Lsubch-1 < NsubCh/2
-    // RIV = NsubCh(NsubCH-LsubCH+1)+(NsubCH-1-NstartSubCH) if LsubCH-1 > NsubCH/2
-    // NsubCh = numSubchannels_
-    // LsubCH = ??
-    // NstartSubCh = starting subchannel for the message (
-    // if Adjacent: Current subchannel
-    // if non-adjacent corresponding subchannel i.e. RB 0 nStartSubChx = 0 RB 3 nStartSubCh = 1 RB 5 nStartSubCh = 2
-    if (lteInfo->getFrameType() == SCIPKT)
-    {
-        RbMap rbmap = newInfo->getGrantedBlocks();
-
-        RbMap::iterator it;
-        std::map<Band, unsigned int>::iterator jt;
-        //for each Remote unit used to transmit the packet
-
-        std::list<Subchannel> currentSubframe = sensingWindow_.front();
-
-        for (it = rbmap.begin(); it != rbmap.end(); ++it)
+        else
         {
-            //for each logical band used to transmit the packet
-            for (jt = it->second.begin(); jt != it->second.end(); ++jt)
-            {
-                Band band = jt->first;
-                if (jt->second == 0) // this Rb is not allocated
-                    continue;
-                // This band is in fact allocated
-                std::list<Subchannel>::iterator kt;
-                for (kt = currentSubframe.begin(); kt != currentSubframe.end(); ++kt)
-                {
-                    // Check that the current band is in the current subchannel kt
-                    // if it is
-                    // Record the SCI
-                    // Add this bands RSRP + RSSI value for this band
-                    // Move to the next band until all bands fully done.
-                    if (std::find(kt->getOccupiedBands().begin(), kt->getOccupiedBands().end(), band) != kt->getOccupiedBands().end())
-                    {
-                        if (result)
-                        {
-                            // If we successfully received the SCI then record it.
-
-                            // TODO: This is not all that elegant, there is definitely a better solution to this.
-                            kt->setSCI(pkt);
-                        }
-                        kt->addRsrpValue(rsrpVector[band], band);
-                        kt->addRssiValue(rssiVector[band], band);
-                    }
-                }
-            }
+            // TODO: Signal failed to decode the SCI message
         }
-        // We do not want to send SCI messages to the upper layer.
+        // We do not want to send SCIs to the upper layers, as such return now.
         return;
     }
     else
     {
+        // Have a TB want to make sure we have the SCI for it.
+        bool foundCorrespondingSci = false;
+        cPacket* correspondingSCI;
         std::vector<cPacket>::iterator it;
-        for(it=decodedScis_.begin(); it!=decodedScis_.end(); it++)
+        for(jt=decodedScis_.begin(); jt!=decodedScis_.end(); jt++)
         {
-            foundCorrespondingSci = false;
-            successfullyReceivedSci = false;
-            UserControlInfo *sciInfo = check_and_cast<UserControlInfo *>(it->getControlInfo());
-            SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation*>(it);
+            UserControlInfo* sciInfo = check_and_cast<UserControlInfo*>(jt->removeControlInfo());
+            // if the SCI and TB have same source then we have the right SCI
             if (sciInfo->getSourceId() == lteInfo->getSourceId())
             {
-                // SCI has same source as current TB (Therefore this SCI is for this TB)
+                // Successfully received the SCI
                 foundCorrespondingSci = true;
-                if (sciInfo->getDeciderResult())
-                {
-                    // Successfully received the SCI
-                    successfullyReceivedSci = true;
 
-                    // Remove the SCI
-                    decodedScis_.erase(it);
+                corrspondingSCI = jt;
 
-                    // No need to keep searching for new SCIs
-                    break;
-                }
+                // Remove the SCI
+                decodedScis_.erase(it);
+                break;
             }
-            // TODO: Signal to say we never found an SCI for this TB.
         }
-        if(lteInfo->getDeciderResult())
+        if(result && !foundCorrespondingSci)
         {
-            // TODO: Signal for this (maybe received TB and result is x
-            lteInfo->setDeciderResult(successfullyReceivedSci);
+            // TODO: Signal failed to decode TB due to lack of sci
+            lteInfo->setDeciderResult(false);
+            pkt->setControlInfo(lteInfo);
+        }
+        // TODO: Signal successfully found the SCI message
+        else if (!result && foundCorrespondingSci)
+        {
+            //TODO: Failed to decode TB but decoded the SCI.
         }
         else
         {
-            // TODO: Signal to say we got a TB but failed to read it and our result of the SCI is x
+            //TODO: Signal successfully decoded both the SCI and TB
         }
+
+        // Now need to find the associated Subchannels, record the RSRP and RSSI for the message and go from there.
+        // Need to again do the RIV steps
+        std::tuple<int, int> indexAndLength = decodeRivValue(corrspondingSCI);
+        int subchannelIndex = std::get<0>(indexAndLength);
+        int lengthInSubchannels = std::get<1>(indexAndLength);
+
+        std::list<Subchannel>::iterator kt;
+        std::list<Subchannel> currentSubframe = sensingWindow_.front();
+        for(kt=currentSubframe.begin()+subchannelIndex; kt!=currentSubframe.begin()+subchannelIndex+subchannelLength; kt++)
+        {
+            std::vector<Band>::iterator lt;
+            std::vector<Band> allocatedBands = kt->getOccupiedBands();
+            for (lt=allocatedBands.begin(); lt!=allocatedBands.end(); lt++)
+            {
+                // Record RSRP and RSSI for this band
+                kt->addRsrpValue(rsrpVector[lt], lt);
+                kt->addRssiValue(rssiVector[lt], lt);
+            }
+        }
+
+        // send decapsulated message along with result control info to upperGateOut_
+        send(pkt, upperGateOut_);
+
+        if (getEnvir()->isGUI())
+            updateDisplayString();
+    }
+}
+
+std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(cPacket* sci)
+{
+    RbMap rbMap = lteInfo->getGrantedBlocks();
+    RbMap::iterator it;
+    std::map<Band, unsigned int>::iterator jt;
+    Band startingBand = NULL;
+
+    it = rbMap.begin();
+
+    while (it != rbMap.end() && startingBand == NULL)
+    {
+        for (jt = it->second.begin(); jt != it->second.end(); ++jt)
+       {
+           Band band = jt->first;
+           if (jt->second == 1) // this Rb is not allocated
+           {
+               startingBand = band;
+               break;
+           }
+       }
     }
 
-    // send decapsulated message along with result control info to upperGateOut_
-    send(pkt, upperGateOut_);
+    // Get RIV first as this is common
+    SidelinkControlInformation* sci = check_and_cast<SidelinkControlInformation*>(pkt);
+    unsigned int RIV = sci->getFrequencyResourceLocation();
 
-    if (getEnvir()->isGUI())
-        updateDisplayString();
+    // Get the subchannel Index (allows us later to calculate the length of the message
+    int subchannelIndex;
+    if (adjacencyPSCCHPSSCH_)
+    {
+        // If adjacent: Subchannel Index = band//subchannelSize
+        subchannelIndex = startingBand+1/subchannelSize_;
+    }
+    else
+    {
+        // If non-adjacent: Subchannel Index = band/2
+        subchannelIndex = startingBand/2;
+    }
+
+    // Based on TS36.213 14.1.1.4C
+    // if SubchannelLength -1 < numSubchannels/2
+    // RIV = numSubchannels(SubchannelLength-1) + subchannelIndex
+    // else
+    // RIV = numSubchannels(numSubchannels-SubchannelLength+1) + (numSubchannels-1-subchannelIndex)
+    // RIV limit
+    // log2(numSubchannels(numSubchannels+1)/2)
+    double subchannelLOverHalf = (numSubchannels_ + 2 + (( -1 - subchannelIndex - RIV )/numSubchannels_));
+    double subchannelLUnderHalf = (RIV + numSubchannels_ - subchannelIndex)/numSubchannels_;
+    int lengthInSubchannels;
+
+    // First the number has to be whole in both cases, it's length + subchannelIndex must be less than the number of subchannels
+    if (floor(subchannelLOverHalf) == subchannelLOverHalf && subchannelLOverHalf <= numSubchannels_ && subchannelLOverHalf + subchannelIndex <= numSubchannels_)
+    {
+        lengthInSubchannels = subchannelLOverHalf;
+    }
+    // Same as above but also the length must be less than half + 1
+    else if (floor(subchannelLUnderHalf) == subchannelLUnderHalf && subchannelLUnderHalf + subchannelIndex <= numSubchannels_ && subchannelLUnderHalf <= numSubchannels /2 + 1)
+    {
+        lengthInSubchannels = subchannelLUnderHalf;
+    }
+    return std::make_tuple(subchannelIndex, lengthInSubchannels);
 }
 
 void LtePhyUeMode4D2D::createSubframe()
