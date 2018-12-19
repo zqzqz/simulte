@@ -34,8 +34,11 @@ packet LteMode4SchedulingGrant extends LteSchedulingGrant
 {
     @customize(true);
     
+    bool retransmission;
+    unsigned int timeGapTransRetrans;
     unsigned int spsPriority;
     unsigned int numSubchannels;
     unsigned int maximumLatency;
     unsigned int startingSubchannel;
+    unsigned int mcs;
 }

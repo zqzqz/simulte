@@ -217,6 +217,8 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
         {
             sciGrant_ = grant;
         }
+        // No need to go any further.
+        return;
     }
 
     // Store the RBs used for transmission. For interference computation
@@ -246,61 +248,84 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
             emit(averageCqiD2D_, cqi);
 
         if (adjacencyPSCCHPSSCH_)
+        {
+            // Setup so SCI gets 2 RBs from the grantedBlocks.
+            RbMap sciRbs;
+
+            RbMap::iterator it;
+            std::map<Band, unsigned int>::iterator jt;
+            //for each Remote unit used to transmit the packet
+            int allocatedBlocks = 0;
+            for (it = rbMap.begin(); it != rbMap.end(); ++it)
             {
-                // Setup so SCI gets 2 RBs from the grantedBlocks.
-                RbMap sciRbs;
-
-                // get the average RSRP on the RBs allocated for the transmission
-                RbMap::iterator it;
-                std::map<Band, unsigned int>::iterator jt;
-                //for each Remote unit used to transmit the packet
-                for (it = rbMap.begin(); it != rbMap.end(); ++it)
+                if (allocatedBlocks == 2)
                 {
-                    int allocatedBlocks = 0;
-                    //for each logical band used to transmit the packet
-                    for (jt = it->second.begin(); jt != it->second.end(); ++jt)
+                    break;
+                }
+                //for each logical band used to transmit the packet
+                for (jt = it->second.begin(); jt != it->second.end(); ++jt)
+                {
+
+                    Band band = jt->first;
+
+                    if (allocatedBlocks == 2)
                     {
+                        // Have all the blocks allocated to the SCI so can move on.
+                        break;
+                    }
 
-                        Band band = jt->first;
-
-                        if (allocatedBlocks == 2)
-                        {
-                            // Have all the blocks allocated to the SCI so can move on.
-                            break;
-                        }
-
-                        if (jt->second == 0) // this Rb is not allocated
-                            continue;
-                        else
-                        {
-                            // Do the allocation of resources.
-                            // Might be the case that this is only ever set to 1 as in assigned
-                            // Certain that his is the case
-                            // TODO: Change so only the case of if it == 1
-                            if (jt->second > 2)
-                            {
-                                jt->second -= 2;
-                                sciRbs[it->first][band] = 2;
-                                allocatedBlocks += 2;
-                            }
-                            else if (jt->second == 1){
-                                jt->second -= 1;
-                                sciRbs[it->first][band] = 1;
-                                allocatedBlocks += 1;
-                            }
+                    if (jt->second == 0) // this Rb is not allocated
+                        continue;
+                    else
+                    {
+                        // RB is allocated to grant, now give it to the SCI.
+                        if (jt->second == 1){
+                            jt->second = 0;
+                            sciRbs[it->first][band] = 1;
+                            ++allocatedBlocks;
                         }
                     }
                 }
-                UserControlInfo* SCIInfo = lteInfo;
-                SCIInfo->setFrameType(SCIPKT);
-                SCIInfo->setGrantedBlocks(sciRbs);
             }
-            else
-            {
-                // setup so SCI gets 2 RBs from PSCCH allocated RBs
-                // TODO: In initialise setup certain Rbs for PSCCH and allow them to be allocated in this section
+        }
+        else
+        {
+            // setup so SCI gets 2 RBs from PSCCH allocated RBs
+            // TODO: When making a subframe ensure subchannels start at the maximum band.
+            // This is based on RIV, we will have the subchannel index, so we need only get the corresponding bands for this message
+            // i.e. if subchannel index = 0 sci has band 0,1, index=1 band 2,3, index = 2 band 4,5
+            // starting band = subchannelIndex * 2
+            Band startingBand = sciGrant_->getStartingSubchannel()*2;
+            // Setup so SCI gets 2 RBs from the grantedBlocks.
+            RbMap sciRbs;
 
+            RbMap::iterator it;
+            std::map<Band, unsigned int>::iterator jt;
+            int allocatedRbs = 0;
+            //for each Remote unit used to transmit the packet
+            for (it = rbMap.begin(); it != rbMap.end(); ++it)
+            {
+                if (allocatedBlocks == 2)
+                {
+                    break;
+                }
+                //for each logical band used to transmit the packet
+                for (jt = it->second.begin(); jt != it->second.end(); ++jt)
+                {
+                    if (allocatedBlocks == 2)
+                    {
+                        // Have all the blocks allocated to the SCI so can move on.
+                        break;
+                    }
+                    // sciRbs[remote][band] = assigned Rb
+                    sciRbs[it->first][jt->first] = 1;
+                    ++allocatedRbs;
+                }
             }
+        }
+        UserControlInfo* SCIInfo = lteInfo;
+        SCIInfo->setFrameType(SCIPKT);
+        SCIInfo->setGrantedBlocks(sciRbs);
     }
 
     EV << NOW << " LtePhyUeMode4D2D::handleUpperMessage - message from stack" << endl;
@@ -315,6 +340,7 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
         // create LteAirFrame and encapsulate the received packet
         SidelinkControlInformation SCI = createSCIMessage(msg);
         sciFrame = prepareAirFrame(SCI, SCIInfo);
+        // TODO: Set the MCS for the sciFrame to 0 for sending.
 
         // TODO: Signal for Sending SCI
         sendBroadcast(sciFrame);
@@ -335,7 +361,100 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
 
 void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* grant)
 {
+}
 
+SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage(cPacket* message)
+{
+    SidelinkControlInformation sci = new SidelinkControlInformation("SCI Message");
+
+    /*
+     * Priority (based on upper layer)
+     * 0-7
+     * Mapping unknown, so possibly just take the priority max and min and map to 0-7
+     * This needs to be integrated from the application layer.
+     * Will take this from the scheduling grant.
+     */
+    sci->setPriority(sciGrant_->getSpsPriority());
+
+    /* Resource Interval
+     *
+     * 0 -> 16
+     * 0 = not reserved
+     * 1 = 100ms (1) RRI [Default]
+     * 2 = 200ms (2) RRI
+     * ...
+     * 10 = 1000ms (10) RRI
+     * 11 = 50ms (0.5) RRI
+     * 12 = 20ms (0.2) RRI
+     * 13 - 15 = Reserved
+     *
+     * TODO: Make sure the period is set to the correct level (i.e. period = 100/200/300 etc)
+     */
+    sci->setResourceReservationInterval(sciGrant_->getPeriod());
+
+    /* frequency Resource Location
+     * Based on another parameter RIV
+     * but size is
+     * Log2(Nsubchannel(Nsubchannel+1)/2) (rounded up)
+     * 0 - 8 bits
+     * 0 - 256 different values
+     *
+     * Based on TS36.213 14.1.1.4C
+     *     if SubchannelLength -1 < numSubchannels/2
+     *         RIV = numSubchannels(SubchannelLength-1) + subchannelIndex
+     *     else
+     *         RIV = numSubchannels(numSubchannels-SubchannelLength+1) + (numSubchannels-1-subchannelIndex)
+     */
+    unsigned int riv;
+    //
+    if (sciGrant_->getNumSubchannels() +1 >= numSubchannels_/2)
+    {
+        // RIV calculation for larger than half+1
+        riv = ((numSubchannels_ * (numSubchannels_ - sciGrant_->getNumSubchannels() + 1)) + (numSubchannels_ - sciGrant_->getStartingSubchannel() -1));
+    }
+    else
+    {
+        // RIV calculation for less than half+1
+        riv = ((numSubchannels_ * (sciGrant_->getNumSubchannels() - 1)) + sciGrant_->getStartingSubchannel());
+    }
+
+    sci->setFrequencyResourceLocation(riv);
+
+    /* TimeGapRetrans
+     * 1 - 15
+     * ms from init to retrans
+     */
+    sci->setTimeGapRetrans(sciGrant_->getTimeGapTransRetrans());
+
+
+    /* mcs
+     * 5 bits
+     * 26 combos
+     * TODO: where do we find this guy
+     * Technically the MAC layer determines the MCS that it wants the message sent with and as such it will be in the packet
+     */
+    sci->setMcs(sciGrant_->getMcs());
+
+    /* retransmissionIndex
+     * 0 / 1
+     * if 0 retrans is in future/this is the first transmission
+     * if 1 retrans is in the past/this is the retrans
+     */
+    if (sciGrant_->getRetransmission())
+    {
+        sci->setRetransmissionIndex(1);
+    }
+    else
+    {
+        sci->setRetransmissionIndex(0);
+    }
+
+    /* Filler up to 32 bits
+     * Can just set the length to 32 bits and ignore the issue of adding filler
+     */
+    sci->setBitLength(32);
+
+    return sci;
 }
 
 LteAirFrame* LtePhyUeMode4D2D::prepareAirFrame(cPacket* msg, UserControlInfo* lteInfo){
@@ -354,58 +473,6 @@ LteAirFrame* LtePhyUeMode4D2D::prepareAirFrame(cPacket* msg, UserControlInfo* lt
 
     return frame;
 }
-
-SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage(cPacket* message)
-{
-    // So what is specified, a bit anyway
-
-    /*
-     * Priority (based on upper layer)
-     * 0-7
-     * Mapping unknown, so possibly just take the priority max and min and map to 0-7
-     *
-     * Resource Interval
-     *
-     * 0 -> 16
-     * 0 = not reserved
-     * 1 = 100ms (1) RRI [Default]
-     * 2 = 200ms (2) RRI
-     * ...
-     * 10 = 1000ms (10) RRI
-     * 11 = 50ms (0.5) RRI
-     * 12 = 20ms (0.2) RRI
-     * 13 - 15 = Reserved
-     *
-     * frequency Resource Location
-     * Based on another parameter RIV
-     * but size is
-     * Log2(Nsubchannel(Nsubchannel+1)/2) (rounded up)
-     * 0 - 8 bits
-     * 0 - 256 different values
-     *
-     * double rivBitLimit = ceil(log2((numSubchannels_ * (numSubchannels_+1))/2));
-     * double rivValueLimit = pow(2, rivBitLimit);
-     *
-     * TimeGapRetrans
-     * 1 - 15
-     * ms from init to retrans
-     *
-     * mcs
-     * 5 bits
-     * 26 combos
-     *
-     * retransmissionIndex
-     * 0 / 1
-     * if 0 can still have retrans based on TimeGap
-     * if 1 will have retrans 2 times maybe???
-     *
-     * Filler up to 32 bits
-     *
-     * Have the Grant associated with the SCI and as such can fill this correctly.
-     */
-}
-
-
 
 void LtePhyUeMode4D2D::storeAirFrame(LteAirFrame* newFrame)
 {
@@ -671,7 +738,14 @@ void LtePhyUeMode4D2D::createSubframe()
     // We need it to get the number of Rbs and it must exists somewhere
     allocator_->initAndReset(getDeployer(MacNodeId)->getNumRbUl(), getBinder()->getNumBands());
     std::list<Subchannel> subframe;
+
     Band band = 0;
+
+    if (!adjacencyPSCCHPSSCH_)
+    {
+        // This assumes the bands only every have 1 Rb (which is fine as that appears to be the case)
+        band = numSubchannels_*2;
+    }
     for (int i = 0; i < numSubchannels_; i++)
     {
         Subchannel currentSubchannel = new Subchannel(subchannelSize_);
@@ -683,6 +757,7 @@ void LtePhyUeMode4D2D::createSubframe()
         int overallCapacity = 0;
         // Ensure the subchannel is allocated the correct number of RBs
         while(overallCapacity < subchannelSize_ && band < getBinder()->getNumBands()){
+            // This acts like there are multiple RBs per band which is not allowed.
             overallCapacity += allocator_->getAllocatedBlocks(MAIN_PLANE, MACRO, band);
             occupiedBands.push(band);
             ++band;
