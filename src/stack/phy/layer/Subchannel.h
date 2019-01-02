@@ -13,7 +13,6 @@ class Subchannel
 {
     protected:
         int numRbs;
-        RbMap usedRbs;
         bool reserved;
         bool sensed;
         bool possibleCSR;
@@ -21,7 +20,7 @@ class Subchannel
         int subframeIndex;
         int subchannelIndex;
         cPacket sci;
-        std::vector occupiedBands;
+        std::vector<Band> occupiedBands;
         std::map<Band, double> rsrpValues;
         std::map<Band, double> rssiValues;
 
@@ -50,7 +49,6 @@ class Subchannel
         Subchannel& operator=(const Subchannel& other)
         {
             numRbs = other.numRbs;
-            usedRbs = other.usedRbs;
             reserved = other.reserved;
             subframeTime = other.subframeTime;
             sci = other.sci;
@@ -124,11 +122,11 @@ class Subchannel
         {
             rssiValues[band] = rssiValue;
         }
-        std::vector getOccupiedBands() const
+        std::vector<Band> getOccupiedBands() const
         {
             return occupiedBands;
         }
-        void setOccupiedBands(std::vector occupiedBands)
+        void setOccupiedBands(std::vector<Band> occupiedBands)
         {
             this->occupiedBands = occupiedBands;
         }
