@@ -27,6 +27,8 @@
 #include "stack/phy/packet/SpsCandidateResources.h"
 #include "stack/mac/scheduler/LteSchedulerUeUl.h"
 #include "stack/mac/amc/AmcPilotD2D.h"
+#include "stack/phy/packet/SpsCandidateResources.h"
+#include "stack/phy/layer/Subchannel.h"
 #include "common/LteCommon.h"
 #include <random>
 
@@ -241,8 +243,7 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
 
     if (incoming == down_[IN])
     {
-        UserControlInfo *userInfo = check_and_cast<UserControlInfo *>(pkt->getControlInfo());
-        if (userInfo->getFrameType() == SPSCANDIDATESPKT)
+        if (pkt->getName() == "CSR Message")
         {
             EV << "LteMacUeMode4D2D::handleMessage - Received packet " << pkt->getName() <<
             " from port " << pkt->getArrivalGate()->getName() << endl;
@@ -482,6 +483,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
 void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
 {
     // This is where we add the subchannels to the actual scheduling grant, so a few things
+    // TODO: this needs a lot of changes
     /**
      * 1. Need to ensure in the self message part that if at any point we have a scheduling grant without assigned subchannels, we have to wait
      * 2. Need to pick at random from the SPS list of CSRs
@@ -489,21 +491,38 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
      * 4. return
      */
     SpsCandidateResources* candidatesPacket = check_and_cast<SpsCandidateResources *>(pkt);
-    std::vector<RbMap> possibleCSRs = candidatesPacket -> getPossibleCSRs();
-    std::vector<simtime_t> CSRStartTimes = candidatesPacket -> getCSRStartTimes();
+    std::vector<std::vector<Subchannel>> CSRs = candidatesPacket->getCSRs();
 
     // Select random element from vector
-    std::uniform_int_distribution<int> distr(0, possibleCSRs.size());
+    std::uniform_int_distribution<int> distr(0, CSRs.size());
     int index = distr(generator);
 
-    RbMap selectedCr = possibleCSRs.at(index);
-    simtime_t selectedStartTime = CSRStartTimes.at(index);
+    std::vector<Subchannel> selectedCR = possibleCSRs.at(index);
+    // Gives us the time at which we will send the subframe.
+    simtime_t selectedStartTime = NOW() + TTI * selectedCR[0]->getSubframeIndex();
 
-    LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant *>(schedulingGrant_);
+    std::vector<Subchannel>::iterator it;
+    std::vector<Band> grantedBands;
+    for (it=selectedCR.begin(); it!=selectedCR.end();it++)
+    {
+        std::vector<Band> subchannelBands = it->getOccupiedBands();
+        grantedBands.insert(grantedBands.end(), subchannelBands.begin(), subchannelBands.end());
+    }
+
+    RbMap grantedBlocks;
+    std::vector<Band>::iterator jt;
+    for (jt=grantedBands.begin(); jt!=grantedBands.end(); jt++)
+    {
+        // For each band assign block on the MACRO antenna
+        // TODO: think this over at some point.
+        grantedBlocks[MACRO][jt] = 1;
+    }
+
+    LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
 
     mode4Grant -> setStartTime(selectedStartTime);
     mode4Grant -> setPeriodic(true);
-    mode4Grant -> setGrantedBlocks(selectedCr);
+    mode4Grant -> setGrantedBlocks(grantedBlocks);
 
     // Based on restrictResourceReservation interval But will be between 1 and 15
     // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
@@ -517,6 +536,8 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
         periodCounter_=grant->getPeriod();
         expirationCounter_=grant->getExpiration() * periodCounter_;
     }
+
+    // TODO: Setup for HARQ retransmission, if it can't be satisfied then selection must occur again.
 }
 
 void LteMacUeMode4D2D::handleUpperMessage(cPacket* pkt)
