@@ -5,6 +5,7 @@ class LteMode4SchedulingGrant : public LteMode4SchedulingGrant_Base
 {
     protected:
         simtime_t startTime;
+        std::vector<unsigned int> possibleRRIs;
 
     public:
 

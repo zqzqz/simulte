@@ -41,4 +41,6 @@ packet LteMode4SchedulingGrant extends LteSchedulingGrant
     unsigned int maximumLatency;
     unsigned int startingSubchannel;
     unsigned int mcs;
+    unsigned int startingSubchannelRetrans; // It is possible the retransmission has different resources assigned to it.
+    unsigned int resourceReselectionCounter;
 }
