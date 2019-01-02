@@ -14,6 +14,7 @@
 #include "stack/phy/packet/LteFeedbackPkt.h"
 #include "stack/d2dModeSelection/D2DModeSelectionBase.h"
 #include "stack/mac/packet/LteMode4SchedulingGrant.h"
+#include "stack/phy/packet/SpsCandidateResources.h"
 
 Define_Module(LtePhyUeMode4D2D);
 
@@ -671,7 +672,7 @@ std::vector<std::vector<Subchannel>>* LtePhyUeMode4D2D::selectBestRSSIs(std::vec
     return optimalCSRs;
 }
 
-std::vector<std::vector<Subchannel>>* LtePhyUeMode4D2D::getpossibleCSRs(std::vector<std::vector<Subchannel*>>* selectionWindow, LteMode4SchedulingGrant* grant)
+std::vector<std::vector<Subchannel>>* LtePhyUeMode4D2D::getPossibleCSRs(std::vector<std::vector<Subchannel*>>* selectionWindow, LteMode4SchedulingGrant* grant)
 {
     // Go through the selection window and determine the number of possible CSRs available
     std::vector<std::vector<Subchannel>> possibleCSRs;
