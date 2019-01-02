@@ -25,6 +25,13 @@ class LtePhyUeMode4D2D : public LtePhyUe
 
     bool adjacencyPSCCHPSSCH_;
     int pStep_;
+    int numSubchannels_;
+    int subchannelSize_ ;
+    int selectionWindowStartingSubframe_;
+
+    bool transmitting_;
+
+    std::vector<int> ThresPSSCHRSRPList_;
 
     std::vector<LteAirFrame*> tbFrames_; // airframes received in the current TTI. Only one will be decoded
     cMessage* d2dDecodingTimer_; // timer for triggering decoding at the end of the TTI. Started when the first airframe is received
@@ -32,8 +39,6 @@ class LtePhyUeMode4D2D : public LtePhyUe
     std::vector<std::vector> tbRsrpVectors_;
     std::vector<std::vector> tbRssiVectors_;
 
-    int numSubchannels_;
-    int subchannelSize_ ;
     std::list<std::list<Subchannel>> sensingWindow_;
     LteMode4SchedulingGrant* sciGrant_;
     std::vector<std::vector> sciRsrpVectors_;
