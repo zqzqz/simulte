@@ -18,13 +18,13 @@
 #include "stack/phy/packet/SpsCandidateResources_m.h"
 #include "stack/mac/packet/LteSchedulingGrant_m.h"
 #include "common/LteCommon.h"
+#include "stack/phy/layer/Subchannel.h"
 
 class SpsCandidateResources: public SpsCandidateResources_Base
 {
   protected:
 
-    std::vector<RbMap> possibleCSRs;
-    std::vector<simtime_t> CSRStartTimes;
+    std::vector<std::vector<Subchannel>> CSRs;
     LteMode4SchedulingGrant schedulingGrant;
 
   public:
@@ -57,24 +57,22 @@ class SpsCandidateResources: public SpsCandidateResources_Base
         return new SpsCandidateResources(*this);
     }
 
-    virtual void setPossibleCSRs(const std::vector<RbMap>& possibleCSRsList )
+    virtual void setCSRs(const std::vector<std::vector<Subchannel>>& CSRs )
     {
-        possibleCSRs = possibleCSRsList;
+        this->CSRs = CSRs;
     }
 
-    virtual std::vector<RbMap>& getPossibleCSRs()
+    virtual std::vector<std::vector<Subchannel>>& getCSRs()
     {
-        return possibleCSRs;
+        return CSRs;
     }
 
-    virtual void setCSRStartTimes(const std::vector<simtime_t>& CSRStartTimesList)
+    virtual void setSchedulingGrant(LteMode4SchedulingGrant schedulingGrant)
     {
-        CSRStartTimes = CSRStartTimesList;
+        this->schedulingGrant = schedulingGrant;
     }
-
-    virtual std::vector<simtime_t>& getCSRStartTimes()
+    virtual LteMode4SchedulingGrant getSchedulingGrant() const
     {
-        return CSRStartTimes;
+        return schedulingGrant;
     }
-
 };
