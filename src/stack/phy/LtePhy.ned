@@ -92,6 +92,7 @@ simple LtePhyUeMode4D2D extends LtePhyUe {
 	    int pStep = default(100); 
         int numSubchannels = default(10);
 	    int subchannelSize = default(5);
+	    int selectionWindowStartingSubframe = default(1);
 }
 
 // 
