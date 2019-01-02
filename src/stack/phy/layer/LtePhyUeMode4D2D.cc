@@ -273,7 +273,6 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
                 //for each logical band used to transmit the packet
                 for (jt = it->second.begin(); jt != it->second.end(); ++jt)
                 {
-
                     Band band = jt->first;
 
                     if (allocatedBlocks == 2)
