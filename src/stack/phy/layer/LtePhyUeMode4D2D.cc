@@ -36,10 +36,17 @@ void LtePhyUeMode4D2D::initialize(int stage)
         d2dTxPower_ = par("d2dTxPower");
         adjacencyPSCCHPSSCH_ = par("adjacencyPSCCHPSSCH");
         pStep_ = par("pStep");
+        selectionWindowStartingSubframe_ = par("selectionWindowStartingSubframe");
         numSubchannels_ = par("numSubchannels");
         subchannelSize_ = par("subchannelSize");
         d2dDecodingTimer_ = NULL;
         allocator_ = new LteAllocationModule(this,"D2D");
+        transmitting_ = false;
+        ThresPSSCHRSRPList_.resize(64);
+        // The threshold has a size of 64, and allowable values of 0 - 66
+        // Deciding on this for now as it makes the most sense (low priority for both then more likely to take it)
+        // High priority for both then less likely to take it.
+        std::iota (std::begin(ThresPSSCHRSRPList_), std::end(ThresPSSCHRSRPList_), 1);
     }
 }
 
@@ -353,6 +360,10 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
 
     EV << "LtePhyUeMode4D2D::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
            << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
+
+    // Mark that we are in the process of transmitting a packet therefor when we go to decode messages we can mark as failure due to half duplex
+    transmitting_=true;
+
     if (lteInfo->getDirection() == D2D_MULTI)
         sendBroadcast(frame);
     else
@@ -361,6 +372,339 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
 
 void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* grant)
 {
+    // Lots to do here
+
+    // Determine the total number of possible CSRs
+    int totalPossibleCSRs = (grant->getMaximumLatency() - selectionWindowStartingSubframe_) * numSubchannels_;
+    simtime_t startTime = (NOW() + TTI * selectionWindowStartingSubframe_);
+
+    if (grant->getMaximumLatency < 100)
+    {
+        simtime_t endTime = (NOW() + TTI * grant->getMaximumLatency());
+    }
+    else
+    {
+        simtime_t endTime = (NOW() + TTI * 100);
+    }
+
+    int subframeIndex = 1000 + selectionWindowStartingSubframe_;
+    std::list<std::list<Subchannel*>> selectionWindow;
+    for (simtime_t t = startTime; t != endTime ; t+=TTI)
+    {
+        std::list<Subchannel*> subframe;
+        for (int i=0;i<numSubchannels_;i++)
+        {
+            Subchannel subchannel = new Subchannel(subchannelSize_, t, subframeIndex, i);
+            subframe.push_front(subchannel);
+        }
+        selectionWindow.push_front(subframe);
+        ++subframeIndex;
+    }
+
+    int thresholdIncreaseFactor = 0;
+    std::vector<std::vector<Subchannel>>* possibleCSRs;
+    bool checkedSensed = false;
+
+    // Cannot continue until possibleCSRs is at least 20% of all CSRs
+    while (possibleCSRs->size() < (totalPossibleCSRs * .2))
+    {
+        if(!checkedSensed)
+        {
+            checkSensed(selectionWindow, grant);
+            checkedSensed = true;
+        }
+        checkRSRP(selectionWindow, grant, thresholdIncreaseFactor);
+        possibleCSRs = getPossibleCSRs(selectionWindow, grant);
+        ++thresholdIncreaseFactor;
+    }
+
+    /*
+     * Using RSSI pick subchannels with lowest RSSI (Across time) pick 20% lowest.
+     * report this to MAC layer.
+     */
+    std::vector<std::vector<Subchannel>> optimalCSRs;
+
+    if (possibleCSRs->size() > (totalPossibleCSRs * .2))
+    {
+        optimalCSRs = selectBestRSSIs(possibleCSRs, grant, totalPossibleCSRs);
+    }
+    else
+    {
+        optimalCSRs = possibleCSRs;
+    }
+
+    // Send the packet up to the MAC layer where it will choose the CSR and the retransmission if that is specified
+    // Need to generate the message that is to be sent to the upper layers.
+    candidateResourcesMessage = new SpsCandidateResources("CSR Message");
+    candidateResourcesMessage->setCSRS(optimalCSRs);
+    candidateResourcesMessage->setSchedulingGrant(grant);
+    send(candidateResourcesMessage, upperGateOut_);
+}
+
+LtePhyUeMode4D2D::checkSensed(std::vector<std::vector<Subchannel*>>* selectionWindow, LteMode4SchedulingGrant* grant)
+{
+    int pRsvpTx = grant->getPeriod();
+    std::vector<unsigned int> allowedRRIs = grant->getPossibleRRIs();
+    for (int i=0; i < selectionWindow.size();i++)
+    {
+        int adjustedIndex = i+1000+selectionWindowStartingSubframe_;
+        bool unsensed = false;
+        for(int j=0; j<numSubchannels_;j++)
+        {
+            if (j+grantLength > numSubchannels_)
+            {
+                // We cannot fill this grant in this subframe and should move to the next one
+                break;
+            }
+            // Check if the current subframe was sensed
+
+            // Check that this frame is allowed to be used i.e. all the previous corresponding frames are sensed.
+            pRsvpTxPrime = pStep_ * pRsvpTx / 100;
+            int Q = 1;
+            // Need to calculate which subframes are not allowed.
+            std::vector<unsigned int>::iterator kt;
+            for(kt=allowedRRIs.begin(); kt!=allowedRRIs.end(); kt++)
+            {
+                // This applies to all allowed RRIs as well.
+                if (kt < 1 && 10*pStep_ - i < pStep_ * kt)
+                {
+                    Q = 1/kt;
+                }
+                for(int z=0; z<sensingWindow_.size(); z++)
+                {
+                    noUnsensed = true;
+                    // Go through through the frames in the sensing window, check if they are sensed
+                    if (!sensingWindow[z][0]->getSensed())
+                    {
+                        int q=1;
+                        // If the first subchannel is not sensed then the subframe is not sensed either and as such the subchannels can be removed
+                        while (q<Q && noUnsensed)
+                        {
+                            int resel=0;
+                            while (resel<cResel && noUnsensed)
+                            {
+                                if (adjustedIndex + resel * pRsvpTxPrime == z + pStep_ * kt * q)
+                                {
+                                    selectionWindow[i][0].setSensed(false);
+                                    selectionWindow[i][0].setPossibleCSR(false);
+                                    // Allows us to move onto the next subframe and ignore this one as it isn't one that can be selected.
+                                    noUnsensed=false;
+                                }
+                                ++resel;
+                            }
+                            ++q;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+LtePhyUeMode4D2D::checkRSRP(std::vector<std::vector<Subchannel*>>* selectionWindow, LteMode4SchedulingGrant* grant, int thresholdIncreaseFactor)
+{
+    std::vector<double> averageRSRPs;
+    std::vector<int> priorities;
+    std::map<int, std::vector<int>> dissallowedCSRs;
+    std::vector<SidelinkControlInformation*> scis;
+    bool subchannelReserved = false;
+    int grantLength = grant->getNumSubchannels();
+    int cResel = grant->getResourceReselectionCounter() * 10;
+    int pRsvpTx = grant->getResourceReservationinterval();
+    int pRsvpTxPrime = pStep_ * pRsvpTx / 100;
+
+    for (int i=0; i < sensingWindow_.size();i++)
+    {
+        int subchannelIndex = 0;
+        bool unsensed = false;
+        if (sensingWindow_[i][0]->getSensed())
+        {
+            for(int j=0; j<numSubchannels_;j++)
+            {
+                if (j+grantLength > numSubchannels_)
+                {
+                    // We cannot fill this grant in this subframe and should move to the next one
+                    break;
+                }
+
+                for (int k=j; k<j+grantLength; k++)
+                {
+                    if (sensingWindow_[i][k]->getReserved())
+                    {
+                        subchannelReserved = true;
+                        SidelinkControlInformation* receivedSCI = check_and_cast<SidelinkControlInformation*>(sensingWindow_[i][k]->getSCIMessage());
+                        averageRSRPs.push_back(sensingWindow_[i][k]->getAverageRSRP());
+                        priorities.push_back(receivedSCI->getPriority());
+                        scis.push_back(receivedSCI);
+
+                        int riv = receivedSCI->getFrequencyResourceLocation();
+                        std::tuple<int, int> indexAndLength = decodeRivValue(receivedSCI);
+                        int lengthInSubchannels = std::get<1>(indexAndLength);
+                        k += lengthInSubchannels;
+                    }
+                }
+                if (subchannelReserved)
+                {
+                    // Get the priorities of both messages
+                    int messagePriority = grant->getSpsPriority();
+
+                    for (int l=0; l<averageRSRPs.size(); l++)
+                    {
+                        double averageRSRP = averageRSRPs[l];
+                        int receivedPriority = priorities[l];
+                        int receivedSCI = scis[l];
+                        // Get the threshold for the corresponding priorities
+                        int index = messagePriority * 8 + receivedPriority + 1;
+                        int threshold = ThresPSSCHRSRPList_[index];
+                        int thresholdDbm = (-128 * (threshold-1)*2) + (3 * thresholdIncreaseFactor);
+
+                        if (averageRSRP > thresholdDbm)
+                        {
+                            // This series of subchannels is to be excluded
+                            // Now how do we calculate this one :P
+                            int Q = 1;
+                            unsigned int rri = receivedSCI->getResourceReservationInterval();
+                            if (rri < 1 && kt <= 1000 - pStep_ * rri)
+                            {
+                                Q = 1/kt;
+                            }
+
+                            for (int q = 1; q <= Q; q++)
+                            {
+                                for (int c = 0; c < cResel; c++)
+                                {
+                                    int dissallowedIndex = i + q * pStep * rri -c * pRsvpTxPrime;
+                                    for (int k=j; k<j+grantLength; k++){
+                                        dissallowedCSRs[dissallowedIndex].push_back(k);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Go through the dissallowed indices and set each subchannel if it is dissallowed.
+    std::map<int, vector<int>>::iterator it;
+    if (grant->getMaximumLatency() < 100)
+    {
+        maxLatency = grant->getMaximumLatency();
+    }
+    else
+    {
+        maxLatency = 100;
+    }
+
+    for (it=dissallowedCSRs.begin(); it!=dissallowedCSRs.end(); it++)
+    {
+        if (it->first >= 1000 + selectionWindowStartingSubframe_ && it->first <= 1000 + maxLatency)
+        {
+            std::vector<int>::iterator jt;
+            for (jt=it->second.begin(); jt!=it->second.end(); ji++)
+            {
+                selectionWindow[it->first - (1000 + selectionWindowStartingSubframe_)]->setPossibleCSR(false);
+            }
+        }
+    }
+}
+
+
+std::vector<std::vector<Subchannel>>* LtePhyUeMode4D2D::selectBestRSSIs(std::vector<std::vector<Subchannel*>>* possibleCSRs, LteMode4SchedulingGrant* grant, int totalPossibleCSRs)
+{
+    int decrease = pStep_;
+    if (grant->getPeriod() < 100)
+    {
+        // Same as pPrimeRsvpTx from other parts of the function
+        int decrease = (pStep * grant->getPeriod())/100;
+    }
+
+    std::vector<std::vector<Subchannel>> optimalCSRs;
+    std::vector<std::vector<Subchannel>>::iterator it;
+
+    while(optimalCSRs->size() < (totalPossibleCSRs * 0.2)){
+        // I feel like there is definitely a better approach (going through once makes the most sense)
+        // But based on the wording of the text this is what they describe.
+        // But TODO: Fix this to be more efficient.
+        int minRSSI = 0;
+        int currentMinCSR = 0;
+        for (it=possibleCSRs.begin(); it != possibleCSRs.end(); it++)
+        {
+            Subchannel* initialSubchannel = it->begin();
+            Subchannel* finalSubchannel = it->end();
+
+            int subframe = initialSubchannel->getSubchannelIndex();
+            int startingSubChannelIndex = initialSubchannel->getSubchannelIndex();
+            int finalSubchannelIndex = finalSubchannel->getSubchannelIndex();
+
+            subframe -= decrease;
+            int totalRSSI = 0;
+            int numSubchannel = 0;
+            while (subframe > 0)
+            {
+                for (int subchannelCounter = startingSubchannelIndex; subchannelCounter <= finalSubchannelIndex; subchannelCounter++)
+                {
+                    if (sensingWindow_[subframe][subchannelCounter]->getSensed)
+                    {
+                        totalRSSI += sensingWindow_[subframe][subchannelCounter]->getAverageRSSI();
+                        ++numSubchannels;
+                    }
+                    else
+                    {
+                        // Subframe wasn't sensed so skip to the next one.
+                        break;
+                    }
+                }
+                subframe -= decrease;
+            }
+            int averageRSSI = totalRSSI / numSubchannels;
+            if (averageRSSI < minRSSI || minRSSI == 0)
+            {
+                minRSSI = averageRSSI;
+                currentMinCSR = it - possibleCSRs.begin();
+            }
+        }
+        optimalCSRs.push_back(possibleCSRs[currentMinCSR]);
+        possibleCSRs.erase(currentMinCSR);
+        minRSSI = 0;
+    }
+    return optimalCSRs;
+}
+
+std::vector<std::vector<Subchannel>>* LtePhyUeMode4D2D::getpossibleCSRs(std::vector<std::vector<Subchannel*>>* selectionWindow, LteMode4SchedulingGrant* grant)
+{
+    // Go through the selection window and determine the number of possible CSRs available
+    std::vector<std::vector<Subchannel>> possibleCSRs;
+    int grantLenght = grant->getNumSubchannels();
+    for (int i=0; i < selectionWindow->size(); i++)
+    {
+        if (selectionWindow[i][0]->getSensed())
+        {
+            int j=0;
+            while (j < numSubchannels_)
+            {
+                if (j + grantLength > numSubchannels_)
+                {
+                    // Cannot fit the CSR therefore move on.
+                    break;
+                }
+                std::vector<Subchannel> possibleCSR;
+                for (int k=j; k < j+grantLength; k++)
+                {
+                    if (!selectionWindow[i][k]->getPossibleCSR())
+                    {
+                        // This range of subchannels will not fit the CSR
+                        j = k + 1;
+                        break;
+                    }
+                    possibleCSR.push_back(selectionWindow[i][k]);
+                }
+                possibleCSRs.push_back(possibleCSR);
+                ++j;
+            }
+        }
+    }
+    return possibleCSRs;
 }
 
 SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage(cPacket* message)
@@ -390,7 +734,7 @@ SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage(cPacket* message)
      *
      * TODO: Make sure the period is set to the correct level (i.e. period = 100/200/300 etc)
      */
-    sci->setResourceReservationInterval(sciGrant_->getPeriod());
+    sci->setResourceReservationInterval(sciGrant_->getPeriod()/100);
 
     /* frequency Resource Location
      * Based on another parameter RIV
@@ -508,169 +852,191 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
 {
     EV << NOW << " LtePhyUeMode4D2D::decodeAirFrame - Start decoding..." << endl;
 
-    // apply decider to received packet
-    bool result = true;
-
-    RemoteSet r = lteInfo->getUserTxParams()->readAntennaSet();
-    if (r.size() > 1)
+    if (!transmitting_)
     {
-        // DAS
-        for (RemoteSet::iterator it = r.begin(); it != r.end(); it++)
+        // apply decider to received packet
+        bool result = true;
+
+        RemoteSet r = lteInfo->getUserTxParams()->readAntennaSet();
+        if (r.size() > 1)
         {
-            EV << "LtePhyUeMode4D2D::decodeAirFrame: Receiving Packet from antenna " << (*it) << "\n";
+            // DAS
+            for (RemoteSet::iterator it = r.begin(); it != r.end(); it++)
+            {
+                EV << "LtePhyUeMode4D2D::decodeAirFrame: Receiving Packet from antenna " << (*it) << "\n";
 
-            /*
-             * On UE set the sender position
-             * and tx power to the sender das antenna
-             */
+                /*
+                 * On UE set the sender position
+                 * and tx power to the sender das antenna
+                 */
 
-//            cc->updateHostPosition(myHostRef,das_->getAntennaCoord(*it));
-            // Set position of sender
-//            Move m;
-//            m.setStart(das_->getAntennaCoord(*it));
-            RemoteUnitPhyData data;
-            data.txPower=lteInfo->getTxPower();
-            data.m=getRadioPosition();
-            frame->addRemoteUnitPhyDataVector(data);
+                // cc->updateHostPosition(myHostRef,das_->getAntennaCoord(*it));
+                // Set position of sender
+                // Move m;
+                // m.setStart(das_->getAntennaCoord(*it));
+                RemoteUnitPhyData data;
+                data.txPower=lteInfo->getTxPower();
+                data.m=getRadioPosition();
+                frame->addRemoteUnitPhyDataVector(data);
+            }
+            // apply analog models For DAS
+            result=channelModel_->errorDas(frame,lteInfo);
         }
-        // apply analog models For DAS
-        result=channelModel_->errorDas(frame,lteInfo);
-    }
-    else
-    {
-        //RELAY and NORMAL
-        if (lteInfo->getDirection() == D2D_MULTI)
-            result = channelModel_->error_D2D(frame,lteInfo,rsrpVector_);
         else
-            result = channelModel_->error(frame,lteInfo);
-    }
-
-    // update statistics
-    if (result)
-        numAirFrameReceived_++;
-    else
-        numAirFrameNotReceived_++;
-
-    EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
-       << ( result ? "RECEIVED" : "NOT RECEIVED" ) << endl;
-
-    cPacket* pkt = frame->decapsulate();
-
-    // attach the decider result to the packet as control info
-    lteInfo->setDeciderResult(result);
-    pkt->setControlInfo(lteInfo);
-
-    if(lteInfo->getFrameType() == SCIPKT)
-    {
-        if (result)
         {
-            // TODO: Signal successfully decoded SCI message
+            //RELAY and NORMAL
+            if (lteInfo->getDirection() == D2D_MULTI)
+                result = channelModel_->error_D2D(frame,lteInfo,rsrpVector_);
+            else
+                result = channelModel_->error(frame,lteInfo);
+        }
 
-            std::tuple<int, int> indexAndLength = decodeRivValue(pkt);
+        // update statistics
+        if (result)
+            numAirFrameReceived_++;
+        else
+            numAirFrameNotReceived_++;
+
+        EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
+           << ( result ? "RECEIVED" : "NOT RECEIVED" ) << endl;
+
+        cPacket* pkt = frame->decapsulate();
+
+        // attach the decider result to the packet as control info
+        lteInfo->setDeciderResult(result);
+        pkt->setControlInfo(lteInfo);
+
+        if(lteInfo->getFrameType() == SCIPKT)
+        {
+            if (result)
+            {
+                // TODO: Signal successfully decoded SCI message
+
+                std::tuple<int, int> indexAndLength = decodeRivValue(pkt);
+                int subchannelIndex = std::get<0>(indexAndLength);
+                int lengthInSubchannels = std::get<1>(indexAndLength);
+
+                bool recordSCIMeasurements = false;
+                if (adjacencyPSCCHPSSCH_)
+                {
+                    recordSCIMeasurements = true;
+                }
+
+                std::list<Subchannel>::iterator kt;
+                std::list<Subchannel> currentSubframe = sensingWindow_.back();
+                for(kt=currentSubframe.begin()+subchannelIndex; kt!=currentSubframe.begin()+subchannelIndex+subchannelLength; kt++)
+                {
+                    if (recordSCIMeasurements)
+                    {
+                        // Record RSRP and RSSI for the first two RBs (bands)
+                        kt->addRsrpValue(rsrpVector[startingBand], startingBand);
+                        kt->addRsrpValue(rsrpVector[startingBand+1], startingBand+1);
+                        kt->addRssiValue(rssiVector[startingBand], startingBand);
+                        kt->addRssiValue(rssiVector[startingBand+1], startingBand+1);
+
+                        // We only need to record the SCI rsrp and rssi for the first subchannel (the rest will not have any occupied)
+                        recordSCIMeasurements = false;
+                    }
+                    // Record the SCI in the subchannel.
+                    kt->setSCI(pkt);
+                }
+                decodedScis_.push_back(pkt);
+            }
+            else
+            {
+                // TODO: Signal failed to decode the SCI message
+            }
+            // We do not want to send SCIs to the upper layers, as such return now.
+            return;
+        }
+        else
+        {
+            // Have a TB want to make sure we have the SCI for it.
+            bool foundCorrespondingSci = false;
+            cPacket* correspondingSCI;
+            std::vector<cPacket>::iterator it;
+            for(jt=decodedScis_.begin(); jt!=decodedScis_.end(); jt++)
+            {
+                UserControlInfo* sciInfo = check_and_cast<UserControlInfo*>(jt->removeControlInfo());
+                // if the SCI and TB have same source then we have the right SCI
+                if (sciInfo->getSourceId() == lteInfo->getSourceId())
+                {
+                    // Successfully received the SCI
+                    foundCorrespondingSci = true;
+
+                    corrspondingSCI = jt;
+
+                    // Remove the SCI
+                    decodedScis_.erase(it);
+                    break;
+                }
+            }
+            if(result && !foundCorrespondingSci)
+            {
+                // TODO: Signal failed to decode TB due to lack of sci
+                lteInfo->setDeciderResult(false);
+                pkt->setControlInfo(lteInfo);
+            }
+            // TODO: Signal successfully found the SCI message
+            else if (!result && foundCorrespondingSci)
+            {
+                //TODO: Failed to decode TB but decoded the SCI.
+            }
+            else
+            {
+                //TODO: Signal successfully decoded both the SCI and TB
+            }
+
+            // Now need to find the associated Subchannels, record the RSRP and RSSI for the message and go from there.
+            // Need to again do the RIV steps
+            std::tuple<int, int> indexAndLength = decodeRivValue(corrspondingSCI);
             int subchannelIndex = std::get<0>(indexAndLength);
             int lengthInSubchannels = std::get<1>(indexAndLength);
 
-            bool recordSCIMeasurements = false;
-            if (adjacencyPSCCHPSSCH_)
-            {
-                recordSCIMeasurements = true;
-            }
-
             std::list<Subchannel>::iterator kt;
-            std::list<Subchannel> currentSubframe = sensingWindow_.front();
+            std::list<Subchannel> currentSubframe = sensingWindow_.back();
             for(kt=currentSubframe.begin()+subchannelIndex; kt!=currentSubframe.begin()+subchannelIndex+subchannelLength; kt++)
             {
-                if (recordSCIMeasurements)
+                std::vector<Band>::iterator lt;
+                std::vector<Band> allocatedBands = kt->getOccupiedBands();
+                for (lt=allocatedBands.begin(); lt!=allocatedBands.end(); lt++)
                 {
-                    // Record RSRP and RSSI for the first two RBs (bands)
-                    kt->addRsrpValue(rsrpVector[startingBand], startingBand);
-                    kt->addRsrpValue(rsrpVector[startingBand+1], startingBand+1);
-                    kt->addRssiValue(rssiVector[startingBand], startingBand);
-                    kt->addRssiValue(rssiVector[startingBand+1], startingBand+1);
-
-                    // We only need to record the SCI rsrp and rssi for the first subchannel (the rest will not have any occupied)
-                    recordSCIMeasurements = false;
+                    // Record RSRP and RSSI for this band
+                    kt->addRsrpValue(rsrpVector[lt], lt);
+                    kt->addRssiValue(rssiVector[lt], lt);
                 }
-                // Record the SCI in the subchannel.
-                kt->setSCI(pkt);
             }
-            decodedScis_.push_back(pkt);
+
+            // send decapsulated message along with result control info to upperGateOut_
+            send(pkt, upperGateOut_);
+
+            if (getEnvir()->isGUI())
+                updateDisplayString();
         }
-        else
-        {
-            // TODO: Signal failed to decode the SCI message
-        }
-        // We do not want to send SCIs to the upper layers, as such return now.
-        return;
     }
     else
     {
-        // Have a TB want to make sure we have the SCI for it.
-        bool foundCorrespondingSci = false;
-        cPacket* correspondingSCI;
-        std::vector<cPacket>::iterator it;
-        for(jt=decodedScis_.begin(); jt!=decodedScis_.end(); jt++)
-        {
-            UserControlInfo* sciInfo = check_and_cast<UserControlInfo*>(jt->removeControlInfo());
-            // if the SCI and TB have same source then we have the right SCI
-            if (sciInfo->getSourceId() == lteInfo->getSourceId())
-            {
-                // Successfully received the SCI
-                foundCorrespondingSci = true;
+        // update statistics
+        numAirFrameNotReceived_++;
 
-                corrspondingSCI = jt;
+        // TODO: Signal to say frame not decoded due to the issue of half duplex antenna
 
-                // Remove the SCI
-                decodedScis_.erase(it);
-                break;
-            }
-        }
-        if(result && !foundCorrespondingSci)
+        // Mark subchannels in the current subframe as not having been sensed.
+        std::list<Subchannel>::iterator it;
+        std::list<Subchannel> currentSubframe = sensingWindow_.back();
+        for (it=currentSubframe.begin(); it!=currentSubframe.end(); it++)
         {
-            // TODO: Signal failed to decode TB due to lack of sci
-            lteInfo->setDeciderResult(false);
-            pkt->setControlInfo(lteInfo);
-        }
-        // TODO: Signal successfully found the SCI message
-        else if (!result && foundCorrespondingSci)
-        {
-            //TODO: Failed to decode TB but decoded the SCI.
-        }
-        else
-        {
-            //TODO: Signal successfully decoded both the SCI and TB
+            // Mark the subchannel as not having been sensed.
+            it->setSensed(false);
         }
 
-        // Now need to find the associated Subchannels, record the RSRP and RSSI for the message and go from there.
-        // Need to again do the RIV steps
-        std::tuple<int, int> indexAndLength = decodeRivValue(corrspondingSCI);
-        int subchannelIndex = std::get<0>(indexAndLength);
-        int lengthInSubchannels = std::get<1>(indexAndLength);
-
-        std::list<Subchannel>::iterator kt;
-        std::list<Subchannel> currentSubframe = sensingWindow_.front();
-        for(kt=currentSubframe.begin()+subchannelIndex; kt!=currentSubframe.begin()+subchannelIndex+subchannelLength; kt++)
-        {
-            std::vector<Band>::iterator lt;
-            std::vector<Band> allocatedBands = kt->getOccupiedBands();
-            for (lt=allocatedBands.begin(); lt!=allocatedBands.end(); lt++)
-            {
-                // Record RSRP and RSSI for this band
-                kt->addRsrpValue(rsrpVector[lt], lt);
-                kt->addRssiValue(rssiVector[lt], lt);
-            }
-        }
-
-        // send decapsulated message along with result control info to upperGateOut_
-        send(pkt, upperGateOut_);
-
-        if (getEnvir()->isGUI())
-            updateDisplayString();
+        EV << "Handled LteAirframe with ID " << frame->getId() << "Was not decoded due to half-duplex";
     }
 }
 
 std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(cPacket* sci)
 {
+    UserControlInfo* lteInfo = sci->getControlInfo();
     RbMap rbMap = lteInfo->getGrantedBlocks();
     RbMap::iterator it;
     std::map<Band, unsigned int>::iterator jt;
@@ -732,7 +1098,7 @@ std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(cPacket* sci)
     return std::make_tuple(subchannelIndex, lengthInSubchannels);
 }
 
-void LtePhyUeMode4D2D::createSubframe()
+void LtePhyUeMode4D2D::createSubframe(simtime_t subframeTime)
 {
     // TODO: Figure out where the deployer exists
     // We need it to get the number of Rbs and it must exists somewhere
@@ -748,7 +1114,7 @@ void LtePhyUeMode4D2D::createSubframe()
     }
     for (int i = 0; i < numSubchannels_; i++)
     {
-        Subchannel currentSubchannel = new Subchannel(subchannelSize_);
+        Subchannel currentSubchannel = new Subchannel(subchannelSize_, subframeTime);
         // Need to determine the RSRP and RSSI that corresponds to background noise
         // Best off implementing this in the channel model as a method.
 
@@ -767,12 +1133,12 @@ void LtePhyUeMode4D2D::createSubframe()
     }
     if (sensingWindow_.size() < 10*pStep_)
     {
-        sensingWindow_.push_front(subframe);
+        sensingWindow_.push_back(subframe);
     }
     else
     {
-        sensingWindow_.pop_back();
-        sensingWindow_.push_front(subframe);
+        sensingWindow_.pop_front();
+        sensingWindow_.push_back(subframe);
     }
 
     // Send self message to trigger another subframes creation and insertion. Need one for every TTI
