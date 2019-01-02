@@ -15,19 +15,26 @@ class Subchannel
         int numRbs;
         RbMap usedRbs;
         bool reserved;
+        bool sensed;
+        bool possibleCSR;
         simtime_t subframeTime;
+        int subframeIndex;
+        int subchannelIndex;
         cPacket sci;
         std::vector occupiedBands;
         std::map<Band, double> rsrpValues;
         std::map<Band, double> rssiValues;
 
     public:
-        Subchannel(const int subchannelSize)
+        Subchannel(const int subchannelSize, simtime_t simulationTime, int subframeIndex=0, int subchannelIndex=0)
         {
             numRbs = subchannelSize;
             reserved = false;
-            subframeTime = simTime();
+            sensed = true;
+            subframeTime = simulationTime;
             sci = NULL;
+            this->subframeIndex = subframeIndex;
+            this->subchannelIndex = subchannelIndex;
         }
 
 
@@ -89,10 +96,6 @@ class Subchannel
         {
             return sci;
         }
-        void setAverageRSRP(double averageRSRP)
-        {
-            this->averageRSRP = averageRSRP;
-        }
         double getAverageRSRP() const
         {
             double sum = 0;
@@ -129,5 +132,28 @@ class Subchannel
         {
             this->occupiedBands = occupiedBands;
         }
-
+        void setSensed(bool sensed)
+        {
+            this->sensed = sensed;
+        }
+        bool getSensed() const
+        {
+            return sensed;
+        }
+        void setSubframeIndex(int subframeIndex)
+        {
+            this->subframeIndex = subframeIndex;
+        }
+        int getSubframeIndex() const
+        {
+            return subframeIndex;
+        }
+        void setSubchannelIndex(int subchannelIndex)
+        {
+            this->subchannelIndex = subchannelIndex;
+        }
+        int getSubchannelIndex() const
+        {
+            return subchannelIndex;
+        }
 };
