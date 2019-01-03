@@ -16,8 +16,8 @@ packet LteSchedulingGrant
     @customize(true);  // see the generated C++ header for more info
     bool periodic;
        unsigned int period;
-       int expiration;
-    // blocks granted on all Remotes, all Bands
+       unsigned int expiration;
+       // blocks granted on all Remotes, all Bands
     unsigned int totalGrantedBlocks;
     // number of codewords
     unsigned int codewords;
@@ -28,19 +28,4 @@ packet LteSchedulingGrant
     //# const UserTxParams* userTxParams;
     //# RbMap grantedBlocks;
     //#
-}
-
-packet LteMode4SchedulingGrant extends LteSchedulingGrant
-{
-    @customize(true);
-    
-    bool retransmission;
-    unsigned int timeGapTransRetrans;
-    unsigned int spsPriority;
-    unsigned int numSubchannels;
-    unsigned int maximumLatency;
-    unsigned int startingSubchannel;
-    unsigned int mcs;
-    unsigned int startingSubchannelRetrans; // It is possible the retransmission has different resources assigned to it.
-    unsigned int resourceReselectionCounter;
 }

@@ -7,6 +7,9 @@
 // and cannot be removed from it.
 //
 
+#ifndef SCHEDULING_GRANT_H_
+#define SCHEDULING_GRANT_H_
+
 #include "stack/mac/packet/LteSchedulingGrant_m.h"
 #include "common/LteCommon.h"
 #include "stack/mac/amc/UserTxParams.h"
@@ -127,3 +130,151 @@ class LteSchedulingGrant : public LteSchedulingGrant_Base
         return direction_;
     }
 };
+
+class LteMode4SchedulingGrant : public LteSchedulingGrant
+{
+protected:
+    simtime_t startTime;
+    std::vector<unsigned int> possibleRRIs;
+    bool retransmission;
+    unsigned int timeGapTransRetrans;
+    unsigned int spsPriority;
+    unsigned int numSubchannels;
+    unsigned int maximumLatency;
+    unsigned int startingSubchannel;
+    unsigned int mcs;
+    unsigned int retransSubchannel; // It is possible the retransmission has different resources assigned to it.
+    unsigned int resourceReselectionCounter;
+
+public:
+
+    LteMode4SchedulingGrant(const char *name = NULL, int kind = 0) :
+        LteSchedulingGrant(name, kind)
+    {
+        numSubchannels = 0;
+        spsPriority = 0;
+        maximumLatency = 0;
+        timeGapTransRetrans = 0;
+        startingSubchannel = 0;
+        mcs = 0;
+        retransSubchannel = 0;
+        resourceReselectionCounter = 0;
+        startTime = simTime();
+    }
+
+
+    ~LteMode4SchedulingGrant()
+    {
+    }
+
+    LteMode4SchedulingGrant(const LteMode4SchedulingGrant& other) :
+        LteSchedulingGrant(other.getName())
+    {
+        operator=(other);
+    }
+
+    LteMode4SchedulingGrant& operator=(const LteMode4SchedulingGrant& other)
+    {
+        numSubchannels = other.numSubchannels;
+        spsPriority = other.spsPriority;
+        startTime = other.startTime;
+        LteSchedulingGrant::operator=(other);
+        return *this;
+    }
+
+    virtual LteMode4SchedulingGrant *dup() const
+    {
+        return new LteMode4SchedulingGrant(*this);
+    }
+
+    void setStartTime(simtime_t start)
+    {
+        startTime = start;
+    }
+    simtime_t getStartTime() const
+    {
+        return startTime;
+    }
+    void setSpsPriority(unsigned int priority)
+    {
+        spsPriority = priority;
+    }
+    unsigned int getSpsPriority() const
+    {
+        return spsPriority;
+    }
+    void setNumberSubchannels(unsigned int subchannels)
+    {
+        numSubchannels = subchannels;
+    }
+    unsigned int getNumSubchannels() const
+    {
+        return numSubchannels;
+    }
+    void setMaximumLatency(unsigned int maxLatency)
+    {
+        maximumLatency = maxLatency;
+    }
+    unsigned int getMaximumLatency() const
+    {
+        return maximumLatency;
+    }
+    void setTimeGapTransRetrans(unsigned int timeGapTransRetrans)
+    {
+        this->timeGapTransRetrans = timeGapTransRetrans;
+    }
+    unsigned int getTimeGapTransRetrans() const
+    {
+        return timeGapTransRetrans;
+    }
+    void setStartingSubchannel(unsigned int subchannelIndex)
+    {
+        this->startingSubchannel = subchannelIndex;
+    }
+    unsigned int getStartingSubchannel() const
+    {
+        return startingSubchannel;
+    }
+    void setMcs(unsigned int mcs)
+    {
+        this->mcs = mcs;
+    }
+    unsigned int getMcs() const
+    {
+        return mcs;
+    }
+    void setRetransSubchannel(unsigned int retransSubchannel)
+    {
+        this->retransSubchannel = retransSubchannel;
+    }
+    unsigned int getRetransSubchannel() const
+    {
+        return retransSubchannel;
+    }
+    void setResourceReselectionCounter(unsigned int resourceReselectionCounter)
+    {
+        this->resourceReselectionCounter = resourceReselectionCounter;
+    }
+    unsigned int getResourceReselectionCounter() const
+    {
+        return resourceReselectionCounter;
+    }
+    void setRetransmission(bool retransmission)
+    {
+        this->retransmission = retransmission;
+    }
+    bool getRetransmission() const
+    {
+        return retransmission;
+    }
+    std::vector<unsigned int> getRRIs() const
+    {
+        return possibleRRIs;
+    }
+    void setRRIs(std::vector<unsigned int> RRIs)
+    {
+        this->possibleRRIs = RRIs;
+    }
+};
+
+#endif
