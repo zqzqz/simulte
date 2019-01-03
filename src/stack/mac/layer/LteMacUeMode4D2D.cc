@@ -22,9 +22,7 @@
 #include "stack/mac/buffer/harq/LteHarqBufferRx.h"
 #include "stack/mac/buffer/LteMacQueue.h"
 #include "stack/mac/buffer/harq_d2d/LteHarqBufferRxD2DMirror.h"
-#include "stack/mac/packet/LteMode4SchedulingGrant.h"
 #include "stack/mac/layer/LteMacUeMode4D2D.h"
-#include "stack/phy/packet/SpsCandidateResources.h"
 #include "stack/mac/scheduler/LteSchedulerUeUl.h"
 #include "stack/mac/amc/AmcPilotD2D.h"
 #include "stack/phy/packet/SpsCandidateResources.h"
@@ -299,7 +297,9 @@ void LteMacUeMode4D2D::handleSelfMessage()
     bool generateNewSchedulingGrant = false;
     bool reservationBreak = false;
 
-    if (schedulingGrant_ == NULL)
+    LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
+
+    if (mode4Grant == NULL)
     {
         EV << NOW << " LteMacUeMode4D2D::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
 
@@ -309,29 +309,29 @@ void LteMacUeMode4D2D::handleSelfMessage()
 
     // Currently set to <= imagining the case that we end up half an ms off from each other,
     // not sure if this is a likely situation but to be safe will leave it <= for now.l
-    else if (schedulingGrant_->getPeriodic() && schedlingGrant_->getStartTime() <= NOW)
+    else if (mode4Grant->getPeriodic() && mode4Grant->getStartTime() <= NOW)
     {
         // Periodic checks
-        if(--expirationCounter_ == schedulingGrant_->getPeriod())
+        if(--expirationCounter_ == mode4Grant->getPeriod())
         {
             // Periodic checks
             // Periodic grant is expired
             std::uniform_real_distribution<float> floatdist(0, 1);
             float randomReReserve = floatdist(generator);
-            if (randomReReserve > probResourceKeep)
+            if (randomReReserve > probResourceKeep_)
             {
                 std::uniform_int_distribution<int> range(5, 15);
                 int expiration = range(generator);
-                schedulingGrant_ -> setExpiration(expiration);
-                expirationCounter_ = expiration * schedulingGrant_->getPeriod();
+                mode4Grant -> setExpiration(expiration);
+                expirationCounter_ = expiration * mode4Grant->getPeriod();
             }
         }
         // Periodic checks
         else if(expirationCounter_ == 0)
         {
             // Periodic grant is expired
-            delete schedulingGrant_;
-            schedulingGrant_ = NULL;
+            delete mode4Grant;
+            mode4Grant = NULL;
         }
         else if (--periodCounter_>0)
         {
@@ -340,12 +340,12 @@ void LteMacUeMode4D2D::handleSelfMessage()
         else
         {
             // resetting grant period
-            periodCounter_=schedulingGrant_->getPeriod();
+            periodCounter_=mode4Grant->getPeriod();
             // this is periodic grant TTI - continue with frame sending
         }
     }
     bool requestSdu = false;
-    if (schedulingGrant_!=NULL && schedlingGrant_->getStartTime() <= NOW) // if a grant is configured
+    if (mode4Grant!=NULL && mode4Grant->getStartTime() <= NOW) // if a grant is configured
     {
         if(!firstTx)
         {
@@ -381,7 +381,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
                 UnitList signal;
                 signal.first=currentHarq_;
                 signal.second = cwListRetx;
-                currHarq->markSelected(signal,schedulingGrant_->getUserTxParams()->getLayers().size());
+                currHarq->markSelected(signal,mode4Grant->getUserTxParams()->getLayers().size());
                 retx = true;
             }
         }
@@ -415,7 +415,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
             int totalPDUSize = 0;
             for(int i=0; i<MAX_CODEWORDS; i++){
                 totalPDUSize += selectedProc ->getPduLength(i);
-                totalGrantedBytes += schedulingGrant_->getGrantedCwBytes(i);
+                totalGrantedBytes += mode4Grant->getGrantedCwBytes(i);
             }
 
             if (totalPDUSize > totalGrantedBytes)
@@ -433,7 +433,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
         }
 
     }
-    if (schedulingGrant_ == NULL || generateNewSchedulingGrant)
+    if (mode4Grant == NULL || generateNewSchedulingGrant)
     {
         macGenerateSchedulingGrant();
     }
@@ -497,9 +497,9 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     std::uniform_int_distribution<int> distr(0, CSRs.size());
     int index = distr(generator);
 
-    std::vector<Subchannel> selectedCR = possibleCSRs.at(index);
+    std::vector<Subchannel> selectedCR = CSRs.at(index);
     // Gives us the time at which we will send the subframe.
-    simtime_t selectedStartTime = NOW() + TTI * selectedCR[0]->getSubframeIndex();
+    simtime_t selectedStartTime = NOW + TTI * selectedCR[0].getSubframeIndex();
 
     std::vector<Subchannel>::iterator it;
     std::vector<Band> grantedBands;
@@ -531,11 +531,8 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
 
     mode4Grant -> setExpiration(resourceReselectionCounter);
 
-    if (grant->getPeriodic())
-    {
-        periodCounter_=grant->getPeriod();
-        expirationCounter_=grant->getExpiration() * periodCounter_;
-    }
+    periodCounter_=mode4Grant->getPeriod();
+    expirationCounter_=mode4Grant->getExpiration() * periodCounter_;
 
     // TODO: Setup for HARQ retransmission, if it can't be satisfied then selection must occur again.
 }
@@ -597,10 +594,10 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
 
     UserControlInfo* uinfo = new UserControlInfo();
     uinfo->setSourceId(getMacNodeId());
-    uinfo->setDestId(getMacNodeId);
+    uinfo->setDestId(getMacNodeId());
     uinfo->setFrameType(GRANTPKT);
 
-    grant->setControlInfo(uinfo);
+    mode4Grant->setControlInfo(uinfo);
 
     sendLowerPackets(mode4Grant);
 
