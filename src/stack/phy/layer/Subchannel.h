@@ -7,6 +7,9 @@
 // and cannot be removed from it.
 //
 
+#ifndef SUBCHANNEL_H_
+#define SUBCHANNEL_H_
+
 #include "common/LteCommon.h"
 
 class Subchannel
@@ -19,7 +22,7 @@ class Subchannel
         simtime_t subframeTime;
         int subframeIndex;
         int subchannelIndex;
-        cPacket sci;
+        cPacket* sci;
         std::vector<Band> occupiedBands;
         std::map<Band, double> rsrpValues;
         std::map<Band, double> rssiValues;
@@ -31,7 +34,6 @@ class Subchannel
             reserved = false;
             sensed = true;
             subframeTime = simulationTime;
-            sci = NULL;
             this->subframeIndex = subframeIndex;
             this->subchannelIndex = subchannelIndex;
         }
@@ -90,24 +92,24 @@ class Subchannel
         {
             this->sci = SCI;
         }
-        cPacket* getSCIMessage() const
+        cPacket* getSCIMessage()
         {
             return sci;
         }
-        double getAverageRSRP() const
+        double getAverageRSRP()
         {
             double sum = 0;
-            std::map<Band, double>::iterator it;
+            map<Band, double>::iterator it;
             for(it=rsrpValues.begin(); it!=rsrpValues.end(); it++)
             {
                 sum += it->second;
             }
             return sum/numRbs;
         }
-        double getAverageRSSI() const
+        double getAverageRSSI()
         {
             double sum = 0;
-            std::map<Band, double>::iterator it;
+            map<Band, double>::iterator it;
             for(it=rssiValues.begin(); it!=rssiValues.end(); it++)
             {
                 sum += it->second;
@@ -154,4 +156,14 @@ class Subchannel
         {
             return subchannelIndex;
         }
+        void setPossibleCSR(bool possibleCSR)
+        {
+            this->possibleCSR = possibleCSR;
+        }
+        bool getPossibleCSR() const
+        {
+            return possibleCSR;
+        }
 };
+
+#endif
