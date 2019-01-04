@@ -491,21 +491,21 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
      * 4. return
      */
     SpsCandidateResources* candidatesPacket = check_and_cast<SpsCandidateResources *>(pkt);
-    std::vector<std::vector<Subchannel>> CSRs = candidatesPacket->getCSRs();
+    std::vector<std::vector<Subchannel*>> CSRs = candidatesPacket->getCSRs();
 
     // Select random element from vector
     std::uniform_int_distribution<int> distr(0, CSRs.size());
     int index = distr(generator);
 
-    std::vector<Subchannel> selectedCR = CSRs.at(index);
+    std::vector<Subchannel*> selectedCR = CSRs[index];
     // Gives us the time at which we will send the subframe.
-    simtime_t selectedStartTime = NOW + TTI * selectedCR[0].getSubframeIndex();
+    simtime_t selectedStartTime = NOW + TTI * selectedCR[0]->getSubframeIndex();
 
-    std::vector<Subchannel>::iterator it;
+    std::vector<Subchannel*>::iterator it;
     std::vector<Band> grantedBands;
     for (it=selectedCR.begin(); it!=selectedCR.end();it++)
     {
-        std::vector<Band> subchannelBands = it->getOccupiedBands();
+        std::vector<Band> subchannelBands = (*it)->getOccupiedBands();
         grantedBands.insert(grantedBands.end(), subchannelBands.begin(), subchannelBands.end());
     }
 
@@ -586,8 +586,9 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
     /**
      * Need to pick the number of subchannels for this reservation
      */
-    // Select random number of subchannels (this is really illogical, but we will sort it out later.
-    std::uniform_int_distribution<int> distr(minSubchannel, maxSubchannel);
+    // Select random number of subchannels (this is really illogical, but we will sort it out later.)
+    // TODO: Need to look into the cbr side of this, which controls the overlap between the default values and such.
+    std::uniform_int_distribution<int> distr(minSubchannelNumberPSSCH_, maxSubchannelNumberPSSCH_);
     int numSubchannels = distr(generator);
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
