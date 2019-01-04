@@ -12,7 +12,7 @@
 
 #include "stack/phy/layer/LtePhyUe.h"
 #include "stack/phy/packet/SidelinkControlInformation_m.h"
-#include "stack/mac/packet/LteMode4SchedulingGrant.h"
+#include "stack/mac/packet/LteSchedulingGrant.h"
 #include "stack/mac/allocator/LteAllocationModule.h"
 #include "stack/phy/layer/Subchannel.h"
 
@@ -31,18 +31,18 @@ class LtePhyUeMode4D2D : public LtePhyUe
 
     bool transmitting_;
 
-    std::vector<int> ThresPSSCHRSRPList_;
+    std::vector<int> ThresPSSCHRSRPvector_;
 
     std::vector<LteAirFrame*> tbFrames_; // airframes received in the current TTI. Only one will be decoded
     cMessage* d2dDecodingTimer_; // timer for triggering decoding at the end of the TTI. Started when the first airframe is received
 
-    std::vector<std::vector> tbRsrpVectors_;
-    std::vector<std::vector> tbRssiVectors_;
+    std::vector<std::vector<double>> tbRsrpVectors_;
+    std::vector<std::vector<double>> tbRssiVectors_;
 
-    std::list<std::list<Subchannel>> sensingWindow_;
+    std::vector<std::vector<Subchannel*>> sensingWindow_;
     LteMode4SchedulingGrant* sciGrant_;
-    std::vector<std::vector> sciRsrpVectors_;
-    std::vector<std::vector> sciRssiVectors_;
+    std::vector<std::vector<double>> sciRsrpVectors_;
+    std::vector<std::vector<double>> sciRssiVectors_;
     std::vector<LteAirFrame*> sciFrames_;
     std::vector<cPacket*> decodedScis_;
 
@@ -50,7 +50,7 @@ class LtePhyUeMode4D2D : public LtePhyUe
 
     void storeAirFrame(LteAirFrame* newFrame);
     LteAirFrame* extractAirFrame();
-    void decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo);
+    void decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, std::vector<double> rssiVector);
     // ---------------------------------------------------------------- //
 
     virtual void initialize(int stage);
@@ -60,13 +60,25 @@ class LtePhyUeMode4D2D : public LtePhyUe
     virtual void handleSelfMessage(cMessage *msg);
 
     // Helper function which prepares a frame for sending
-    virtual LteAirFrame* prepareAirFrame(cPacket* msg, UserControlInfo* lteInfo);
+    virtual LteAirFrame* prepareAirFrame(cMessage* msg, UserControlInfo* lteInfo);
 
     // Generate an SCI message corresponding to a Grant
-    virtual SidelinkControlInformation* reateSCIMessage(cPacket* message);
+    virtual SidelinkControlInformation* createSCIMessage();
 
     // Compute Candidate Single Subframe Resources which the MAC layer can use for transmission
-    virtual void computeCSRs(SchedulingGrant* grant);
+    virtual void computeCSRs(LteMode4SchedulingGrant* grant);
+
+    virtual void createSubframe(simtime_t subframeTime);
+
+    virtual void checkSensed(std::vector<std::vector<Subchannel*>> selectionWindow, LteMode4SchedulingGrant* grant);
+
+    virtual void checkRSRP(std::vector<std::vector<Subchannel*>> selectionWindow, LteMode4SchedulingGrant* grant, int thresholdIncreaseFactor);
+
+    virtual std::vector<std::vector<Subchannel*>> getPossibleCSRs(std::vector<std::vector<Subchannel*>> selectionWindow, LteMode4SchedulingGrant* grant);
+
+    virtual std::vector<std::vector<Subchannel*>> selectBestRSSIs(std::vector<std::vector<Subchannel*>> possibleCSRs, LteMode4SchedulingGrant* grant, int totalPossibleCSRs);
+
+    virtual std::tuple<int,int> decodeRivValue(cPacket* sci);
 
     virtual void triggerHandover();
     virtual void doHandover();
