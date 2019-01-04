@@ -16,7 +16,7 @@
 //
 
 #include "stack/phy/packet/SpsCandidateResources_m.h"
-#include "stack/mac/packet/LteSchedulingGrant_m.h"
+#include "stack/mac/packet/LteSchedulingGrant.h"
 #include "common/LteCommon.h"
 #include "stack/phy/layer/Subchannel.h"
 
@@ -24,8 +24,7 @@ class SpsCandidateResources: public SpsCandidateResources_Base
 {
   protected:
 
-    std::vector<std::vector<Subchannel>> CSRs;
-    LteMode4SchedulingGrant schedulingGrant;
+    std::vector<std::vector<Subchannel*>> CSRs;
 
   public:
 
@@ -45,9 +44,7 @@ class SpsCandidateResources: public SpsCandidateResources_Base
 
     SpsCandidateResources& operator=(const SpsCandidateResources& other)
     {
-        schedulingGrant = other.schedulingGrant;
-        possibleCSRs = other.possibleCSRs;
-        CSRStartTimes = other.CSRStartTimes;
+        CSRs = other.CSRs;
         SpsCandidateResources_Base::operator=(other);
         return *this;
     }
@@ -57,22 +54,13 @@ class SpsCandidateResources: public SpsCandidateResources_Base
         return new SpsCandidateResources(*this);
     }
 
-    virtual void setCSRs(const std::vector<std::vector<Subchannel>>& CSRs )
+    virtual void setCSRs(const std::vector<std::vector<Subchannel*>> CSRs )
     {
         this->CSRs = CSRs;
     }
 
-    virtual std::vector<std::vector<Subchannel>>& getCSRs()
+    virtual std::vector<std::vector<Subchannel*>> getCSRs()
     {
         return CSRs;
-    }
-
-    virtual void setSchedulingGrant(LteMode4SchedulingGrant schedulingGrant)
-    {
-        this->schedulingGrant = schedulingGrant;
-    }
-    virtual LteMode4SchedulingGrant getSchedulingGrant() const
-    {
-        return schedulingGrant;
     }
 };
