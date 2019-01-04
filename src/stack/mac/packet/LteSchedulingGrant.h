@@ -135,7 +135,7 @@ class LteMode4SchedulingGrant : public LteSchedulingGrant
 {
 protected:
     simtime_t startTime;
-    std::vector<unsigned int> possibleRRIs;
+    std::vector<double> possibleRRIs;
     bool retransmission;
     unsigned int timeGapTransRetrans;
     unsigned int spsPriority;
@@ -267,11 +267,11 @@ public:
     {
         return retransmission;
     }
-    std::vector<unsigned int> getRRIs() const
+    std::vector<double> getPossibleRRIs() const
     {
         return possibleRRIs;
     }
-    void setRRIs(std::vector<unsigned int> RRIs)
+    void setPossibleRRIs(std::vector<double> RRIs)
     {
         this->possibleRRIs = RRIs;
     }
