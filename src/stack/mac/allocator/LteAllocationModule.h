@@ -13,7 +13,7 @@
 #include "common/LteCommon.h"
 #include "stack/mac/allocator/LteAllocatorUtils.h"
 
-class LteMacEnb;
+class LteMacBase;
 
 class LteAllocationModule
 {
@@ -23,8 +23,8 @@ class LteAllocationModule
 
   protected:
 
-    /// Owner MAC module (can be LteMacEnb on eNB or LteMacRelayEnb on Relays)
-    LteMacEnb *mac_;
+    /// Owner MAC module (can be LteMacEnb on eNB or LteMacRelayEnb on Relays) or in mode LteMacUe
+    LteMacBase *mac_;
 
     /// Number of bands
     unsigned int bands_;
@@ -174,7 +174,7 @@ class LteAllocationModule
   public:
 
     /// Default constructor.
-    LteAllocationModule(LteMacEnb *mac, const Direction direction);
+    LteAllocationModule(LteMacBase* mac, const Direction direction);
 
     // reset Allocation Module strucutre
     void initAndReset(const unsigned int resourceBlocks, const unsigned int bands);

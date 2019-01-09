@@ -17,7 +17,7 @@ class LteAllocationModuleFrequencyReuse : public LteAllocationModule
 {
     public:
     /// Default constructor.
-    LteAllocationModuleFrequencyReuse(LteMacEnb *mac, const Direction direction);
+    LteAllocationModuleFrequencyReuse(LteMacBase *mac, const Direction direction);
     // Store the Allocation based on passed paremeter
     virtual void storeAllocation( std::vector<std::vector<AllocatedRbsPerBandMapA> > allocatedRbsPerBand,std::set<Band>* untouchableBands = NULL);
     // Get the bands already allocated by RAC and RTX ( Debug purpose)
