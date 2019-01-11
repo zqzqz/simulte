@@ -37,7 +37,7 @@ simple LteMacBase like LteMac {
         int queueSize @unit(B) = default(2MiB);              // MAC Buffers queue size
         
         //# Mac Scheduler
-        int    maxBytesPerTti @unit(B) = default(3000KiB);          // Schedulable Bytes
+        int maxBytesPerTti @unit(B) = default(3000KiB);          // Schedulable Bytes
         
         //# Mac MIB
         
@@ -239,13 +239,51 @@ simple LteMacUeMode4D2D extends LteMacUeRealisticD2D
 	    
 	    @class("LteMacUeMode4D2D");
 	    
+	    //# TODO: Change this to use xmldoc to fill in these params as it's more complex than this.
 	    int resourceReservationInterval = default(1);
 	    int maximumLatency = default(100);
 	    int minSubchannelNumberPSSCH = default(1);
 	    int maxSubchannelNumberPSSCH = default(10);
 	    int minMCSPSSCH = default(1);
 	    int maxMCSPSSCH = default(28);
+	    int numSubchannels = default(10);
+	    int subchannelSize = default(5);
 	    double probResourceKeep = default(0.4);
+	    
+	    //# AMC params ... ever so slightly hacked in
+	    
+	    // AMC Mode:  "auto", "piloted", "multi", "das"
+        string amcMode = default("AUTO");
+        
+        //Min disance used to pair two MuMimo UE
+        int muMimoMinDistance =default(50);
+        
+        // resource allocation type ("distributed" or "localized")
+        string rbAllocationType = default("distributed");
+
+        // summary feedback confidence function lower bound
+        double summaryLowerBound @unit(s) = default(5ms);
+
+        // summary feedback confidence function upper bound
+        double summaryUpperBound @unit(s) = default(20ms);
+
+        // FeedBack Historical Base capacity in DL (number of stored feedback samples per UE) 
+        int fbhbCapacityDl = default(5);
+
+        // FeedBack Historical Base capacity in UL (number of stored feedback samples per UE)
+        int fbhbCapacityUl = default(5);
+
+        // FeedBack Historical Base capacity in D2D (number of stored feedback samples per UE)
+        int fbhbCapacityD2D = default(5);
+        
+        // wideband PMI generation parameter (0.0 means "use the mean value" )        
+        double pmiWeight = default(0.0);
+
+        // wideband CQI generation parameter (0.0 means "use the mean value" )
+        double cqiWeight = default(0.0);
+
+        // AMC k CQI: used in DAS AMC mode
+        int kCqi = default(0);
 }
 
 //
