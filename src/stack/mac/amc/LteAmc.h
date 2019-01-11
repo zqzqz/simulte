@@ -24,7 +24,7 @@ class AmcPilot;
 /// Forward declaration of LteDeployer class, used by LteAmc.
 class LteDeployer;
 /// Forward declaration of LteMacEnb class, used by LteAmc.
-class LteMacEnb;
+class LteMacBase;
 
 /**
  * @class LteAMC
@@ -43,7 +43,7 @@ class LteAmc
     void printTxParams(Direction dir);
     void printMuMimoMatrix(const char *s);
     protected:
-    LteMacEnb *mac_;
+    LteMacBase *mac_;
     LteBinder *binder_;
     LteDeployer *deployer_;
     AmcPilot *pilot_;
@@ -89,7 +89,7 @@ class LteAmc
     LteMuMimoMatrix muMimoUlMatrix_;
     LteMuMimoMatrix muMimoD2DMatrix_;
     public:
-    LteAmc(LteMacEnb *mac, LteBinder *binder, LteDeployer *deployer, int numAntennas);
+    LteAmc(LteMacBase *mac, LteBinder *binder, LteDeployer *deployer, int numAntennas);
     void initialize();
     ~LteAmc();
     void sefType(int f)
@@ -144,6 +144,8 @@ class LteAmc
 
     // utilities - do not involve pilot invocation
     unsigned int getItbsPerCqi(Cqi cqi, const Direction dir);
+
+    unsigned int getCqiForMcs(unsigned int mcsIndex, const Direction dir);
 
     double readCoderate(MacNodeId id, Codeword cw, unsigned int bytes, const Direction dir);
 
