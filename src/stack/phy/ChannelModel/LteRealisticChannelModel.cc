@@ -1626,7 +1626,7 @@ bool LteRealisticChannelModel::error(LteAirFrame *frame,
         snrV = getSINR(frame, lteInfo);
     }
 
-    //Get the resource Block id used to transmist this packet
+    //Get the resource Block id used to transmit this packet
     RbMap rbmap = lteInfo->getGrantedBlocks();
 
     //Get txmode
