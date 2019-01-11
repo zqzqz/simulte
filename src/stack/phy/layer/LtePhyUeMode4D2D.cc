@@ -1,4 +1,4 @@
-//
+    //
 //                           SimuLTE
 //
 // This file is part of a software released under the license included in file
@@ -40,7 +40,10 @@ void LtePhyUeMode4D2D::initialize(int stage)
         numSubchannels_ = par("numSubchannels");
         subchannelSize_ = par("subchannelSize");
         d2dDecodingTimer_ = NULL;
-        allocator_ = new LteAllocationModule(this,"D2D");
+
+
+        LteMacBase* mac = binder_->getMacFromMacNodeId(nodeId_);
+        allocator_ = new LteAllocationModule(mac, D2D);
         transmitting_ = false;
 
         // The threshold has a size of 64, and allowable values of 0 - 66
@@ -331,6 +334,11 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
 
         SCIInfo->setFrameType(SCIPKT);
         SCIInfo->setGrantedBlocks(sciRbs);
+        /*
+         * TODO: setup the rest of the SCI Info here
+         * UserTxParams is the one we specifically want to setup correctly
+         * It's probably worthwhile computing all this here as opposed to somewhere else as well.
+         */
     }
 
     EV << NOW << " LtePhyUeMode4D2D::handleUpperMessage - message from stack" << endl;
@@ -342,6 +350,23 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
     }
     else
     {
+        /*
+         * Need to prepare the airframe were sending
+         * Ensure that it will fit into it's grant
+         * if not don't send anything except a break reservation message
+         */
+        frame = prepareAirFrame(msg, lteInfo);
+
+        cPacket* pkt = check_and_cast<cPacket*>(msg);
+        if (pkt->getBitLength() > sciGrant_->getGrantedCwBytes(sciGrant_->getCodewords()))
+        {
+            cMessage* grantBreak = new cMessage("GRANTBREAK");
+            send(grantBreak, upperGateOut_);
+
+            // At this point we need not go any further
+            return;
+        }
+
         // create LteAirFrame and encapsulate the received packet
         SidelinkControlInformation* SCI = createSCIMessage();
         LteAirFrame* sciFrame = prepareAirFrame(SCI, SCIInfo);
@@ -349,8 +374,6 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
 
         // TODO: Signal for Sending SCI
         sendBroadcast(sciFrame);
-
-        frame = prepareAirFrame(msg, lteInfo);
     }
 
     // if this is a multicast/broadcast connection, send the frame to all neighbors in the hearing range
@@ -359,7 +382,7 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
     EV << "LtePhyUeMode4D2D::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
            << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
 
-    // Mark that we are in the process of transmitting a packet therefor when we go to decode messages we can mark as failure due to half duplex
+    // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
     transmitting_=true;
 
     if (lteInfo->getDirection() == D2D_MULTI)
@@ -431,7 +454,7 @@ void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* grant)
 
     // Send the packet up to the MAC layer where it will choose the CSR and the retransmission if that is specified
     // Need to generate the message that is to be sent to the upper layers.
-    SpsCandidateResources* candidateResourcesMessage = new SpsCandidateResources("CSR Message");
+    SpsCandidateResources* candidateResourcesMessage = new SpsCandidateResources("CSRS");
     candidateResourcesMessage->setCSRs(optimalCSRs);
     send(candidateResourcesMessage, upperGateOut_);
 }
@@ -1090,7 +1113,7 @@ void LtePhyUeMode4D2D::createSubframe(simtime_t subframeTime)
         // Need to determine the RSRP and RSSI that corresponds to background noise
         // Best off implementing this in the channel model as a method.
 
-        std:vector<Band> occupiedBands;
+        std::vector<Band> occupiedBands;
 
         int overallCapacity = 0;
         // Ensure the subchannel is allocated the correct number of RBs
