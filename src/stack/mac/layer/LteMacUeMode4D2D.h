@@ -17,7 +17,6 @@
 #define STACK_MAC_LAYER_LTEMACUEMODE4D2D_H_
 
 #include "stack/mac/layer/LteMacUeRealisticD2D.h"
-#include "stack/mac/amc/AmcPilotD2D.h"
 #include <random>
 
 //class LteMode4SchedulingGrant;
@@ -25,6 +24,14 @@
 class LteMacUeMode4D2D: public LteMacUeRealisticD2D {
 
 protected:
+
+   /// Lte AMC module
+   LteAmc *amc_;
+
+   /// Local LteDeployer
+   LteDeployer *deployer_;
+
+   int numAntennas_;
 
    // RAC Handling variables
    bool racD2DMulticastRequested_;
@@ -54,6 +61,16 @@ protected:
 //   LteAmc *amc_;
 
     /**
+     * Getter for Deployer.
+     */
+//    virtual LteDeployer* getDeployer();
+
+    /**
+     * Returns the number of system antennas (MACRO included)
+     */
+    virtual int getNumAntennas();
+
+    /**
      * Generate a scheduling grant
      */
     virtual void macGenerateSchedulingGrant();
@@ -80,25 +97,6 @@ protected:
      */
     virtual void handleSelfMessage();
 
-    virtual void macHandleGrant(cPacket* pkt);
-
-    /*
-     * Checks RAC status
-     */
-    // We aren't going to do this as it's primarily used for asking the eNodeb for access
-    // which we don't do.
-    // But what we will do is when we get a message saying you can send we will do the
-    // same action as if an RAC was a success i.e. bsrD2DMulticastTriggered_ is set to true.
-//    virtual void checkRAC();
-    /*
-     * Receives and handles RAC responses
-     */
-
-    void macHandleD2DModeSwitch(cPacket* pkt);
-
-    // I shouldn't need the makeBsr function as it is something that mode4 doesn't require.
-    virtual LteMacPdu* makeBsr(int size);
-
     /**
      * macPduMake() creates MAC PDUs (one for each CID)
      * by extracting SDUs from Real Mac Buffers according
@@ -120,15 +118,6 @@ public:
     {
         return true;
     }
-
-    virtual void triggerBsr(MacCid cid)
-    {
-        if (connDesc_[cid].getDirection() == D2D_MULTI)
-            bsrD2DMulticastTriggered_ = true;
-        else
-            bsrTriggered_ = true;
-    }
-    virtual void doHandover(MacNodeId targetEnb);
 };
 
 #endif /* STACK_MAC_LAYER_LTEMACUEMODE4D2D_H_ */
