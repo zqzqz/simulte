@@ -155,6 +155,25 @@ module LteNicUeD2D extends LteNicBase
 }
 
 //
+// Mode 4 D2D User Equipment of LTE stack
+//
+module LteNicUeMode4D2D extends LteNicBase
+{
+    parameters:
+        LtePdcpRrcType = "LtePdcpRrcUeD2D";
+        LteMacType = default("LteMacUeMode4D2D");
+        LtePhyType = "LtePhyUeMode4D2D";
+        
+        string d2dPeerAddresses = default(""); // list of D2D peer UEs, separated by blank spaces
+    
+    submodules:
+        // Feedback generator submodule
+        dlFbGen: LteDlFeedbackGenerator {
+            @display("p=50,50;is=s");
+        }
+}
+
+//
 // eNodeB of LTE stack
 //
 module LteNicEnb extends LteNicBase
