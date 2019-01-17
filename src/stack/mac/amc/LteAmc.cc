@@ -201,7 +201,7 @@ LteAmc::LteAmc(LteMacBase *mac, LteBinder *binder, LteDeployer *deployer, int nu
 {
 
     LteMacEnb* macEnb = dynamic_cast<LteMacEnb*>(mac);
-    if (mac){
+    if (macEnb){
         mac_ = macEnb;
     }
     else
@@ -538,7 +538,7 @@ bool LteAmc::existTxParams(MacNodeId id, const Direction dir)
         return dlTxParams_.at(dlNodeIndex_.at(id)).isSet();
     else if (dir == UL)
         return ulTxParams_.at(ulNodeIndex_.at(id)).isSet();
-    else if (dir == D2D)
+    else if (dir == D2D || dir == D2D_MULTI)
         return d2dTxParams_.at(d2dNodeIndex_.at(id)).isSet();
     else
     {
@@ -573,7 +573,7 @@ const UserTxParams& LteAmc::setTxParams(MacNodeId id, const Direction dir, UserT
         return (dlTxParams_.at(dlNodeIndex_.at(id)) = info);
     else if (dir == UL)
         return (ulTxParams_.at(ulNodeIndex_.at(id)) = info);
-    else if (dir == D2D)
+    else if (dir == D2D || dir == D2D_MULTI)
         return (d2dTxParams_.at(d2dNodeIndex_.at(id)) = info);
     else
     {
@@ -1429,7 +1429,7 @@ void LteAmc::attachUser(MacNodeId nodeId, Direction dir)
         fbhbCapacity = fbhbCapacityUl_;
         numTxModes = UL_NUM_TXMODE;
     }
-    else if(dir==D2D)
+    else if(dir==D2D || dir == D2D_MULTI)
     {
         connectedUe = &d2dConnectedUe_;
         nodeIndexMap = &d2dNodeIndex_;
