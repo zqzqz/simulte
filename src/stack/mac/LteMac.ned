@@ -240,14 +240,17 @@ simple LteMacUeMode4D2D extends LteMacUeRealisticD2D
 	    @class("LteMacUeMode4D2D");
 	    
 	    //# TODO: Change this to use xmldoc to fill in these params as it's more complex than this.
+	    xml txConfig;
 	    int resourceReservationInterval = default(1);
 	    int maximumLatency = default(100);
 	    int minSubchannelNumberPSSCH = default(1);
 	    int maxSubchannelNumberPSSCH = default(10);
 	    int minMCSPSSCH = default(1);
 	    int maxMCSPSSCH = default(28);
+	    int allowedRetxNumberPSSCH = default(0);
 	    int numSubchannels = default(10);
 	    int subchannelSize = default(5);
+	    int reselectAfter = default(1);
 	    double probResourceKeep = default(0.4);
 	    
 	    //# AMC params ... ever so slightly hacked in

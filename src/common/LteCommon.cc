@@ -586,7 +586,7 @@ void getParametersFromXML(cXMLElement* xmlData, ParameterMap& outputMap)
         {
             param.setBoolValue(sValue == "true" || sValue == "1");
         }
-        else if (sType == "double")
+        else if (sType == "double" || sType == "int")
         {
             param.setDoubleValue(strtod(value, 0));
         }

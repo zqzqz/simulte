@@ -17,6 +17,7 @@
 #define STACK_MAC_LAYER_LTEMACUEMODE4D2D_H_
 
 #include "stack/mac/layer/LteMacUeRealisticD2D.h"
+#include "corenetwork/deployer/LteDeployer.h"
 #include <random>
 
 //class LteMode4SchedulingGrant;
@@ -48,6 +49,12 @@ protected:
    int numSubchannels_;
    int minMCSPSSCH_;
    int maxMCSPSSCH_;
+   int maximumCapacity_;
+   int allowedRetxNumberPSSCH_;
+   int reselectAfter_;
+   int defaultCbrIndex_;
+
+   std::vector<std::map<std::string, int>> cbrPSSCHTxConfigList_;
 
    // if true, use the preconfigured TX params for transmission, else use that signaled by the eNB
    bool usePreconfiguredTxParams_;
@@ -63,7 +70,7 @@ protected:
     /**
      * Getter for Deployer.
      */
-//    virtual LteDeployer* getDeployer();
+    virtual LteDeployer* getDeployer();
 
     /**
      * Returns the number of system antennas (MACRO included)
@@ -108,7 +115,15 @@ protected:
      */
     virtual void macPduMake();
 
-    virtual void handleUpperMessage(cPacket* pkt);
+    /**
+     * Parse transmission configuration for a Ue
+     */
+    void parseUeTxConfig(cXMLElement* xmlConfig);
+
+    /**
+    * Parse transmission configuration for CBR
+    */
+   void parseCbrTxConfig(cXMLElement* xmlConfig);
 
 public:
     LteMacUeMode4D2D();
