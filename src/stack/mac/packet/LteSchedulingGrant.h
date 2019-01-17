@@ -178,6 +178,12 @@ public:
         numSubchannels = other.numSubchannels;
         spsPriority = other.spsPriority;
         startTime = other.startTime;
+        maximumLatency = other.maximumLatency;
+        timeGapTransRetrans = other.timeGapTransRetrans;
+        startingSubchannel = other.startingSubchannel;
+        mcs = other.mcs;
+        retransSubchannel = other.retransSubchannel;
+        resourceReselectionCounter = other.resourceReselectionCounter;
         LteSchedulingGrant::operator=(other);
         return *this;
     }
