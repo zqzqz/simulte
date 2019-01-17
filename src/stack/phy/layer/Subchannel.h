@@ -33,6 +33,7 @@ class Subchannel
             numRbs = subchannelSize;
             reserved = false;
             sensed = true;
+            possibleCSR = true;
             subframeTime = simulationTime;
             this->subframeIndex = subframeIndex;
             this->subchannelIndex = subchannelIndex;
