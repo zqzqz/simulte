@@ -21,7 +21,7 @@ LteSchedulerUeUl::LteSchedulerUeUl(LteMacUe * mac)
 
     // check if MAC is "experimental"
     std::string macType = mac_->getParentModule()->par("LteMacType").stdstringValue();
-    if (macType.compare("LteMacUeRealistic") == 0 || macType.compare("LteMacUeRealisticD2D") == 0)
+    if (macType.compare("LteMacUeRealistic") == 0 || macType.compare("LteMacUeRealisticD2D") || macType.compare("LteMacUeMode4D2D") == 0)
         lcgScheduler_ = new LcgSchedulerRealistic(mac);
     else
         lcgScheduler_ = new LcgScheduler(mac);
