@@ -50,7 +50,7 @@ class LtePhyUeMode4D2D : public LtePhyUe
 
     void storeAirFrame(LteAirFrame* newFrame);
     LteAirFrame* extractAirFrame();
-    void decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, std::vector<double> rssiVector);
+    void decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo, std::vector<double> &rsrpVector, std::vector<double> &rssiVector);
     // ---------------------------------------------------------------- //
 
     virtual void initialize(int stage);
@@ -66,28 +66,24 @@ class LtePhyUeMode4D2D : public LtePhyUe
     virtual SidelinkControlInformation* createSCIMessage();
 
     // Compute Candidate Single Subframe Resources which the MAC layer can use for transmission
-    virtual void computeCSRs(LteMode4SchedulingGrant* grant);
+    virtual void computeCSRs(LteMode4SchedulingGrant* &grant);
 
     virtual void createSubframe(simtime_t subframeTime);
 
-    virtual void checkSensed(std::vector<std::vector<Subchannel*>> selectionWindow, LteMode4SchedulingGrant* grant);
+    virtual void checkSensed(std::vector<std::vector<Subchannel*>> &selectionWindow, LteMode4SchedulingGrant* &grant);
 
-    virtual void checkRSRP(std::vector<std::vector<Subchannel*>> selectionWindow, LteMode4SchedulingGrant* grant, int thresholdIncreaseFactor);
+    virtual void checkRSRP(std::vector<std::vector<Subchannel*>> &selectionWindow, LteMode4SchedulingGrant* &grant, int thresholdIncreaseFactor);
 
-    virtual std::vector<std::vector<Subchannel*>> getPossibleCSRs(std::vector<std::vector<Subchannel*>> selectionWindow, LteMode4SchedulingGrant* grant);
+    virtual std::vector<std::vector<Subchannel*>> getPossibleCSRs(std::vector<std::vector<Subchannel*>> &selectionWindow, LteMode4SchedulingGrant* &grant);
 
-    virtual std::vector<std::vector<Subchannel*>> selectBestRSSIs(std::vector<std::vector<Subchannel*>> possibleCSRs, LteMode4SchedulingGrant* grant, int totalPossibleCSRs);
+    virtual std::vector<std::vector<Subchannel*>> selectBestRSSIs(std::vector<std::vector<Subchannel*>> &possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
 
     virtual std::tuple<int,int> decodeRivValue(cPacket* sci);
-
-    virtual void triggerHandover();
-    virtual void doHandover();
 
   public:
     LtePhyUeMode4D2D();
     virtual ~LtePhyUeMode4D2D();
 
-    virtual void sendFeedback(LteFeedbackDoubleVector fbDl, LteFeedbackDoubleVector fbUl, FeedbackRequest req);
     virtual double getTxPwr(Direction dir = UNKNOWN_DIRECTION)
     {
         if (dir == D2D)
