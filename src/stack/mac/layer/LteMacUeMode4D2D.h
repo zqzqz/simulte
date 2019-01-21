@@ -53,8 +53,11 @@ protected:
    int allowedRetxNumberPSSCH_;
    int reselectAfter_;
    int defaultCbrIndex_;
+   bool useCBR;
 
    std::vector<std::map<std::string, int>> cbrPSSCHTxConfigList_;
+   std::vector<std::map<std::string, int>> cbrLevels_;
+   std::vector<int> validResourceReservationIntervals_;
 
    // if true, use the preconfigured TX params for transmission, else use that signaled by the eNB
    bool usePreconfiguredTxParams_;
@@ -121,9 +124,14 @@ protected:
     void parseUeTxConfig(cXMLElement* xmlConfig);
 
     /**
-    * Parse transmission configuration for CBR
-    */
-   void parseCbrTxConfig(cXMLElement* xmlConfig);
+     * Parse transmission configuration for CBR
+     */
+    void parseCbrTxConfig(cXMLElement* xmlConfig);
+
+    /**
+     * Parse transmission configuration for Resource Reservation Intervals
+     */
+    void parseRriConfig(cXMLElement* xmlConfig);
 
 public:
     LteMacUeMode4D2D();

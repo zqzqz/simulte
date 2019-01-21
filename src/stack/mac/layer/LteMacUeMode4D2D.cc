@@ -48,9 +48,9 @@ void LteMacUeMode4D2D::initialize(int stage)
     std::mt19937 generator(rand_dev());
     parseUeTxConfig(par("txConfig").xmlValue());
     parseCbrTxConfig(par("txConfig").xmlValue());
-//    parseRriConfig(par("resourceReservationPeriodList").xmlValue());
-//    resourceReservationInterval_ = par("resourceReservationInterval");
-//    maximumLatency_ = par("maximumLatency");
+    parseRriConfig(par("txConfig").xmlValue());
+    resourceReservationInterval_ = validResourceReservationIntervals_.at(0);
+    maximumLatency_ = par("maximumLatency");
     subchannelSize_ = par("subchannelSize");
     numSubchannels_ = par("numSubchannels");
     probResourceKeep_ = par("probResourceKeep");
@@ -58,6 +58,7 @@ void LteMacUeMode4D2D::initialize(int stage)
     maximumLatency_ = par("maximumLatency");
     resourceReservationInterval_ = par("resourceReservationInterval");
     reselectAfter_ = par("reselectAfter");
+    useCBR_ = par("useCBR");
     maximumCapacity_ = 0;
 
     if (stage == INITSTAGE_NETWORK_LAYER_3)
@@ -80,16 +81,16 @@ void LteMacUeMode4D2D::initialize(int stage)
 void LteMacUeMode4D2D::parseUeTxConfig(cXMLElement* xmlConfig)
 {
     if (xmlConfig == 0)
-    throw cRuntimeError("No channel models configuration file specified");
+    throw cRuntimeError("No sidelink configuration file specified");
 
     // Get channel Model field which contains parameters fields
-    cXMLElementList ueTxConfig = xmlConfig->getElementsByTagName("ue-TxConfig");
+    cXMLElementList ueTxConfig = xmlConfig->getElementsByTagName("userEquipment-txParameters");
 
     if (ueTxConfig.empty())
-        throw cRuntimeError("No channel models configuration found in configuration file");
+        throw cRuntimeError("No userEquipment-txParameters configuration found in configuration file");
 
     if (ueTxConfig.size() > 1)
-        throw cRuntimeError("More than one channel configuration found in configuration file.");
+        throw cRuntimeError("More than one userEquipment-txParameters configuration found in configuration file.");
 
     cXMLElement* ueTxConfigData = ueTxConfig.front();
 
@@ -125,7 +126,7 @@ void LteMacUeMode4D2D::parseUeTxConfig(cXMLElement* xmlConfig)
     }
     else
         maxSubchannelNumberPSSCH_ = par("maxSubchannelNumberPSSCH");
-    it = params.find("allowedRetxNumberPSSCCH");
+    it = params.find("allowedRetxNumberPSSCH");
     if (it != params.end())
     {
         allowedRetxNumberPSSCH_ = it->second;
@@ -140,10 +141,10 @@ void LteMacUeMode4D2D::parseCbrTxConfig(cXMLElement* xmlConfig)
     throw cRuntimeError("No cbr configuration specified");
 
     // Get channel Model field which contains parameters fields
-    cXMLElementList cbrTxConfig = xmlConfig->getElementsByTagName("SL-CBR-PSSCH-TxConfigList");
+    cXMLElementList cbrTxConfig = xmlConfig->getElementsByTagName("Sl-CBR-CommonTxConfigList");
 
     if (cbrTxConfig.empty())
-        throw cRuntimeError("No CBR-TxConfig found in configuration file");
+        throw cRuntimeError("No Sl-CBR-CommonTxConfigList found in configuration file");
 
     cXMLElement* cbrTxConfigData = cbrTxConfig.front();
 
@@ -151,60 +152,122 @@ void LteMacUeMode4D2D::parseCbrTxConfig(cXMLElement* xmlConfig)
     getParametersFromXML(cbrTxConfigData, params);
 
     //get lambda max threshold
-    ParameterMap::iterator it = params.find("defaultIndex");
+    ParameterMap::iterator it = params.find("default-cbr-ConfigIndex");
     if (it != params.end())
     {
         defaultCbrIndex_ = it->second;
     }
 
-    cXMLElementList cbrTxConfigs = xmlConfig->getElementsByTagName("SL-CBR-PSSCH-TxConfig");
+    cXMLElementList cbrLevelConfigs = xmlConfig->getElementsByTagName("cbr-Levels-Config");
+
+    if (cbrLevelConfigs.empty())
+        throw cRuntimeError("No cbr-Levels-Config found in configuration file");
+
+    cXMLElementList::iterator xmlIt;
+    for(xmlIt = cbrLevelConfigs.begin(); xmlIt != cbrLevelConfigs.end(); xmlIt++)
+    {
+        std::map<std::string, int> cbrLevelsMap;
+        ParameterMap cbrLevelsParams;
+        getParametersFromXML((*xmlIt), cbrLevelsParams);
+        it = cbrLevelsParams.find("cbr-lower");
+        if (it != cbrLevelsParams.end())
+        {
+            cbrLevelsMap.insert(pair<string, int>("cbr-lower",  it->second));
+        }
+        it = cbrLevelsParams.find("cbr-upper");
+        if (it != cbrLevelsParams.end())
+        {
+            cbrLevelsMap.insert(pair<string, int>("cbr-upper",  it->second));
+        }
+        it = cbrLevelsParams.find("cbr-lower");
+        if (it != cbrLevelsParams.end())
+        {
+            cbrLevelsMap.insert(pair<string, int>("cbr-PSSCH-TxConfig-Index",  it->second));
+        }
+    }
+
+    cXMLElementList cbrTxConfigs = xmlConfig->getElementsByTagName("cbr-PSSCH-TxConfig");
 
     if (cbrTxConfigs.empty())
         throw cRuntimeError("No CBR-TxConfig found in configuration file");
 
-    cXMLElementList::iterator xmlIt;
-    for(xmlIt = cbrTxConfigs.begin(); xmlIt != cbrTxConfigs.end(); xmlIt++)
+    cXMLElementList cbrTxParams = xmlConfig->getElementsByTagName("txParameters");
+
+    for(xmlIt = cbrTxParams.begin(); xmlIt != cbrTxParams.end(); xmlIt++)
     {
         std::map<std::string, int> cbrMap;
         ParameterMap cbrParams;
         getParametersFromXML((*xmlIt), cbrParams);
-        it = params.find("minMCSPSSCH");
-        if (it != params.end())
+        it = cbrParams.find("minMCS-PSSCH");
+        if (it != cbrParams.end())
         {
             cbrMap.insert(pair<string, int>("minMCSPSSCH",  it->second));
         }
         else
             cbrMap.insert(pair<string, int>("minMCSPSSCH",  par("minMCSPSSCH")));
-        it = params.find("maxMCS-PSSCH");
-        if (it != params.end())
+        it = cbrParams.find("maxMCS-PSSCH");
+        if (it != cbrParams.end())
         {
             cbrMap.insert(pair<string, int>("maxMCSPSSCH",  it->second));
         }
         else
             cbrMap.insert(pair<string, int>("maxMCSPSSCH",  par("maxMCSPSSCH")));
-        it = params.find("minSubchannel-NumberPSSCH");
-        if (it != params.end())
+        it = cbrParams.find("minSubchannel-NumberPSSCH");
+        if (it != cbrParams.end())
         {
             cbrMap.insert(pair<string, int>("minSubchannelNumberPSSCH",  it->second));
         }
         else
             cbrMap.insert(pair<string, int>("minSubchannelNumberPSSCH",  par("minSubchannelNumberPSSCH")));
-        it = params.find("maxSubchannel-NumberPSSCH");
-        if (it != params.end())
+        it = cbrParams.find("maxSubchannel-NumberPSSCH");
+        if (it != cbrParams.end())
         {
             cbrMap.insert(pair<string, int>("maxSubchannelNumberPSSCH",  it->second));
         }
         else
             cbrMap.insert(pair<string, int>("maxSubchannelNumberPSSCH",  par("maxSubchannelNumberPSSCH")));
-        it = params.find("allowedRetxNumberPSSCCH");
-        if (it != params.end())
+        it = cbrParams.find("allowedRetxNumberPSSCH");
+        if (it != cbrParams.end())
         {
             cbrMap.insert(pair<string, int>("allowedRetxNumberPSSCH",  it->second));
         }
         else
             cbrMap.insert(pair<string, int>("allowedRetxNumberPSSCH",  par("allowedRetxNumberPSSCH")));
-
+        it = cbrParams.find("cr-Limit");
+        if (it != cbrParams.end())
+        {
+            cbrMap.insert(pair<string, int>("cr-Limit",  it->second));
+        }
         cbrPSSCHTxConfigList_.push_back(cbrMap);
+    }
+}
+
+void LteMacUeMode4D2D::parseRriConfig(cXMLElement* xmlConfig)
+{
+    if (xmlConfig == 0)
+    throw cRuntimeError("No cbr configuration specified");
+
+    // Get channel Model field which contains parameters fields
+    cXMLElementList rriConfig = xmlConfig->getElementsByTagName("RestrictResourceReservationPeriodList");
+
+    if (rriConfig.empty())
+        throw cRuntimeError("No RestrictResourceReservationPeriodList found in configuration file");
+
+    cXMLElementList rriConfigs = xmlConfig->getElementsByTagName("RestrictResourceReservationPeriod");
+
+    if (rriConfigs.empty())
+        throw cRuntimeError("No RestrictResourceReservationPeriods found in configuration file");
+
+    cXMLElementList::iterator xmlIt;
+    for(xmlIt = rriConfigs.begin(); xmlIt != rriConfigs.end(); xmlIt++)
+    {
+        ParameterMap rriParams;
+        getParametersFromXML((*xmlIt), rriParams);
+        ParameterMap::iterator it = rriParams.find("rri");
+        if (it != rriParams.end())
+        {
+            validResourceReservationIntervals_.push_back(it->second);
+        }
     }
 }
 
@@ -583,6 +646,10 @@ void LteMacUeMode4D2D::handleSelfMessage()
             int pduLength = currHarq->pduLength((unsigned char)currentHarq_, 0);
             if (pduLength < maximumCapacity_)
             {
+                if (useCBR_)
+                {
+
+                }
                 for (int mcs=minMCSPSSCH_; mcs < maxMCSPSSCH_; mcs++)
                 {
                     int mcsCapacity = 0;

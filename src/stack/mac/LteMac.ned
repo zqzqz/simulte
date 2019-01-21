@@ -252,6 +252,7 @@ simple LteMacUeMode4D2D extends LteMacUeRealisticD2D
 	    int subchannelSize = default(5);
 	    int reselectAfter = default(1);
 	    double probResourceKeep = default(0.4);
+	    bool useCBR = default(false);
 	    
 	    //# AMC params ... ever so slightly hacked in
 	    
