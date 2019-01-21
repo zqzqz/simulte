@@ -38,10 +38,6 @@ void LtePhyUeMode4D2D::initialize(int stage)
         numSubchannels_ = par("numSubchannels");
         subchannelSize_ = par("subchannelSize");
         d2dDecodingTimer_ = NULL;
-
-
-        LteMacBase* mac = binder_->getMacFromMacNodeId(nodeId_);
-        allocator_ = new LteAllocationModule(mac, D2D);
         transmitting_ = false;
 
         // The threshold has a size of 64, and allowable values of 0 - 66
@@ -55,6 +51,9 @@ void LtePhyUeMode4D2D::initialize(int stage)
     if (stage == INITSTAGE_NETWORK_LAYER_3)
     {
         // Need to start initialising the sensingWindow
+        LteMacBase* mac = binder_->getMacFromMacNodeId(nodeId_);
+        allocator_ = new LteAllocationModule(mac, D2D);
+        allocator_->initAndReset(deployer_->getNumRbUl(), deployer_->getNumBands());
         createSubframe(NOW);
     }
 }
