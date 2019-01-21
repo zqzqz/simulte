@@ -53,7 +53,7 @@ protected:
    int allowedRetxNumberPSSCH_;
    int reselectAfter_;
    int defaultCbrIndex_;
-   bool useCBR;
+   bool useCBR_;
 
    std::vector<std::map<std::string, int>> cbrPSSCHTxConfigList_;
    std::vector<std::map<std::string, int>> cbrLevels_;
