@@ -45,6 +45,10 @@ class LtePhyUeMode4D2D : public LtePhyUe
     std::vector<std::vector<double>> sciRssiVectors_;
     std::vector<LteAirFrame*> sciFrames_;
     std::vector<cPacket*> decodedScis_;
+    std::vector<int> cbrHistory_;
+
+    double currentCBR_;
+    int cbrIndex_;
 
     LteAllocationModule* allocator_;
 
@@ -79,6 +83,8 @@ class LtePhyUeMode4D2D : public LtePhyUe
     virtual std::vector<std::vector<Subchannel*>> selectBestRSSIs(std::vector<std::vector<Subchannel*>> &possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
 
     virtual std::tuple<int,int> decodeRivValue(cPacket* sci);
+
+    virtual void updateCBR();
 
   public:
     LtePhyUeMode4D2D();

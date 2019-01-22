@@ -14,6 +14,7 @@
 #include "stack/phy/packet/LteFeedbackPkt.h"
 #include "stack/d2dModeSelection/D2DModeSelectionBase.h"
 #include "stack/phy/packet/SpsCandidateResources.h"
+#include "stack/phy/packet/cbr_m.h"
 
 Define_Module(LtePhyUeMode4D2D);
 
@@ -30,7 +31,7 @@ LtePhyUeMode4D2D::~LtePhyUeMode4D2D()
 void LtePhyUeMode4D2D::initialize(int stage)
 {
     LtePhyUe::initialize(stage);
-    if (stage == 0)
+    if (stage == inet::INITSTAGE_LOCAL)
     {
         adjacencyPSCCHPSSCH_ = par("adjacencyPSCCHPSSCH");
         pStep_ = par("pStep");
@@ -39,6 +40,8 @@ void LtePhyUeMode4D2D::initialize(int stage)
         subchannelSize_ = par("subchannelSize");
         d2dDecodingTimer_ = NULL;
         transmitting_ = false;
+        currentCBR_=0;
+        cbrIndex_=0;
 
         // The threshold has a size of 64, and allowable values of 0 - 66
         // Deciding on this for now as it makes the most sense (low priority for both then more likely to take it)
@@ -48,7 +51,7 @@ void LtePhyUeMode4D2D::initialize(int stage)
             ThresPSSCHRSRPvector_.push_back(i);
         }
     }
-    if (stage == INITSTAGE_NETWORK_LAYER_3)
+    else if (stage == INITSTAGE_NETWORK_LAYER_3)
     {
         // Need to start initialising the sensingWindow
         LteMacBase* mac = binder_->getMacFromMacNodeId(nodeId_);
@@ -77,6 +80,12 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
 
             // decode the selected frame
             decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector);
+
+            // TODO: log the cbr here and send to MAC layer
+            currentCBR_ = currentCBR_/numSubchannels_;
+            cbrHistory_[cbrIndex_]=currentCBR_;
+            currentCBR_=0;
+            updateCBR();
         }
         while (!tbFrames_.empty())
         {
@@ -98,6 +107,10 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
     }
     else if (msg->isName("createSubframe"))
     {
+        cbrIndex_++;
+        if (cbrIndex_ == 100)
+            cbrIndex_ = 0;
+        cbrHistory_[cbrIndex_] = currentCBR_;
         createSubframe(NOW);
     }
     else
@@ -906,6 +919,8 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
             int subchannelIndex = std::get<0>(indexAndLength);
             int lengthInSubchannels = std::get<1>(indexAndLength);
 
+            currentCBR_ += lengthInSubchannels;
+
             std::vector<Subchannel*>::iterator kt;
             std::vector<Subchannel*> currentSubframe = sensingWindow_.back();
             for(kt=currentSubframe.begin()+subchannelIndex; kt!=currentSubframe.begin()+subchannelIndex+lengthInSubchannels; kt++)
@@ -1060,6 +1075,21 @@ std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(cPacket* pkt)
         lengthInSubchannels = subchannelLUnderHalf;
     }
     return std::make_tuple(subchannelIndex, lengthInSubchannels);
+}
+
+void LtePhyUeMode4D2D::updateCBR()
+{
+    double cbr = 0;
+    for (int i=0; i < cbrHistory_.size();i++)
+    {
+        cbr += cbrHistory_[i];
+    }
+
+    cbr = std::round(cbr);
+
+    Cbr* cbrPkt = new Cbr("CBR");
+    cbrPkt->setCbr(cbr);
+    send(cbrPkt, upperGateOut_);
 }
 
 void LtePhyUeMode4D2D::createSubframe(simtime_t subframeTime)

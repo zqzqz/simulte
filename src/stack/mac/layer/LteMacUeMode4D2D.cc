@@ -25,6 +25,7 @@
 #include "stack/mac/layer/LteMacUeMode4D2D.h"
 #include "stack/mac/scheduler/LteSchedulerUeUl.h"
 #include "stack/phy/packet/SpsCandidateResources.h"
+#include "stack/phy/packet/cbr_m.h"
 #include "stack/phy/layer/Subchannel.h"
 #include "stack/mac/amc/AmcPilotD2D.h"
 #include "common/LteCommon.h"
@@ -60,6 +61,7 @@ void LteMacUeMode4D2D::initialize(int stage)
     reselectAfter_ = par("reselectAfter");
     useCBR_ = par("useCBR");
     maximumCapacity_ = 0;
+    cbr_=0;
 
     if (stage == INITSTAGE_NETWORK_LAYER_3)
     {
@@ -519,6 +521,11 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
 
             return;
         }
+        if (strcmp(pkt->getName(), "CBR") == 0)
+        {
+            Cbr* cbrPkt = check_and_cast<Cbr*>(pkt);
+            cbr_ = cbrPkt->getCbr();
+        }
     }
 
     LteMacUeRealisticD2D::handleMessage(msg);
@@ -646,11 +653,35 @@ void LteMacUeMode4D2D::handleSelfMessage()
             int pduLength = currHarq->pduLength((unsigned char)currentHarq_, 0);
             if (pduLength < maximumCapacity_)
             {
+                int cbrIndex = defaultCbrIndex_;
                 if (useCBR_)
                 {
-
+                    std::vector<std::map<string, int>>::iterator it;
+                    for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
+                    {
+                        if (cbr_<(*it).at("cbr-upper"))
+                        {
+                            cbrIndex = (*it).at("cbr-PSSCH-TxConfig-Index");
+                            break;
+                        }
+                    }
                 }
-                for (int mcs=minMCSPSSCH_; mcs < maxMCSPSSCH_; mcs++)
+
+                int minMCS;
+                int maxMCS;
+                if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
+                {
+                    // No overlap therefore I will use the cbr values (this is left to the UE).
+                    minMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH");
+                    maxMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH");
+                }
+                else
+                {
+                    minMCS = max(minMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH"));
+                    maxMCS = min(maxMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH"));
+                }
+                bool foundValidMCS = false;
+                for (int mcs=minMCS; mcs < maxMCS; mcs++)
                 {
                     int mcsCapacity = 0;
                     // Add the granted size to the schedulingGrant
@@ -663,6 +694,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
                     mcsCapacity = amc_->computeBitsOnNRbs(nodeId_, b, cw, mode4Grant->getTotalGrantedBlocks(), D2D_MULTI);
                     if (mcsCapacity > pduLength)
                     {
+                        foundValidMCS = true;
                         mode4Grant->setMcs(mcs);
                         mode4Grant->setGrantedCwBytes(0, mcsCapacity);
 
@@ -679,6 +711,13 @@ void LteMacUeMode4D2D::handleSelfMessage()
 
                         break;
                     }
+                }
+                if (!foundValidMCS)
+                {
+                    // Never found an MCS to satisfy the requirements of the message must regenerate grant
+                    delete schedulingGrant_;
+                    schedulingGrant_ = NULL;
+                    generateNewSchedulingGrant = true;
                 }
                 if (!mode4Grant->getUserTxParams())
                 {
@@ -864,12 +903,41 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
     // TODO: Maximum Latency is also an "Application Layer" specified parameter
     mode4Grant -> setMaximumLatency(maximumLatency_);
 
+    int cbrIndex = defaultCbrIndex_;
+    if (useCBR_)
+    {
+        std::vector<std::map<string, int>>::iterator it;
+        for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
+        {
+            if (cbr_<(*it).at("cbr-upper"))
+            {
+                cbrIndex = (*it).at("cbr-PSSCH-TxConfig-Index");
+                break;
+            }
+        }
+    }
+
+    allowedRetxNumberPSSCH_ = min(cbrPSSCHTxConfigList_.at(cbrIndex).at("allowedRetxNumberPSSCH"), allowedRetxNumberPSSCH_);
+
     /**
      * Need to pick the number of subchannels for this reservation
      */
-    // Select random number of subchannels (this is really illogical, but we will sort it out later.)
-    // TODO: Need to look into the cbr side of this, which controls the overlap between the default values and such.
-    std::uniform_int_distribution<int> distr(minSubchannelNumberPSSCH_, maxSubchannelNumberPSSCH_);
+
+    int minSubchannelNumberPSSCH;
+    int maxSubchannelNumberPSSCH;
+    if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
+    {
+        // No overlap therefore I will use the cbr values (this is left to the UE, the opposite approach is also entirely valid).
+        minSubchannelNumberPSSCH = cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannel-NumberPSSCH");
+        maxSubchannelNumberPSSCH = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannel-NumberPSSCH");
+    }
+    else
+    {
+        minSubchannelNumberPSSCH = max(maxSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannel-NumberPSSCH"));
+        maxSubchannelNumberPSSCH = min(minSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannel-NumberPSSCH"));
+    }
+    // Selecting the number of subchannel at random as there is no explanation as to the logic behind selecting the resources in the range unlike when selecting MCS.
+    std::uniform_int_distribution<int> distr(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH);
     int numSubchannels = distr(generator);
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
@@ -886,6 +954,43 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
     sendLowerPackets(phyGrant);
 
     schedulingGrant_ = mode4Grant;
+}
+
+void LteMacUeMode4D2D::flushHarqBuffers()
+{
+    // send the selected units to lower layers
+    // First make sure packets are sent down
+    // HARQ retrans needs to be taken into account
+    // Maintain unit list maybe and that causes retrans?
+    // But purge them once all messages sent.
+
+    HarqTxBuffers::iterator it2;
+    for(it2 = harqTxBuffers_.begin(); it2 != harqTxBuffers_.end(); it2++)
+    {
+        UnitList pduId = it2->second->firstAvailable();
+        if (pduRecord_.find(pduId) == pduRecord_.end())
+        {
+            pduRecord_.insert(std::pair<UnitList, int>(pduId, 1));
+        }
+        else
+        {
+            pduRecord_[pduId] += 1;
+        }
+
+        it2->second->sendSelectedDown();
+
+        if (pduRecord_.at(pduId) >= allowedRetxNumberPSSCH_)
+        {
+            it2->second->forceDropUnit(pduId.first, 0);
+        }
+    }
+
+    // deleting non-periodic grant
+    if (schedulingGrant_ != NULL && !schedulingGrant_->getPeriodic())
+    {
+        delete schedulingGrant_;
+        schedulingGrant_=NULL;
+    }
 }
 
 

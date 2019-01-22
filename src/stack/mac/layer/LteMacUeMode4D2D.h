@@ -54,6 +54,9 @@ protected:
    int reselectAfter_;
    int defaultCbrIndex_;
    bool useCBR_;
+   int cbr_;
+
+   std::map<UnitList, int> pduRecord_;
 
    std::vector<std::map<std::string, int>> cbrPSSCHTxConfigList_;
    std::vector<std::map<std::string, int>> cbrLevels_;
@@ -132,6 +135,11 @@ protected:
      * Parse transmission configuration for Resource Reservation Intervals
      */
     void parseRriConfig(cXMLElement* xmlConfig);
+
+    /**
+     * Purges PDUs from the HARQ buffers for sending to the PHY layer.
+     */
+    void flushHarqBuffers();
 
 public:
     LteMacUeMode4D2D();
