@@ -530,6 +530,11 @@ LteDeployer* getDeployer(MacNodeId nodeId)
     return check_and_cast<LteDeployer*>(getSimulation()->getModule(omnetid)->getSubmodule("deployer"));
 }
 
+LteDeployer* getDeployer()
+{
+    return check_and_cast<LteDeployer*>(getSimulation()->getModuleByPath("deployer"));
+}
+
 cModule* getMacByMacNodeId(MacNodeId nodeId)
 {
     // UE might have left the simulation, return NULL in this case

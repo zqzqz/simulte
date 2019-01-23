@@ -859,6 +859,7 @@ GrantType aToGrantType(std::string a);
 const std::string grantTypeToA(GrantType gType);
 LteBinder* getBinder();
 LteDeployer* getDeployer(MacNodeId nodeId);
+LteDeployer* getDeployer();
 cModule* getMacByMacNodeId(MacNodeId nodeId);
 cModule* getRlcByMacNodeId(MacNodeId nodeId, LteRlcType rlcType);
 LteMacBase* getMacUe(MacNodeId nodeId);

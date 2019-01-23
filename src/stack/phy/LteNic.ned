@@ -165,12 +165,6 @@ module LteNicUeMode4D2D extends LteNicBase
         LtePhyType = "LtePhyUeMode4D2D";
         
         string d2dPeerAddresses = default(""); // list of D2D peer UEs, separated by blank spaces
-    
-    submodules:
-        // Feedback generator submodule
-        dlFbGen: LteDlFeedbackGenerator {
-            @display("p=50,50;is=s");
-        }
 }
 
 //

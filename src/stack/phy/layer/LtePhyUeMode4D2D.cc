@@ -30,7 +30,9 @@ LtePhyUeMode4D2D::~LtePhyUeMode4D2D()
 
 void LtePhyUeMode4D2D::initialize(int stage)
 {
-    LtePhyUe::initialize(stage);
+    if (stage != inet::INITSTAGE_NETWORK_LAYER_2)
+        LtePhyUe::initialize(stage);
+
     if (stage == inet::INITSTAGE_LOCAL)
     {
         adjacencyPSCCHPSSCH_ = par("adjacencyPSCCHPSSCH");
@@ -40,8 +42,9 @@ void LtePhyUeMode4D2D::initialize(int stage)
         subchannelSize_ = par("subchannelSize");
         d2dDecodingTimer_ = NULL;
         transmitting_ = false;
-        currentCBR_=0;
-        cbrIndex_=0;
+        currentCBR_= 0;
+        cbrIndex_= 0;
+        cbrHistory_.reserve(100);
 
         // The threshold has a size of 64, and allowable values of 0 - 66
         // Deciding on this for now as it makes the most sense (low priority for both then more likely to take it)
@@ -51,11 +54,16 @@ void LtePhyUeMode4D2D::initialize(int stage)
             ThresPSSCHRSRPvector_.push_back(i);
         }
     }
-    else if (stage == INITSTAGE_NETWORK_LAYER_3)
+    else if (stage == INITSTAGE_NETWORK_LAYER_2)
     {
         // Need to start initialising the sensingWindow
-        LteMacBase* mac = binder_->getMacFromMacNodeId(nodeId_);
-        allocator_ = new LteAllocationModule(mac, D2D);
+        deployer_ = getDeployer();
+        int index = intuniform(0, binder_->phyPisaData.maxChannel() - 1);
+        deployer_->lambdaInit(nodeId_, index);
+        deployer_->channelUpdate(nodeId_, intuniform(1, binder_->phyPisaData.maxChannel2()));
+
+//        LteMacBase* mac = binder_->getMacFromMacNodeId(nodeId_);
+        allocator_ = new LteAllocationModule(mac_, D2D);
         allocator_->initAndReset(deployer_->getNumRbUl(), deployer_->getNumBands());
         createSubframe(NOW);
     }

@@ -76,7 +76,7 @@ protected:
     /**
      * Getter for Deployer.
      */
-    virtual LteDeployer* getDeployer();
+//    virtual LteDeployer* getDeployer();
 
     /**
      * Returns the number of system antennas (MACRO included)

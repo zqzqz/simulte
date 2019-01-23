@@ -29,6 +29,7 @@
 #include "stack/phy/layer/Subchannel.h"
 #include "stack/mac/amc/AmcPilotD2D.h"
 #include "common/LteCommon.h"
+#include "stack/phy/layer/LtePhyBase.h"
 #include <random>
 
 Define_Module(LteMacUeMode4D2D);
@@ -44,6 +45,7 @@ LteMacUeMode4D2D::~LteMacUeMode4D2D()
 
 void LteMacUeMode4D2D::initialize(int stage)
 {
+    if (stage !=INITSTAGE_NETWORK_LAYER_3)
     LteMacUeRealisticD2D::initialize(stage);
 
     std::mt19937 generator(rand_dev());
@@ -77,6 +79,36 @@ void LteMacUeMode4D2D::initialize(int stage)
             Cqi maxCqi = amc_->getCqiForMcs(maxMCSPSSCH_, D2D);
             check_and_cast<AmcPilotD2D*>(amc_->getPilot())->setPreconfiguredTxParams(maxCqi);
         }
+
+        // LTE UE Section
+        nodeId_ = getAncestorPar("macNodeId");
+
+        /* Insert UeInfo in the Binder */
+        UeInfo* info = new UeInfo();
+        info->id = nodeId_;            // local mac ID
+        info->cellId = cellId_;        // cell ID
+        info->init = false;            // flag for phy initialization
+        info->ue = this->getParentModule()->getParentModule();  // reference to the UE module
+
+        // Get the Physical Channel reference of the node
+        info->phy = check_and_cast<LtePhyBase*>(info->ue->getSubmodule("lteNic")->getSubmodule("phy"));
+
+        binder_->addUeInfo(info);
+
+        // only for UEs that have been added dynamically to the simulation
+//        LteAmc *amc = check_and_cast<LteMacEnb *>(getSimulation()->getModule(binder_->getOmnetId(cellId_))->getSubmodule("lteNic")->getSubmodule("mac"))->getAmc();
+//        amc->attachUser(nodeId_, UL);
+//        amc->attachUser(nodeId_, DL);
+
+        // find interface entry and use its address
+//        IInterfaceTable *interfaceTable = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
+//        // TODO: how do we find the LTE interface?
+//        InterfaceEntry * interfaceEntry = interfaceTable->getInterfaceByName("wlan");
+//
+//        IPv4InterfaceData* ipv4if = interfaceEntry->ipv4Data();
+//        if(ipv4if == NULL)
+//            throw new cRuntimeError("no IPv4 interface data - cannot bind node %i", nodeId_);
+//        binder_->setMacNodeId(ipv4if->getIPAddress(), nodeId_);
     }
 }
 
@@ -273,14 +305,14 @@ void LteMacUeMode4D2D::parseRriConfig(cXMLElement* xmlConfig)
     }
 }
 
-LteDeployer* LteMacUeMode4D2D::getDeployer()
-{
-    // Get local deployer
-    if (deployer_ != NULL)
-        return deployer_;
-
-    return deployer_ = check_and_cast<LteMacEnb *>(getSimulation()->getModule(binder_->getOmnetId(cellId_))->getSubmodule("lteNic")->getSubmodule("mac"))->getDeployer();
-}
+//LteDeployer* LteMacUeMode4D2D::getDeployer()
+//{
+//    // Get local deployer
+//    if (deployer_ != NULL)
+//        return deployer_;
+//
+//    return deployer_ = check_and_cast<LteMacEnb *>(getSimulation()->getModule(binder_->getOmnetId(cellId_))->getSubmodule("lteNic")->getSubmodule("mac"))->getDeployer();
+//}
 
 int LteMacUeMode4D2D::getNumAntennas()
 {

@@ -62,8 +62,16 @@ void LteDeployer::preInitialize()
     pgnMaxY_ = par("constraintAreaMaxY");
 
     int ruRange = par("ruRange");
-    double nodebTxPower = getAncestorPar("txPower");
-    eNbType_ = par("microCell").boolValue() ? MICRO_ENB : MACRO_ENB;
+    bool independentDeployer = par("independentDeployer");
+    if (independentDeployer)
+    {
+        double nodebTxPower = getAncestorPar("txPower");
+        eNbType_ = par("microCell").boolValue() ? MICRO_ENB : MACRO_ENB;
+        // first RU to be registered is the MACRO
+        ruSet_->addRemoteAntenna(nodeX_, nodeY_, nodebTxPower);
+        // register the containing eNB  to the binder
+        cellId_ = getParentModule()->par("macCellId");
+    }
     numRbDl_ = par("numRbDl");
     numRbUl_ = par("numRbUl");
     rbyDl_ = par("rbyDl");
@@ -86,12 +94,6 @@ void LteDeployer::preInitialize()
        << nodeZ_ << endl;
     EV << "Deployer: playground size: " << pgnMinX_ << "," << pgnMinY_ << " - "
        << pgnMaxX_ << "," << pgnMaxY_ << " " << endl;
-
-    // register the containing eNB  to the binder
-    cellId_ = getParentModule()->par("macCellId");
-
-    // first RU to be registered is the MACRO
-    ruSet_->addRemoteAntenna(nodeX_, nodeY_, nodebTxPower);
 
     // deploy RUs
     deployRu(nodeX_, nodeY_, numRus_, ruRange);
