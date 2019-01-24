@@ -62,13 +62,13 @@ protected:
    std::vector<std::map<std::string, int>> cbrLevels_;
    std::vector<int> validResourceReservationIntervals_;
 
+   std::random_device rand_device_;
+   std::mt19937 generator_;
+
    // if true, use the preconfigured TX params for transmission, else use that signaled by the eNB
    bool usePreconfiguredTxParams_;
    UserTxParams* preconfiguredTxParams_;
    UserTxParams* getPreconfiguredTxParams();  // build and return new user tx params
-
-   std::random_device rand_dev;
-   std::mt19937 generator;
 
 //   // Lte AMC module
 //   LteAmc *amc_;

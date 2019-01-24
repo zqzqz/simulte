@@ -48,24 +48,26 @@ void LteMacUeMode4D2D::initialize(int stage)
     if (stage !=INITSTAGE_NETWORK_LAYER_3)
     LteMacUeRealisticD2D::initialize(stage);
 
-    std::mt19937 generator(rand_dev());
-    parseUeTxConfig(par("txConfig").xmlValue());
-    parseCbrTxConfig(par("txConfig").xmlValue());
-    parseRriConfig(par("txConfig").xmlValue());
-    resourceReservationInterval_ = validResourceReservationIntervals_.at(0);
-    maximumLatency_ = par("maximumLatency");
-    subchannelSize_ = par("subchannelSize");
-    numSubchannels_ = par("numSubchannels");
-    probResourceKeep_ = par("probResourceKeep");
-    usePreconfiguredTxParams_ = par("usePreconfiguredTxParams");
-    maximumLatency_ = par("maximumLatency");
-    resourceReservationInterval_ = par("resourceReservationInterval");
-    reselectAfter_ = par("reselectAfter");
-    useCBR_ = par("useCBR");
-    maximumCapacity_ = 0;
-    cbr_=0;
-
-    if (stage == INITSTAGE_NETWORK_LAYER_3)
+    if (stage == inet::INITSTAGE_LOCAL)
+    {
+        generator_.seed(rand_device_());
+        parseUeTxConfig(par("txConfig").xmlValue());
+        parseCbrTxConfig(par("txConfig").xmlValue());
+        parseRriConfig(par("txConfig").xmlValue());
+        resourceReservationInterval_ = validResourceReservationIntervals_.at(0);
+        maximumLatency_ = par("maximumLatency");
+        subchannelSize_ = par("subchannelSize");
+        numSubchannels_ = par("numSubchannels");
+        probResourceKeep_ = par("probResourceKeep");
+        usePreconfiguredTxParams_ = par("usePreconfiguredTxParams");
+        maximumLatency_ = par("maximumLatency");
+        resourceReservationInterval_ = par("resourceReservationInterval");
+        reselectAfter_ = par("reselectAfter");
+        useCBR_ = par("useCBR");
+        maximumCapacity_ = 0;
+        cbr_=0;
+    }
+    else if (stage == INITSTAGE_NETWORK_LAYER_3)
     {
         // TODO: When deploying a UE add the deployer here, make it so deployer can exist on the UE as well.
         deployer_ = getDeployer();
@@ -617,11 +619,11 @@ void LteMacUeMode4D2D::handleSelfMessage()
             // Periodic checks
             // Periodic grant is expired
             std::uniform_real_distribution<float> floatdist(0, 1);
-            float randomReReserve = floatdist(generator);
+            float randomReReserve = floatdist(generator_);
             if (randomReReserve > probResourceKeep_)
             {
                 std::uniform_int_distribution<int> range(5, 15);
-                int expiration = range(generator);
+                int expiration = range(generator_);
                 mode4Grant -> setExpiration(expiration);
                 expirationCounter_ = expiration * mode4Grant->getPeriod();
             }
@@ -856,7 +858,7 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
 
     // Select random element from vector
     std::uniform_int_distribution<int> distr(0, CSRs.size());
-    int index = distr(generator);
+    int index = distr(generator_);
 
     std::vector<Subchannel*> selectedCR = CSRs[index];
     // Gives us the time at which we will send the subframe.
@@ -905,7 +907,7 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     // Based on restrictResourceReservation interval But will be between 1 and 15
     // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
     std::uniform_int_distribution<int> range(5, 15);
-    int resourceReselectionCounter = range(generator);
+    int resourceReselectionCounter = range(generator_);
 
     mode4Grant -> setExpiration(resourceReselectionCounter);
 
@@ -965,12 +967,13 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
     }
     else
     {
-        minSubchannelNumberPSSCH = max(maxSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannel-NumberPSSCH"));
-        maxSubchannelNumberPSSCH = min(minSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannel-NumberPSSCH"));
+        minSubchannelNumberPSSCH = max(minSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannelNumberPSSCH"));
+        maxSubchannelNumberPSSCH = min(maxSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannelNumberPSSCH"));
     }
     // Selecting the number of subchannel at random as there is no explanation as to the logic behind selecting the resources in the range unlike when selecting MCS.
-    std::uniform_int_distribution<int> distr(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH);
-    int numSubchannels = distr(generator);
+    // TODO: Investigate issue around random selection of subchannel number, doesn't work currently.
+    std::uniform_int_distribution<> distr(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH);
+    int numSubchannels = distr(generator_);
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
 
