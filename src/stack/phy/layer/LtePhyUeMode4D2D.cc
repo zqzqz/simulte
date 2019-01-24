@@ -43,7 +43,7 @@ void LtePhyUeMode4D2D::initialize(int stage)
         d2dDecodingTimer_ = NULL;
         transmitting_ = false;
         currentCBR_= 0;
-        cbrIndex_= 0;
+        cbrIndex_= -1; // Start at -1 simply to ensure that on first call to create subframe we start at index 0
         cbrHistory_.reserve(100);
 
         // The threshold has a size of 64, and allowable values of 0 - 66
