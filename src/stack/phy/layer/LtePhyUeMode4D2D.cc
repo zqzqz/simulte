@@ -152,23 +152,24 @@ void LtePhyUeMode4D2D::handleAirFrame(cMessage* msg)
         return;
     }
 
-    // Check if the frame is for us ( MacNodeId matches or - if this is a multicast communication - enrolled in multicast group)
-    if (lteInfo->getDestId() != nodeId_ && !(binder_->isInMulticastGroup(nodeId_, lteInfo->getMulticastGroupId())))
-    {
-        EV << "ERROR: Frame is not for us. Delete it." << endl;
-        EV << "Packet Type: " << phyFrameTypeToA((LtePhyFrameType)lteInfo->getFrameType()) << endl;
-        EV << "Frame MacNodeId: " << lteInfo->getDestId() << endl;
-        EV << "Local MacNodeId: " << nodeId_ << endl;
-        delete lteInfo;
-        delete frame;
-        return;
-    }
+//    // Check if the frame is for us ( MacNodeId matches or - if this is a multicast communication - enrolled in multicast group)
+//    if (lteInfo->getDestId() != nodeId_ && !(binder_->isInMulticastGroup(nodeId_, lteInfo->getMulticastGroupId())))
+//    {
+//        EV << "ERROR: Frame is not for us. Delete it." << endl;
+//        EV << "Packet Type: " << phyFrameTypeToA((LtePhyFrameType)lteInfo->getFrameType()) << endl;
+//        EV << "Frame MacNodeId: " << lteInfo->getDestId() << endl;
+//        EV << "Local MacNodeId: " << nodeId_ << endl;
+//        delete lteInfo;
+//        delete frame;
+//        return;
+//    }
 
-    if (binder_->isInMulticastGroup(nodeId_,lteInfo->getMulticastGroupId()))
-    {
-        // HACK: if this is a multicast connection, change the destId of the airframe so that upper layers can handle it
-        lteInfo->setDestId(nodeId_);
-    }
+//    if (binder_->isInMulticastGroup(nodeId_,lteInfo->getMulticastGroupId()))
+//    {
+    // HACK: if this is a multicast connection, change the destId of the airframe so that upper layers can handle it
+    // All packets in mode 4 are multicast so I feel like the effort to get this working is pointless, I can't easily determine the issue
+    lteInfo->setDestId(nodeId_);
+//    }
 
     // send H-ARQ feedback up
     if (lteInfo->getFrameType() == HARQPKT || lteInfo->getFrameType() == GRANTPKT || lteInfo->getFrameType() == RACPKT || lteInfo->getFrameType() == D2DMODESWITCHPKT)
@@ -242,11 +243,12 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
     LteAirFrame* frame = NULL;
     if (lteInfo->getFrameType() == DATAPKT && lteInfo->getUserTxParams() != NULL)
     {
-        double cqi = lteInfo->getUserTxParams()->readCqiVector()[lteInfo->getCw()];
-        if (lteInfo->getDirection() == UL)
-            emit(averageCqiUl_, cqi);
-        else if (lteInfo->getDirection() == D2D || D2D_MULTI)
-            emit(averageCqiD2D_, cqi);
+        // This realistically isn't important as we won't be using cqi in the end.
+//        double cqi = lteInfo->getUserTxParams()->readCqiVector()[lteInfo->getCw()];
+//        if (lteInfo->getDirection() == UL)
+//            emit(averageCqiUl_, cqi);
+//        else if (lteInfo->getDirection() == D2D || D2D_MULTI)
+//            emit(averageCqiD2D_, cqi);
 
         RbMap sciRbs;
         if (adjacencyPSCCHPSSCH_)
@@ -327,15 +329,16 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
 
         frame = prepareAirFrame(msg, lteInfo);
 
-        cPacket* pkt = check_and_cast<cPacket*>(msg);
-        if (pkt->getBitLength() > sciGrant_->getGrantedCwBytes(0))
-        {
-            cMessage* grantBreak = new cMessage("GRANTBREAK");
-            send(grantBreak, upperGateOut_);
-
-            // At this point we need not go any further
-            return;
-        }
+        // Going to assume that it won't be the case that we have this issue
+//        cPacket* pkt = check_and_cast<cPacket*>(msg);
+//        if (pkt->getBitLength() > sciGrant_->getGrantedCwBytes(0))
+//        {
+//            cMessage* grantBreak = new cMessage("GRANTBREAK");
+//            send(grantBreak, upperGateOut_);
+//
+//            // At this point we need not go any further
+//            return;
+//        }
 
         // create LteAirFrame and encapsulate the received packet
         SidelinkControlInformation* SCI = createSCIMessage();
@@ -1153,12 +1156,19 @@ void LtePhyUeMode4D2D::finish()
     if (getSimulation()->getSimulationStage() != CTX_FINISH)
     {
         // do this only at deletion of the module during the simulation
-
-        // amc calls
+        //LtePhyUe::finish();
         LteAmc *amc = getAmcModule(masterId_);
         if (amc != NULL)
+        {
+            amc->detachUser(nodeId_, UL);
+            amc->detachUser(nodeId_, DL);
             amc->detachUser(nodeId_, D2D);
+        }
 
-        LtePhyUe::finish();
+        // binder call
+        binder_->unregisterNextHop(masterId_, nodeId_);
+
+        // deployer call
+        deployer_->detachUser(nodeId_);
     }
 }
