@@ -56,6 +56,8 @@ protected:
    bool useCBR_;
    int cbr_;
 
+   Codeword currentCw_;
+
    std::map<UnitList, int> pduRecord_;
 
    std::vector<std::map<std::string, int>> cbrPSSCHTxConfigList_;
@@ -64,6 +66,13 @@ protected:
 
    std::random_device rand_device_;
    std::mt19937 generator_;
+
+   McsTable dlMcsTable_;
+   McsTable ulMcsTable_;
+   McsTable d2dMcsTable_;
+   double mcsScaleDl_;
+   double mcsScaleUl_;
+   double mcsScaleD2D_;
 
    // if true, use the preconfigured TX params for transmission, else use that signaled by the eNB
    bool usePreconfiguredTxParams_;
