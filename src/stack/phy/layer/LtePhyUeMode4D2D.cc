@@ -896,32 +896,20 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
         // apply analog models For DAS
         result=channelModel_->errorDas(frame,lteInfo);
     }
-    else
-    {
-        //RELAY and NORMAL
-        if (lteInfo->getDirection() == D2D_MULTI)
-            result = channelModel_->error_D2D(frame,lteInfo,rsrpVector);
-        else
-            result = channelModel_->error(frame,lteInfo);
-    }
-
-    // update statistics
-    if (result)
-        numAirFrameReceived_++;
-    else
-        numAirFrameNotReceived_++;
-
-    EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
-       << ( result ? "RECEIVED" : "NOT RECEIVED" ) << endl;
 
     cPacket* pkt = frame->decapsulate();
 
-    // attach the decider result to the packet as control info
-    lteInfo->setDeciderResult(result);
-    pkt->setControlInfo(lteInfo);
+//    // attach the decider result to the packet as control info
+//    lteInfo->setDeciderResult(result);
+//    pkt->setControlInfo(lteInfo);
 
     if(lteInfo->getFrameType() == SCIPKT)
     {
+        //RELAY and NORMAL
+        if (lteInfo->getDirection() == D2D_MULTI)
+            result = channelModel_->error_Mode4_D2D(frame,lteInfo,rsrpVector, 0);
+        else
+            result = channelModel_->error(frame,lteInfo);
         if (result)
         {
             // TODO: Signal successfully decoded SCI message
@@ -960,10 +948,16 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
             // if the SCI and TB have same source then we have the right SCI
             if (sciInfo->getSourceId() == lteInfo->getSourceId())
             {
-                // Successfully received the SCI
+                //Successfully received the SCI
                 foundCorrespondingSci = true;
 
-                correspondingSCI = *it;
+                SidelinkControlInformation* correspondingSCI = check_and_cast<SidelinkControlInformation*>(*it);
+
+                //RELAY and NORMAL
+                if (lteInfo->getDirection() == D2D_MULTI)
+                    result = channelModel_->error_Mode4_D2D(frame,lteInfo,rsrpVector, correspondingSCI->getMcs());
+                else
+                    result = channelModel_->error(frame,lteInfo);
 
                 // Remove the SCI
                 decodedScis_.erase(it);
@@ -1019,6 +1013,15 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
         if (getEnvir()->isGUI())
             updateDisplayString();
     }
+
+    // update statistics
+    if (result)
+        numAirFrameReceived_++;
+    else
+        numAirFrameNotReceived_++;
+
+    EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
+       << ( result ? "RECEIVED" : "NOT RECEIVED" ) << endl;
 }
 
 std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(cPacket* pkt)
