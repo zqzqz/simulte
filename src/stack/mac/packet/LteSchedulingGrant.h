@@ -137,6 +137,7 @@ protected:
     simtime_t startTime;
     std::vector<double> possibleRRIs;
     bool retransmission;
+    bool firstTransmission;
     unsigned int timeGapTransRetrans;
     unsigned int spsPriority;
     unsigned int numSubchannels;
@@ -159,6 +160,7 @@ public:
         mcs = 0;
         retransSubchannel = 0;
         resourceReselectionCounter = 0;
+        firstTransmission = true;
         startTime = simTime();
     }
 
@@ -280,6 +282,14 @@ public:
     void setPossibleRRIs(std::vector<double> RRIs)
     {
         this->possibleRRIs = RRIs;
+    }
+    bool getFirstTransmission() const
+    {
+        return firstTransmission;
+    }
+    void setFirstTransmission(bool firstTransmission)
+    {
+        this->firstTransmission = firstTransmission;
     }
 };
 

@@ -622,8 +622,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
         // Periodic checks
         if(--expirationCounter_ == mode4Grant->getPeriod())
         {
-            // Periodic checks
-            // Periodic grant is expired
+            // Gotten to the point of the final tranmission must determine if we reselect or not.
             std::uniform_real_distribution<float> floatdist(0, 1);
             float randomReReserve = floatdist(generator_);
             if (randomReReserve > probResourceKeep_)
@@ -631,6 +630,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
                 std::uniform_int_distribution<int> range(5, 15);
                 int expiration = range(generator_);
                 mode4Grant -> setExpiration(expiration);
+                mode4Grant -> setFirstTransmission(true);
                 expirationCounter_ = expiration * mode4Grant->getPeriod();
             }
             else
@@ -645,7 +645,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
             // This is the last message to send
             generateNewSchedulingGrant = true;
         }
-        if (--periodCounter_>0)
+        if (--periodCounter_>0 && !mode4Grant->getFirstTransmission())
         {
             return;
         }
@@ -654,6 +654,10 @@ void LteMacUeMode4D2D::handleSelfMessage()
             // resetting grant period
             periodCounter_=mode4Grant->getPeriod();
             // this is periodic grant TTI - continue with frame sending
+        }
+        if (mode4Grant->getFirstTransmission())
+        {
+            mode4Grant->setFirstTransmission(false);
         }
     }
     bool requestSdu = false;
