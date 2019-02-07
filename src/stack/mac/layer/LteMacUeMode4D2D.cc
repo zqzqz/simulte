@@ -388,10 +388,6 @@ void LteMacUeMode4D2D::macPduMake()
             if (usePreconfiguredTxParams_)
             {
                 UserTxParams* userTxParams = preconfiguredTxParams_;
-//                unsigned int mcs = mode4Grant->getMcs();
-//                unsigned int cqi = amc_->getCqiForMcs(mcs, D2D_MULTI);
-//
-//                userTxParams->writeCqi(std::vector<Cqi>(1,cqi));
                 uinfo->setUserTxParams(userTxParams->dup());
                 mode4Grant->setUserTxParams(userTxParams->dup());
             }
@@ -767,7 +763,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
 
                             sendLowerPackets(phyGrant);
 
-                            //currHarq->markSelected(pduId,mode4Grant->getUserTxParams()->getLayers().size());
+//                            currHarq->markSelected(pduId,mode4Grant->getUserTxParams()->getLayers().size());
 
                             // Message that triggers flushing of Tx H-ARQ buffers for all users
                             // This way, flushing is performed after the (possible) reception of new MAC PDUs
@@ -801,15 +797,17 @@ void LteMacUeMode4D2D::handleSelfMessage()
 //            }
         }
         // if no retx is needed, proceed with normal scheduling
-        if(!retx && !generateNewSchedulingGrant)
+        if(!retx)
         {
             scheduleList_ = lcgScheduler_->schedule();
-            if (scheduleList_->empty())
+            bool sent = macSduRequest();
+
+            if (!scheduleList_->empty())
             {
-                // no connection scheduled, but we can use this grant to send a BSR to the eNB
+                // no connection scheduled
                 macPduMake();
             }
-            requestSdu = macSduRequest(); // return a bool
+            requestSdu = sent; // return a bool
         }
     }
     if (mode4Grant == NULL || generateNewSchedulingGrant)
@@ -850,7 +848,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
     }
     EV << NOW << " LteMacUeMode4D2D::handleSelfMessage Purged " << purged << " PDUS" << endl;
 
-    if (requestSdu == false)
+    if (!requestSdu)
     {
         // update current harq process id
         currentHarq_ = (currentHarq_+1) % harqProcesses_;
@@ -906,7 +904,7 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     mode4Grant->setGrantedBlocks(grantedBlocks);
     mode4Grant->setTotalGrantedBlocks(totalGrantedBlocks);
     mode4Grant->setDirection(D2D_MULTI);
-    mode4Grant->setCodewords(1);
+    mode4Grant->setCodewords(2);
 
     mode4Grant->setMcs(maxMCSPSSCH_);
 
