@@ -77,18 +77,12 @@ void LteMacUeMode4D2D::initialize(int stage)
         // TODO: When deploying a UE add the deployer here, make it so deployer can exist on the UE as well.
         deployer_ = getDeployer();
         numAntennas_ = getNumAntennas();
-//        amc_ = new LteAmc(this, binder_, deployer_, numAntennas_);
-//        amc_->attachUser(nodeId_, D2D);
-
-//        numBands_ = deployer_->getNumBands();
         mcsScaleD2D_ = deployer_->getMcsScaleUl();
         d2dMcsTable_.rescale(mcsScaleD2D_);
 
         if (usePreconfiguredTxParams_)
         {
             preconfiguredTxParams_ = getPreconfiguredTxParams();
-//            Cqi maxCqi = amc_->getCqiForMcs(maxMCSPSSCH_, D2D);
-//            check_and_cast<AmcPilotD2D*>(amc_->getPilot())->setPreconfiguredTxParams(maxCqi);
         }
 
         // LTE UE Section
@@ -105,11 +99,6 @@ void LteMacUeMode4D2D::initialize(int stage)
         info->phy = check_and_cast<LtePhyBase*>(info->ue->getSubmodule("lteNic")->getSubmodule("phy"));
 
         binder_->addUeInfo(info);
-
-        // only for UEs that have been added dynamically to the simulation
-//        LteAmc *amc = check_and_cast<LteMacEnb *>(getSimulation()->getModule(binder_->getOmnetId(cellId_))->getSubmodule("lteNic")->getSubmodule("mac"))->getAmc();
-//        amc->attachUser(nodeId_, UL);
-//        amc->attachUser(nodeId_, DL);
 
         // find interface entry and use its address
         IInterfaceTable *interfaceTable = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
@@ -316,15 +305,6 @@ void LteMacUeMode4D2D::parseRriConfig(cXMLElement* xmlConfig)
     }
 }
 
-//LteDeployer* LteMacUeMode4D2D::getDeployer()
-//{
-//    // Get local deployer
-//    if (deployer_ != NULL)
-//        return deployer_;
-//
-//    return deployer_ = check_and_cast<LteMacEnb *>(getSimulation()->getModule(binder_->getOmnetId(cellId_))->getSubmodule("lteNic")->getSubmodule("mac"))->getDeployer();
-//}
-
 int LteMacUeMode4D2D::getNumAntennas()
 {
     /* Get number of antennas: +1 is for MACRO */
@@ -374,13 +354,6 @@ void LteMacUeMode4D2D::macPduMake()
             uinfo->setLcid(MacCidToLcid(destCid));
             uinfo->setDirection(dir);
             uinfo->setLcid(MacCidToLcid(SHORT_BSR));
-
-            // TODO: Here I need to make sure that I can set the UserTxParams correctly
-            // i.e. we have the grant setup, and that has our MCS in it we should use that.
-            // Also I want to update the scheduling grant with the size of message that can be
-            // sent in the RBs assigned to this user.
-
-            // TODO: Investigate if BLER curves are available for MCS
 
             // First translate MCS to CQI
             LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
@@ -482,9 +455,6 @@ void LteMacUeMode4D2D::macPduMake()
 
         EV << "LteMacUeRealisticD2D: pduMaker created PDU: " << macPkt->info() << endl;
 
-        // TODO: harq test
-        // pdu transmission here (if any)
-        // txAcid has HARQ_NONE for non-fillable codeword, acid otherwise
         if (txList.second.empty())
         {
             EV << "LteMacUeRealisticD2D() : no available process for this MAC pdu in TxHarqBuffer" << endl;
@@ -863,9 +833,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
 
 void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
 {
-    // This is where we add the subchannels to the actual scheduling grant, so a few things
-    // TODO: this needs a lot of changes
-    /**
+    /**   This is where we add the subchannels to the actual scheduling grant, so a few things
      * 1. Need to ensure in the self message part that if at any point we have a scheduling grant without assigned subchannels, we have to wait
      * 2. Need to pick at random from the SPS list of CSRs
      * 3. Assign the CR
@@ -911,16 +879,6 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     mode4Grant->setCodewords(2);
 
     mode4Grant->setMcs(maxMCSPSSCH_);
-
-//    // Add the granted size to the schedulingGrant
-//    Codeword cw = 0;
-//    Band b = 0;
-//
-//    unsigned int cqi = amc_->getCqiForMcs(maxMCSPSSCH_, D2D_MULTI);
-//    check_and_cast<AmcPilotD2D*>(amc_->getPilot())->setPreconfiguredTxParams(cqi);
-//
-//    maximumCapacity_ = amc_->computeBitsOnNRbs(nodeId_, b, cw, totalGrantedBlocks, D2D_MULTI);
-//    mode4Grant->setGrantedCwBytes(cw, maximumCapacity_);
 
     LteMod mod = _QPSK;
     if (maxMCSPSSCH_ > 9 && maxMCSPSSCH_ < 17)
@@ -1008,7 +966,6 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
         maxSubchannelNumberPSSCH = min(maxSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannelNumberPSSCH"));
     }
     // Selecting the number of subchannel at random as there is no explanation as to the logic behind selecting the resources in the range unlike when selecting MCS.
-    // TODO: Investigate issue around random selection of subchannel number, doesn't work currently.
     std::uniform_int_distribution<> distr(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH);
     int numSubchannels = distr(generator_);
 
@@ -1039,23 +996,7 @@ void LteMacUeMode4D2D::flushHarqBuffers()
     HarqTxBuffers::iterator it2;
     for(it2 = harqTxBuffers_.begin(); it2 != harqTxBuffers_.end(); it2++)
     {
-        UnitList pduId = it2->second->firstAvailable();
-//        if (pduRecord_.find(pduId) == pduRecord_.end())
-//        {
-//            pduRecord_.insert(std::pair<UnitList, int>(pduId, 1));
-//        }
-//        else
-//        {
-//            pduRecord_[pduId] += 1;
-//        }
-
         it2->second->sendSelectedDown();
-
-//        if (pduRecord_.at(pduId) >= allowedRetxNumberPSSCH_)
-//        {
-//        if (pduId.first != HARQ_NONE)
-//            it2->second->forceDropUnit(pduId.first, pduId.second.front());
-//        }
     }
 
     // deleting non-periodic grant
