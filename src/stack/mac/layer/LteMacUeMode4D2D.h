@@ -55,6 +55,7 @@ protected:
    int defaultCbrIndex_;
    bool useCBR_;
    int cbr_;
+   int missedTransmissions_;
 
    Codeword currentCw_;
 

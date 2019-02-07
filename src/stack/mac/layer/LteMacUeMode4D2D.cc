@@ -71,6 +71,7 @@ void LteMacUeMode4D2D::initialize(int stage)
         maximumCapacity_ = 0;
         cbr_=0;
         currentCw_=0;
+        missedTransmissions_=0;
     }
     else if (stage == INITSTAGE_NETWORK_LAYER_3)
     {
@@ -645,7 +646,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
 
         EV << NOW << " LteMacUeMode4D2D::handleSelfMessage " << nodeId_ << " entered scheduling" << endl;
 
-        bool retx = false;
+        bool trans = false;
 
         HarqTxBuffers::iterator it2;
         LteHarqBufferTx * currHarq;
@@ -670,7 +671,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
                 int pduLength = currHarq->pduLength((unsigned char)currentHarq_, *cw);
                 if (pduLength < maximumCapacity_)
                 {
-                    retx = true;
+                    trans = true;
 
                     int cbrIndex = defaultCbrIndex_;
                     if (useCBR_)
@@ -745,6 +746,8 @@ void LteMacUeMode4D2D::handleSelfMessage()
                             flushHarqMsg->setSchedulingPriority(1);        // after other messages
                             scheduleAt(NOW, flushHarqMsg);
 
+                            missedTransmissions_ = 0;
+
                             break;
                         }
                     }
@@ -771,8 +774,16 @@ void LteMacUeMode4D2D::handleSelfMessage()
 //            }
         }
         // if no retx is needed, proceed with normal scheduling
-        if(!retx)
+        if(!trans)
         {
+            ++missedTransmissions_;
+            if (missedTransmissions_ >= reselectAfter_)
+            {
+                delete schedulingGrant_;
+                schedulingGrant_ = NULL;
+                generateNewSchedulingGrant=true;
+                missedTransmissions_ = 0;
+            }
             scheduleList_ = lcgScheduler_->schedule();
             bool sent = macSduRequest();
 
