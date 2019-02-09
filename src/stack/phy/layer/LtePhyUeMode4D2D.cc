@@ -201,7 +201,7 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
 //    TODO     BatteryAccess::drawCurrent(txAmount_, 1);
 //    }
 
-    UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(msg->removeControlInfo());
+    UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(msg->getControlInfo());
 
     if (lteInfo->getFrameType() == GRANTPKT)
     {
@@ -843,7 +843,7 @@ void LtePhyUeMode4D2D::storeAirFrame(LteAirFrame* newFrame)
 {
     // implements the capture effect
     // store the frame received from the nearest transmitter
-    UserControlInfo* newInfo = check_and_cast<UserControlInfo*>(newFrame->getControlInfo());
+    UserControlInfo* newInfo = check_and_cast<UserControlInfo*>(newFrame->removeControlInfo());
     Coord myCoord = getCoord();
 
     std::vector<double> rsrpVector = channelModel_->getRSRP_D2D(newFrame, newInfo, nodeId_, myCoord);
@@ -853,11 +853,13 @@ void LtePhyUeMode4D2D::storeAirFrame(LteAirFrame* newFrame)
     // TODO: Update the subchannel associated with this transmission to include the average RSRP for the sub channel
     // Need to be able to figure out which subchannel is associated to the Rbs in this case
     if (newInfo->getFrameType() == SCIPKT){
+        newFrame->setControlInfo(newInfo);
         sciFrames_.push_back(newFrame);
         sciRsrpVectors_.push_back(rsrpVector);
         sciRssiVectors_.push_back(rssiVector);
     }
     else{
+        newFrame->setControlInfo(newInfo);
         tbFrames_.push_back(newFrame);
         tbRsrpVectors_.push_back(rsrpVector);
         tbRssiVectors_.push_back(rssiVector);
@@ -927,6 +929,7 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
                 // Record the SCI in the subchannel.
                 (*kt)->setSCI(pkt);
             }
+            pkt->setControlInfo(lteInfo);
             decodedScis_.push_back(pkt);
         }
         else
@@ -961,6 +964,8 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
 
                 // Remove the SCI
                 decodedScis_.erase(it);
+
+                correspondingSCI->setControlInfo(lteInfo);
                 break;
             }
         }
@@ -968,7 +973,7 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
         {
             // TODO: Signal failed to decode TB due to lack of sci
             lteInfo->setDeciderResult(false);
-            pkt->setControlInfo(lteInfo);
+            //pkt->setControlInfo(lteInfo);
             return;
         }
         // TODO: Signal successfully found the SCI message
@@ -1088,6 +1093,8 @@ std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(cPacket* pkt)
     {
         lengthInSubchannels = subchannelLUnderHalf;
     }
+
+    pkt->setControlInfo(lteInfo);
     return std::make_tuple(subchannelIndex, lengthInSubchannels);
 }
 
@@ -1108,7 +1115,7 @@ void LtePhyUeMode4D2D::updateCBR()
 
 void LtePhyUeMode4D2D::createSubframe(simtime_t subframeTime)
 {
-    EV << NOW << " LtePhyUeMode4D2D::createSubframe - creating subframe to be added to sensingWindow..." << endl;
+    EV_DEBUG << NOW << " LtePhyUeMode4D2D::createSubframe - creating subframe to be added to sensingWindow..." << endl;
     std::vector<Subchannel*> subframe;
 
     Band band = 0;
