@@ -361,9 +361,9 @@ void LteMacUeMode4D2D::macPduMake()
 
             if (usePreconfiguredTxParams_)
             {
-                UserTxParams* userTxParams = preconfiguredTxParams_;
-                uinfo->setUserTxParams(userTxParams->dup());
-                mode4Grant->setUserTxParams(userTxParams->dup());
+                //UserTxParams* userTxParams = preconfiguredTxParams_;
+                uinfo->setUserTxParams(preconfiguredTxParams_->dup());
+                mode4Grant->setUserTxParams(preconfiguredTxParams_->dup());
             }
             else
                 uinfo->setUserTxParams(mode4Grant->getUserTxParams()->dup());
@@ -535,7 +535,23 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
         {
             Cbr* cbrPkt = check_and_cast<Cbr*>(pkt);
             cbr_ = cbrPkt->getCbr();
+
+            // message from PHY_to_MAC gate (from lower layer)
+            emit(receivedPacketFromLowerLayer, pkt);
+
             return;
+        }
+    }
+    else if (incoming == up_[IN])
+    {
+        if (strcmp(pkt->getName(), "newDataPkt")== 0)
+        {
+            if (schedulingGrant_ == NULL)
+            {
+                macGenerateSchedulingGrant();
+            }
+            // Need to set the size of our grant to the correct size we need to ask rlc for, i.e. for the sdu size.
+            schedulingGrant_->setGrantedCwBytes((MAX_CODEWORDS - currentCw_), pkt->getBitLength());
         }
     }
 
@@ -577,16 +593,13 @@ void LteMacUeMode4D2D::handleSelfMessage()
     // no grant available - if user has backlogged data, it will trigger scheduling request
     // no harq counter is updated since no transmission is sent.
 
-    bool generateNewSchedulingGrant = false;
-
     LteMode4SchedulingGrant* mode4Grant = dynamic_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
 
     if (mode4Grant == NULL)
     {
         EV << NOW << " LteMacUeMode4D2D::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
 
-        // scheduling grant needs to be generated at end of process
-        generateNewSchedulingGrant = true;
+        // No configured Grant simply continue
     }
     else if (mode4Grant->getPeriodic() && mode4Grant->getStartTime() <= NOW)
     {
@@ -609,13 +622,6 @@ void LteMacUeMode4D2D::handleSelfMessage()
                 mode4Grant->setExpiration(0);
             }
         }
-        // Periodic checks
-        else if(expirationCounter_ == 0)
-        {
-            // Periodic grant is expired
-            // This is the last message to send
-            generateNewSchedulingGrant = true;
-        }
         if (--periodCounter_>0 && !mode4Grant->getFirstTransmission())
         {
             return;
@@ -626,14 +632,21 @@ void LteMacUeMode4D2D::handleSelfMessage()
             periodCounter_=mode4Grant->getPeriod();
             // this is periodic grant TTI - continue with frame sending
         }
-        if (mode4Grant->getFirstTransmission())
+        else if (expirationCounter_ == 0)
         {
-            mode4Grant->setFirstTransmission(false);
+            // Grant has expired, only generate new grant on receiving next message to be sent.
+            delete schedulingGrant_;
+            schedulingGrant_ = NULL;
+            mode4Grant = NULL;
         }
     }
     bool requestSdu = false;
     if (mode4Grant!=NULL && mode4Grant->getStartTime() <= NOW) // if a grant is configured
     {
+        if (mode4Grant->getFirstTransmission())
+        {
+            mode4Grant->setFirstTransmission(false);
+        }
         if(!firstTx)
         {
             EV << "\t currentHarq_ counter initialized " << endl;
@@ -646,7 +659,8 @@ void LteMacUeMode4D2D::handleSelfMessage()
 
         EV << NOW << " LteMacUeMode4D2D::handleSelfMessage " << nodeId_ << " entered scheduling" << endl;
 
-        bool trans = false;
+        bool retx = false;
+        bool availablePdu = false;
 
         HarqTxBuffers::iterator it2;
         LteHarqBufferTx * currHarq;
@@ -656,150 +670,59 @@ void LteMacUeMode4D2D::handleSelfMessage()
             currHarq = it2->second;
 
             // check if the current process has unit ready for retx
-            UnitList pduId = it2->second->firstAvailable();
+            retx = currHarq->getProcess(currentHarq_)->hasReadyUnits();
+            CwList cwListRetx = currHarq->getProcess(currentHarq_)->readyUnitsIds();
 
-            // Always 0
-//            unsigned char currentAcid = harqStatus_.at(nodeId);
-//            // search for an empty unit within current harq process
-//            UnitList txList = txBuf->getEmptyUnits(currentHarq_);
-//            EV << "LteMacUeRealisticD2D::macPduMake - [Used Acid=" << (unsigned int)txList.first << "] , [curr=" << (unsigned int)currentHarq_ << "]" << endl;
-            // TODO: Fix issue with 0 length pduLength
-            // Possibly due to there being no ack or nack and so a message is not removed when sent. Might need some sort of harq buffer for mode4 most likely.
-            std::list<Codeword>::iterator cw;
-            for (cw=pduId.second.begin(); cw!=pduId.second.end(); cw++)
+            if (it2->second->isSelected())
             {
-                int pduLength = currHarq->pduLength((unsigned char)currentHarq_, *cw);
-                if (pduLength < maximumCapacity_)
+                LteHarqProcessTx* selectedProcess = it2->second->getSelectedProcess();
+                // Ensure that a pdu is not already on the HARQ buffer awaiting sending.
+                if (selectedProcess != NULL)
                 {
-                    trans = true;
-
-                    int cbrIndex = defaultCbrIndex_;
-                    if (useCBR_)
+                    for (int cw=0; cw<MAX_CODEWORDS; cw++)
                     {
-                        std::vector<std::map<string, int>>::iterator it;
-                        for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
+                        if (selectedProcess->getPduLength(cw) != 0)
                         {
-                            if (cbr_<(*it).at("cbr-upper"))
-                            {
-                                cbrIndex = (*it).at("cbr-PSSCH-TxConfig-Index");
-                                break;
-                            }
+                            availablePdu = true;
                         }
-                    }
-
-                    int minMCS;
-                    int maxMCS;
-                    if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
-                    {
-                        // No overlap therefore I will use the cbr values (this is left to the UE).
-                        minMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH");
-                        maxMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH");
-                    }
-                    else
-                    {
-                        minMCS = max(minMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH"));
-                        maxMCS = min(maxMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH"));
-                    }
-                    bool foundValidMCS = false;
-                    int totalGrantedBlocks = mode4Grant->getTotalGrantedBlocks();
-                    for (int mcs=minMCS; mcs < maxMCS; mcs++)
-                    {
-                        int mcsCapacity = 0;
-
-                        LteMod mod = _QPSK;
-                        if (maxMCSPSSCH_ > 9 && maxMCSPSSCH_ < 17)
-                        {
-                            mod = _16QAM;
-                        }
-                        else if (maxMCSPSSCH_ > 16 && maxMCSPSSCH_ < 29 )
-                        {
-                            mod = _64QAM;
-                        }
-
-                        unsigned int i = (mod == _QPSK ? 0 : (mod == _16QAM ? 9 : (mod == _64QAM ? 15 : 0)));
-
-                        const unsigned int* tbsVect = itbs2tbs(mod, SINGLE_ANTENNA_PORT0, 1, maxMCSPSSCH_ - i);
-                        mcsCapacity = tbsVect[totalGrantedBlocks-1];
-
-                        if (mcsCapacity > pduLength)
-                        {
-                            foundValidMCS = true;
-                            mode4Grant->setMcs(mcs);
-                            mode4Grant->setGrantedCwBytes(*cw, mcsCapacity);
-
-                            LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
-
-                            UserControlInfo* uinfo = new UserControlInfo();
-                            uinfo->setSourceId(getMacNodeId());
-                            uinfo->setDestId(getMacNodeId());
-                            uinfo->setFrameType(GRANTPKT);
-
-                            phyGrant->setControlInfo(uinfo);
-
-                            sendLowerPackets(phyGrant);
-
-//                            currHarq->markSelected(pduId,mode4Grant->getUserTxParams()->getLayers().size());
-
-                            // Message that triggers flushing of Tx H-ARQ buffers for all users
-                            // This way, flushing is performed after the (possible) reception of new MAC PDUs
-                            cMessage* flushHarqMsg = new cMessage("flushHarqMsg");
-                            flushHarqMsg->setSchedulingPriority(1);        // after other messages
-                            scheduleAt(NOW, flushHarqMsg);
-
-                            missedTransmissions_ = 0;
-
-                            break;
-                        }
-                    }
-                    if (!foundValidMCS)
-                    {
-                        // Never found an MCS to satisfy the requirements of the message must regenerate grant
-                        delete schedulingGrant_;
-                        schedulingGrant_ = NULL;
-                        generateNewSchedulingGrant = true;
-                    }
-                    if (!mode4Grant->getUserTxParams())
-                    {
-                        //allow breakpoint
-                        mode4Grant->setUserTxParams(preconfiguredTxParams_);
                     }
                 }
             }
-//            if (noPdu)
-//            {
-//                // Break the grant, need to emit that the grant is broken
-//                delete schedulingGrant_;
-//                schedulingGrant_ = NULL;
-//                generateNewSchedulingGrant = true;
-//            }
+
+            EV << "\t [process=" << (unsigned int)currentHarq_ << "] , [retx=" << ((retx)?"true":"false")
+               << "] , [n=" << cwListRetx.size() << "]" << endl;
+
+            // if a retransmission is needed
+            if(retx)
+            {
+                UnitList signal;
+                signal.first=currentHarq_;
+                signal.second = cwListRetx;
+                currHarq->markSelected(signal,schedulingGrant_->getUserTxParams()->getLayers().size());
+            }
         }
         // if no retx is needed, proceed with normal scheduling
-        if(!trans)
+        // TODO: This may yet be changed to appear after MCS selection, issue is that if you pick max then you might get more sdus then you want
+        // Basing it on the previous mcs value is at least more realistic as to the size of the pdu you will get.
+        if(!retx && !availablePdu)
         {
-            ++missedTransmissions_;
-            if (missedTransmissions_ >= reselectAfter_)
-            {
-                delete schedulingGrant_;
-                schedulingGrant_ = NULL;
-                generateNewSchedulingGrant=true;
-                missedTransmissions_ = 0;
-            }
             scheduleList_ = lcgScheduler_->schedule();
             bool sent = macSduRequest();
 
-            if (!scheduleList_->empty())
+            if (!sent)
             {
-                // no connection scheduled
+                // no data to send, but if bsrTriggered is set, send a BSR
                 macPduMake();
             }
-            requestSdu = sent; // return a bool
-        }
-    }
-    if (mode4Grant == NULL || generateNewSchedulingGrant)
-    {
-        macGenerateSchedulingGrant();
-    }
 
+            requestSdu = sent;
+        }
+        // Message that triggers flushing of Tx H-ARQ buffers for all users
+        // This way, flushing is performed after the (possible) reception of new MAC PDUs
+        cMessage* flushHarqMsg = new cMessage("flushHarqMsg");
+        flushHarqMsg->setSchedulingPriority(1);        // after other messages
+        scheduleAt(NOW, flushHarqMsg);
+    }
     //============================ DEBUG ==========================
     HarqTxBuffers::iterator it;
 
@@ -813,10 +736,10 @@ void LteMacUeMode4D2D::handleSelfMessage()
         BufferStatus harqStatus = currHarq->getBufferStatus();
         BufferStatus::iterator jt = harqStatus.begin(), jet= harqStatus.end();
 
-        EV << "\t cicloOuter " << cntOuter << " - bufferStatus.size=" << harqStatus.size() << endl;
+        EV_DEBUG << "\t cicloOuter " << cntOuter << " - bufferStatus.size=" << harqStatus.size() << endl;
         for(; jt != jet; ++jt)
         {
-            EV << "\t\t cicloInner " << cntInner << " - jt->size=" << jt->size()
+            EV_DEBUG << "\t\t cicloInner " << cntInner << " - jt->size=" << jt->size()
                << " - statusCw(0/1)=" << jt->at(0).second << "/" << jt->at(1).second << endl;
         }
     }
@@ -887,7 +810,7 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     mode4Grant->setGrantedBlocks(grantedBlocks);
     mode4Grant->setTotalGrantedBlocks(totalGrantedBlocks);
     mode4Grant->setDirection(D2D_MULTI);
-    mode4Grant->setCodewords(2);
+    mode4Grant->setCodewords(1);
 
     mode4Grant->setMcs(maxMCSPSSCH_);
 
@@ -962,7 +885,6 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
     /**
      * Need to pick the number of subchannels for this reservation
      */
-
     int minSubchannelNumberPSSCH;
     int maxSubchannelNumberPSSCH;
     if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
@@ -1004,17 +926,121 @@ void LteMacUeMode4D2D::flushHarqBuffers()
     // Maintain unit list maybe and that causes retrans?
     // But purge them once all messages sent.
 
+    LteMode4SchedulingGrant* mode4Grant = dynamic_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
+
     HarqTxBuffers::iterator it2;
     for(it2 = harqTxBuffers_.begin(); it2 != harqTxBuffers_.end(); it2++)
     {
-        it2->second->sendSelectedDown();
-    }
+        if (it2->second->isSelected())
+        {
+            LteHarqProcessTx* selectedProcess = it2->second->getSelectedProcess();
+            for (int cw=0; cw<MAX_CODEWORDS; cw++)
+            {
+                int pduLength = selectedProcess->getPduLength(cw);
+                if ( pduLength > 0)
+                {
+                    int cbrIndex = defaultCbrIndex_;
+                    if (useCBR_)
+                    {
+                        std::vector<std::map<string, int>>::iterator it;
+                        for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
+                        {
+                            if (cbr_<(*it).at("cbr-upper"))
+                            {
+                                cbrIndex = (*it).at("cbr-PSSCH-TxConfig-Index");
+                                break;
+                            }
+                        }
+                    }
 
-    // deleting non-periodic grant
-    if (schedulingGrant_ != NULL && !schedulingGrant_->getPeriodic())
-    {
-        delete schedulingGrant_;
-        schedulingGrant_=NULL;
+                    int minMCS;
+                    int maxMCS;
+                    if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
+                    {
+                        // No overlap therefore I will use the cbr values (this is left to the UE).
+                        minMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH");
+                        maxMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH");
+                    }
+                    else
+                    {
+                        minMCS = max(minMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH"));
+                        maxMCS = min(maxMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH"));
+                    }
+                    bool foundValidMCS = false;
+                    int totalGrantedBlocks = mode4Grant->getTotalGrantedBlocks();
+
+                    for (int mcs=minMCS; mcs < maxMCS; mcs++)
+                    {
+                        int mcsCapacity = 0;
+
+                        LteMod mod = _QPSK;
+                        if (maxMCSPSSCH_ > 9 && maxMCSPSSCH_ < 17)
+                        {
+                            mod = _16QAM;
+                        }
+                        else if (maxMCSPSSCH_ > 16 && maxMCSPSSCH_ < 29 )
+                        {
+                            mod = _64QAM;
+                        }
+
+                        unsigned int i = (mod == _QPSK ? 0 : (mod == _16QAM ? 9 : (mod == _64QAM ? 15 : 0)));
+
+                        const unsigned int* tbsVect = itbs2tbs(mod, SINGLE_ANTENNA_PORT0, 1, mcs - i);
+                        mcsCapacity = tbsVect[totalGrantedBlocks-1];
+
+                        if (mcsCapacity > pduLength)
+                        {
+                            foundValidMCS = true;
+                            mode4Grant->setMcs(mcs);
+                            mode4Grant->setGrantedCwBytes(cw, mcsCapacity);
+
+                            if (!mode4Grant->getUserTxParams())
+                            {
+                                mode4Grant->setUserTxParams(preconfiguredTxParams_->dup());
+                            }
+
+                            LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
+
+                            UserControlInfo* uinfo = new UserControlInfo();
+                            uinfo->setSourceId(getMacNodeId());
+                            uinfo->setDestId(getMacNodeId());
+                            uinfo->setFrameType(GRANTPKT);
+
+                            phyGrant->setControlInfo(uinfo);
+
+                            // Send Grant to PHY layer for sci creation
+                            sendLowerPackets(phyGrant);
+                            // Send pdu to PHY layer for sending.
+                            it2->second->sendSelectedDown();
+
+                            missedTransmissions_ = 0;
+
+                            break;
+                        }
+                    }
+                    if (!foundValidMCS)
+                    {
+                        // Never found an MCS to satisfy the requirements of the message must regenerate grant
+                        delete schedulingGrant_;
+                        schedulingGrant_ = NULL;
+                        macGenerateSchedulingGrant();
+                    }
+                }
+                break;
+            }
+        }
+        else
+        {
+            // if no transmission check if we need to break the grant.
+            ++missedTransmissions_;
+            if (missedTransmissions_ >= reselectAfter_)
+            {
+                delete schedulingGrant_;
+                schedulingGrant_ = NULL;
+                macGenerateSchedulingGrant();
+                missedTransmissions_ = 0;
+            }
+        }
     }
 }
 
