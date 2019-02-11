@@ -101,7 +101,7 @@ class Subchannel
         double getAverageRSRP()
         {
             double sum = 0;
-            map<Band, double>::iterator it;
+            std::map<Band, double>::iterator it;
             for(it=rsrpValues.begin(); it!=rsrpValues.end(); it++)
             {
                 sum += it->second;
@@ -111,7 +111,7 @@ class Subchannel
         double getAverageRSSI()
         {
             double sum = 0;
-            map<Band, double>::iterator it;
+            std::map<Band, double>::iterator it;
             for(it=rssiValues.begin(); it!=rssiValues.end(); it++)
             {
                 sum += it->second;
