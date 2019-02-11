@@ -11,6 +11,7 @@
 #define SUBCHANNEL_H_
 
 #include "common/LteCommon.h"
+#include "stack/phy/packet/SidelinkControlInformation_m.h"
 
 class Subchannel
 {
@@ -22,7 +23,7 @@ class Subchannel
         simtime_t subframeTime;
         int subframeIndex;
         int subchannelIndex;
-        cPacket* sci;
+        SidelinkControlInformation* sci;
         std::vector<Band> occupiedBands;
         std::map<Band, double> rsrpValues;
         std::map<Band, double> rssiValues;
@@ -89,11 +90,11 @@ class Subchannel
         {
             return reserved;
         }
-        void setSCI(cPacket* SCI)
+        void setSCI(SidelinkControlInformation* SCI)
         {
             this->sci = SCI;
         }
-        cPacket* getSCIMessage()
+        SidelinkControlInformation* getSCIMessage()
         {
             return sci;
         }

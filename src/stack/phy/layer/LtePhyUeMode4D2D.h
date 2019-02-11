@@ -82,7 +82,7 @@ class LtePhyUeMode4D2D : public LtePhyUe
 
     virtual std::vector<std::vector<Subchannel*>> selectBestRSSIs(std::vector<std::vector<Subchannel*>> &possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
 
-    virtual std::tuple<int,int> decodeRivValue(cPacket* sci);
+    virtual std::tuple<int,int> decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo);
 
     virtual void updateCBR();
 
