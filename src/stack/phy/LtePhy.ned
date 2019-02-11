@@ -84,7 +84,7 @@ simple LtePhyUeD2D extends LtePhyUe {
          @statistic[averageCqiD2D](title="Average Cqi reported in D2D"; unit="cqi"; source="averageCqiD2D"; record=mean,vector);
 }
 
-simple LtePhyUeMode4D2D extends LtePhyUe {
+simple LtePhyUeMode4D2D extends LtePhyUeD2D {
 	parameters:   
 	    @class("LtePhyUeMode4D2D");
 	    

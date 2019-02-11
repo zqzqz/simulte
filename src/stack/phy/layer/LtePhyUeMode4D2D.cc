@@ -31,7 +31,7 @@ LtePhyUeMode4D2D::~LtePhyUeMode4D2D()
 void LtePhyUeMode4D2D::initialize(int stage)
 {
     if (stage != inet::INITSTAGE_NETWORK_LAYER_2)
-        LtePhyUe::initialize(stage);
+        LtePhyUeD2D::initialize(stage);
 
     if (stage == inet::INITSTAGE_LOCAL)
     {
@@ -45,6 +45,11 @@ void LtePhyUeMode4D2D::initialize(int stage)
         currentCBR_= 0;
         cbrIndex_= -1; // Start at -1 simply to ensure that on first call to create subframe we start at index 0
         cbrHistory_.reserve(100);
+
+        d2dTxPower_ = par("d2dTxPower");
+        if (d2dTxPower_ <= 0){
+            d2dTxPower_ = txPower_;
+        }
 
         // The threshold has a size of 64, and allowable values of 0 - 66
         // Deciding on this for now as it makes the most sense (low priority for both then more likely to take it)

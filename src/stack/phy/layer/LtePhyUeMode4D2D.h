@@ -7,16 +7,13 @@
 // and cannot be removed from it.
 //
 
-#ifndef _LTE_AIRPHYUED2D_H_
-#define _LTE_AIRPHYUED2D_H_
-
-#include "stack/phy/layer/LtePhyUe.h"
+#include "stack/phy/layer/LtePhyUeD2D.h"
 #include "stack/phy/packet/SidelinkControlInformation_m.h"
 #include "stack/mac/packet/LteSchedulingGrant.h"
 #include "stack/mac/allocator/LteAllocationModule.h"
 #include "stack/phy/layer/Subchannel.h"
 
-class LtePhyUeMode4D2D : public LtePhyUe
+class LtePhyUeMode4D2D : public LtePhyUeD2D
 {
   protected:
 
@@ -98,4 +95,3 @@ class LtePhyUeMode4D2D : public LtePhyUe
     }
 };
 
-#endif  /* _LTE_AIRPHYUED2D_H_ */
