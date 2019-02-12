@@ -13,8 +13,8 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef STACK_MAC_LAYER_LTEMACUEMODE4D2D_H_
-#define STACK_MAC_LAYER_LTEMACUEMODE4D2D_H_
+#ifndef _LTE_MACUEMODE4D2D_H_
+#define _LTE_MACUEMODE4D2D_H_
 
 #include "stack/mac/layer/LteMacUeRealisticD2D.h"
 #include "corenetwork/deployer/LteDeployer.h"
@@ -161,4 +161,4 @@ public:
     }
 };
 
-#endif /* STACK_MAC_LAYER_LTEMACUEMODE4D2D_H_ */
+#endif /* _LTE_MACUEMODE4D2D_H_ */
