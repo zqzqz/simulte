@@ -49,7 +49,7 @@ LteMacUeMode4D2D::~LteMacUeMode4D2D()
 
 void LteMacUeMode4D2D::initialize(int stage)
 {
-    if (stage !=INITSTAGE_NETWORK_LAYER_3)
+    if (stage !=inet::INITSTAGE_NETWORK_LAYER_3)
     LteMacUeRealisticD2D::initialize(stage);
 
     if (stage == inet::INITSTAGE_LOCAL)
@@ -73,7 +73,7 @@ void LteMacUeMode4D2D::initialize(int stage)
         currentCw_=0;
         missedTransmissions_=0;
     }
-    else if (stage == INITSTAGE_NETWORK_LAYER_3)
+    else if (stage == inet::INITSTAGE_NETWORK_LAYER_3)
     {
         // TODO: When deploying a UE add the deployer here, make it so deployer can exist on the UE as well.
         deployer_ = getDeployer();
