@@ -942,7 +942,6 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
             // TODO: Signal failed to decode the SCI message
         }
         // We do not want to send SCIs to the upper layers, as such return now.
-        return;
     }
     else
     {
