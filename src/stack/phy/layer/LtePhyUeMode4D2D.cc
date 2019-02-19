@@ -172,7 +172,7 @@ void LtePhyUeMode4D2D::handleAirFrame(cMessage* msg)
 //    if (binder_->isInMulticastGroup(nodeId_,lteInfo->getMulticastGroupId()))
 //    {
     // HACK: if this is a multicast connection, change the destId of the airframe so that upper layers can handle it
-    // All packets in mode 4 are multicast so I feel like the effort to get this working is pointless, I can't easily determine the issue
+    // All packets in mode 4 are multicast
     lteInfo->setDestId(nodeId_);
 //    }
 
