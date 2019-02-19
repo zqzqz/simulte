@@ -70,6 +70,13 @@ class LtePdcpRrcBase : public cSimpleModule
     virtual int numInitStages() const { return inet::NUM_INIT_STAGES; }
 
     /**
+     * utility: set nodeType_ field
+     *
+     * @param s string containing the node type ("enodeb", "ue")
+     */
+    void setNodeType(std::string s);
+
+    /**
      * Analyze gate of incoming packet
      * and call proper handler
      */
@@ -148,7 +155,7 @@ class LtePdcpRrcBase : public cSimpleModule
     /**
      * handler for data port
      *
-     * fromDataPort() receives data packets from applications
+     * fromDataIn() receives data packets from applications
      * and performs the following steps:
      * - If compression is enabled, header is compressed
      * - Reads the source port to determine if a
@@ -160,7 +167,7 @@ class LtePdcpRrcBase : public cSimpleModule
      *
      * @param pkt incoming packet
      */
-    virtual void fromDataPort(cPacket *pkt);
+    virtual void fromDataIn(cPacket *pkt);
 
     /**
      * handler for eutran port
@@ -179,14 +186,14 @@ class LtePdcpRrcBase : public cSimpleModule
     /**
      * handler for um/am sap
      *
-     * toDataPort() performs the following steps:
+     * toDataOut() performs the following steps:
      * - decompresses the header, restoring original packet
      * - decapsulates the packet
      * - sends the packet to the application layer
      *
      * @param pkt incoming packet
      */
-    void toDataPort(cPacket *pkt);
+    void toDataOut(cPacket *pkt);
 
     /**
      * handler for tm sap
@@ -217,7 +224,10 @@ class LtePdcpRrcBase : public cSimpleModule
     /// Identifier for this node
     MacNodeId nodeId_;
 
-    cGate* dataPort_[2];
+    LteNodeType nodeType_;      // node type: can be ENODEB, UE
+
+    cGate* dataIn_;
+    cGate* dataOut_;
     cGate* eutranRrcSap_[2];
     cGate* tmSap_[2];
     cGate* umSap_[2];
@@ -298,7 +308,7 @@ class LtePdcpRrcUe : public LtePdcpRrcBase
 
     Direction getDirection()
     {
-        // Data coming from Dataport on UE are always Uplink
+        // Data coming from DataIn on UE are always Uplink
         return UL;
     }
   public:
@@ -328,7 +338,7 @@ class LtePdcpRrcEnb : public LtePdcpRrcBase
 
     Direction getDirection()
     {
-        // Data coming from Dataport on ENB are always Downlink
+        // Data coming from DataIn on ENB are always Downlink
         return DL;
     }
   public:

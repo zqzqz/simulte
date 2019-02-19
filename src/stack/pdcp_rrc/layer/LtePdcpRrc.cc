@@ -7,6 +7,8 @@
 // and cannot be removed from it.
 //
 
+#include "corenetwork/deployer/LteDeployer.h"
+#include "corenetwork/binder/LteBinder.h"
 #include "stack/pdcp_rrc/layer/LtePdcpRrc.h"
 
 Define_Module(LtePdcpRrcUe);
@@ -96,7 +98,7 @@ void LtePdcpRrcBase::setTrafficInformation(cPacket* pkt,
  * Upper Layer handlers
  */
 
-void LtePdcpRrcBase::fromDataPort(cPacket *pkt)
+void LtePdcpRrcBase::fromDataIn(cPacket *pkt)
 {
     emit(receivedPacketFromUpperLayer, pkt);
 
@@ -183,7 +185,7 @@ void LtePdcpRrcBase::fromEutranRrcSap(cPacket *pkt)
  * Lower layer handlers
  */
 
-void LtePdcpRrcBase::toDataPort(cPacket *pkt)
+void LtePdcpRrcBase::toDataOut(cPacket *pkt)
 {
     emit(receivedPacketFromLowerLayer, pkt);
     LtePdcpPdu* pdcpPkt = check_and_cast<LtePdcpPdu*>(pkt);
@@ -200,9 +202,9 @@ void LtePdcpRrcBase::toDataPort(cPacket *pkt)
     handleControlInfo(upPkt, lteInfo);
 
     EV << "LtePdcp : Sending packet " << upPkt->getName()
-       << " on port DataPort$o\n";
+       << " on port DataOut\n";
     // Send message
-    send(upPkt, dataPort_[OUT]);
+    send(upPkt, dataOut_);
     emit(sentPacketToUpperLayer, upPkt);
 }
 
@@ -224,8 +226,8 @@ void LtePdcpRrcBase::initialize(int stage)
 {
     if (stage == inet::INITSTAGE_LOCAL)
     {
-        dataPort_[IN] = gate("DataPort$i");
-        dataPort_[OUT] = gate("DataPort$o");
+        dataIn_ = gate("DataIn");
+        dataOut_ = gate("DataOut");
         eutranRrcSap_[IN] = gate("EUTRAN_RRC_Sap$i");
         eutranRrcSap_[OUT] = gate("EUTRAN_RRC_Sap$o");
         tmSap_[IN] = gate("TM_Sap$i");
@@ -254,7 +256,26 @@ void LtePdcpRrcBase::initialize(int stage)
         WATCH(headerCompressedSize_);
         WATCH(nodeId_);
         WATCH(lcid_);
+
+        setNodeType(par("nodeType").stdstringValue());
+
+        // Moved here from IP2Lte to remove dependency on IP2Lte for simulations that are not IP based.
+        if (nodeType_ == ENODEB)
+        {
+            // TODO not so elegant
+            cModule *enodeb = getParentModule()->getParentModule();
+            MacNodeId cellId = getBinder()->registerNode(enodeb, nodeType_);
+            LteDeployer * deployer = check_and_cast<LteDeployer*>(enodeb->getSubmodule("deployer"));
+            binder_->registerDeployer(deployer, cellId);
+            nodeId_ = cellId;
+        }
     }
+}
+
+void LtePdcpRrcBase::setNodeType(std::string s)
+{
+    nodeType_ = aToNodeType(s);
+    EV << "Node type: " << s << " -> " << nodeType_ << endl;
 }
 
 void LtePdcpRrcBase::handleMessage(cMessage* msg)
@@ -264,9 +285,9 @@ void LtePdcpRrcBase::handleMessage(cMessage* msg)
        << pkt->getArrivalGate()->getName() << endl;
 
     cGate* incoming = pkt->getArrivalGate();
-    if (incoming == dataPort_[IN])
+    if (incoming == dataIn_)
     {
-        fromDataPort(pkt);
+        fromDataIn(pkt);
     }
     else if (incoming == eutranRrcSap_[IN])
     {
@@ -278,7 +299,7 @@ void LtePdcpRrcBase::handleMessage(cMessage* msg)
     }
     else
     {
-        toDataPort(pkt);
+        toDataOut(pkt);
     }
     return;
 }

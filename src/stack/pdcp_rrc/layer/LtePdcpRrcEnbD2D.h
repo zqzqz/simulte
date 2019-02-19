@@ -37,7 +37,7 @@ class LtePdcpRrcEnbD2D : public LtePdcpRrcEnb
      * handler for data port
      * @param pkt incoming packet
      */
-    virtual void fromDataPort(cPacket *pkt);
+    virtual void fromDataIn(cPacket *pkt);
 
     void pdcpHandleD2DModeSwitch(MacNodeId peerId, LteD2DMode newMode);
 

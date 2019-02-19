@@ -53,7 +53,7 @@ class LtePdcpRrcUeD2D : public LtePdcpRrcUe
      * handler for data port
      * @param pkt incoming packet
      */
-    virtual void fromDataPort(cPacket *pkt);
+    virtual void fromDataIn(cPacket *pkt);
 
     // handler for mode switch signal
     void pdcpHandleD2DModeSwitch(MacNodeId peerId, LteD2DMode newMode);

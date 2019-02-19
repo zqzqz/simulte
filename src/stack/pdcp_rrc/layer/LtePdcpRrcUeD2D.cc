@@ -16,7 +16,7 @@ Define_Module(LtePdcpRrcUeD2D);
 /*
  * Upper Layer handlers
  */
-void LtePdcpRrcUeD2D::fromDataPort(cPacket *pkt)
+void LtePdcpRrcUeD2D::fromDataIn(cPacket *pkt)
 {
     emit(receivedPacketFromUpperLayer, pkt);
 
@@ -48,7 +48,7 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pkt)
     {
         if (binder_->getMacNodeId(destAddr) == 0)
         {
-            EV << NOW << " LtePdcpRrcUeD2D::fromDataPort - Destination " << destAddr << " has left the simulation. Delete packet." << endl;
+            EV << NOW << " LtePdcpRrcUeD2D::fromDataIn - Destination " << destAddr << " has left the simulation. Delete packet." << endl;
             delete pkt;
             return;
         }

@@ -19,7 +19,8 @@ moduleinterface LtePdcpRrc {
         int headerCompressedSize @unit(B);
 
     gates:
-        inout DataPort;
+        input DataIn;
+        output DataOut;
         inout EUTRAN_RRC_Sap;
         inout TM_Sap;
         inout UM_Sap;
@@ -38,7 +39,7 @@ simple LtePdcpRrcBase like LtePdcpRrc {
         int streamingRlc @enum(TM, UM, AM, UNKNOWN_RLC_TYPE) = default(1);
         int interactiveRlc @enum(TM, UM, AM, UNKNOWN_RLC_TYPE) = default(1);
         int backgroundRlc @enum(TM, UM, AM, UNKNOWN_RLC_TYPE) = default(1);
-
+		string nodeType;
         //#
         //# Statistic recording: end2end delay and throughput at the mac layer
         //#
@@ -64,8 +65,9 @@ simple LtePdcpRrcBase like LtePdcpRrc {
         //#
         //# Data Ports
 
-        inout DataPort;            // Port to transmit data packets
-
+        input DataIn;            // Port to transmit data packets
+		output DataOut;
+		
         //# Control Ports
 
         inout EUTRAN_RRC_Sap;    // Control of RRC Layer
