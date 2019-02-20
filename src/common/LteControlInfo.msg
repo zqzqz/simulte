@@ -94,6 +94,12 @@ class FlowControlInfo extends LteControlInfo {
     int headerSize;                                       // IP + Transport header size (used by pdcp ROHC)
 }
 
+class FlowControlNonIp extends LteControlInfo {
+    //# Non-IP Control Information
+    
+    uint32 srcAddr;
+    uint32 dstAddr;
+}
 //
 // @class UserControlInfo
 // @brief contains information flowing from Mac to Phy
