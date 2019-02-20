@@ -17,6 +17,7 @@ moduleinterface LtePdcpRrc {
     parameters:
         @display("i=block/fork");
         int headerCompressedSize @unit(B);
+        string nodeType;
 
     gates:
         input DataIn;
