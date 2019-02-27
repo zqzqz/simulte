@@ -18,6 +18,7 @@ moduleinterface LtePdcpRrc {
         @display("i=block/fork");
         int headerCompressedSize @unit(B);
         string nodeType;
+        bool ipBased;
 
     gates:
         input DataIn;
@@ -41,6 +42,7 @@ simple LtePdcpRrcBase like LtePdcpRrc {
         int interactiveRlc @enum(TM, UM, AM, UNKNOWN_RLC_TYPE) = default(1);
         int backgroundRlc @enum(TM, UM, AM, UNKNOWN_RLC_TYPE) = default(1);
 		string nodeType;
+		bool ipBased;
         //#
         //# Statistic recording: end2end delay and throughput at the mac layer
         //#
@@ -96,6 +98,15 @@ simple LtePdcpRrcUe extends LtePdcpRrcBase {
 simple LtePdcpRrcUeD2D extends LtePdcpRrcUe {
     parameters:
         @class("LtePdcpRrcUeD2D");
+}
+
+//
+// D2D-capable User Equipment PDCP/RRC layer of LTE stack, which deals with NON-IP packets
+//
+simple LtePdcpRrcUeNonIpD2D extends LtePdcpRrcUe {
+    parameters:
+        @class("LtePdcpRrcUeNonIpD2D");
+        ipBased=false;
 }
 
 //
