@@ -71,7 +71,6 @@ module LteNicBase like ILteNic
         }
         // MAC Layer
         mac: <LteMacType> like LteMac {
-            interfaceTableModule = interfaceTableModule;
             @display("p=151,315");
         }
         // LtePhy submodule
