@@ -33,6 +33,11 @@ class LtePdcpRrcEnbD2D : public LtePdcpRrcEnb
         delete lteInfo;
     }
 
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        delete lteInfo;
+    }
+
     /**
      * handler for data port
      * @param pkt incoming packet

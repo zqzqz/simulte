@@ -36,6 +36,11 @@ class LtePdcpRrcUeD2D : public LtePdcpRrcUe
         delete lteInfo;
     }
 
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        delete lteInfo;
+    }
+
     MacNodeId getDestId(FlowControlInfo* lteInfo)
     {
         // UE is subject to handovers: master may change

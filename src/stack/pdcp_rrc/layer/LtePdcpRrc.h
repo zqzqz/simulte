@@ -14,6 +14,7 @@
 #include "corenetwork/binder/LteBinder.h"
 #include "common/LteCommon.h"
 #include "stack/pdcp_rrc/ConnectionsTable.h"
+#include "stack/pdcp_rrc/NonIpConnectionsTable.h"
 #include "inet/networklayer/ipv4/IPv4Datagram.h"
 #include "corenetwork/lteip/LteIp.h"
 #include "common/LteControlInfo.h"
@@ -124,6 +125,15 @@ class LtePdcpRrcBase : public cSimpleModule
     virtual void handleControlInfo(cPacket* pkt, FlowControlInfo* lteInfo) = 0;
 
     /**
+     * handleControlInfo() determines whether the controlInfo must
+     * be detached from packet (ENODEB or RELAY) or left unchanged (RELAY)
+     *
+     * @param pkt packet
+     * @param lteInfo Control Info
+     */
+    virtual void handleControlInfo(cPacket* pkt, FlowControlInfoNonIp* lteInfo) = 0;
+
+    /**
      * getDestId() retrieves the id of destination node according
      * to the following rules:
      * - On UE use masterId
@@ -146,7 +156,7 @@ class LtePdcpRrcBase : public cSimpleModule
      * @return Direction of traffic
      */
     virtual Direction getDirection() = 0;
-    void setTrafficInformation(cPacket* pkt, FlowControlInfo* lteInfo);
+    void setTrafficInformation(cPacket* pkt, LteControlInfo* lteInfo);
 
     /*
      * Upper Layer Handlers
@@ -220,6 +230,10 @@ class LtePdcpRrcBase : public cSimpleModule
 
     /// Hash Table used for CID <-> Connection mapping
     ConnectionsTable* ht_;
+    NonIpConnectionsTable* nonIpHt_;
+
+    // Indicates if simulation is ipBased or not;
+    bool ipBased_;
 
     /// Identifier for this node
     MacNodeId nodeId_;
@@ -300,6 +314,11 @@ class LtePdcpRrcUe : public LtePdcpRrcBase
         delete lteInfo;
     }
 
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        delete lteInfo;
+    }
+
     MacNodeId getDestId(FlowControlInfo* lteInfo)
     {
         // UE is subject to handovers: master may change
@@ -319,6 +338,10 @@ class LtePdcpRrcEnb : public LtePdcpRrcBase
 {
   protected:
     void handleControlInfo(cPacket* upPkt, FlowControlInfo* lteInfo)
+    {
+        delete lteInfo;
+    }
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
     {
         delete lteInfo;
     }
@@ -352,6 +375,10 @@ class LtePdcpRrcRelayEnb : public LtePdcpRrcBase
     {
         upPkt->setControlInfo(lteInfo);
     }
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        upPkt->setControlInfo(lteInfo);
+    }
 
     MacNodeId getDestId(FlowControlInfo* lteInfo)
     {
@@ -360,7 +387,7 @@ class LtePdcpRrcRelayEnb : public LtePdcpRrcBase
     }
 
     // Relay doesn't set Traffic Information
-    void setTrafficInformation(FlowControlInfo* lteInfo)
+    void setTrafficInformation(LteControlInfo* lteInfo)
     {
     }
 
@@ -389,6 +416,11 @@ class LtePdcpRrcRelayUe : public LtePdcpRrcBase
         upPkt->setControlInfo(lteInfo);
     }
 
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        upPkt->setControlInfo(lteInfo);
+    }
+
     MacNodeId getDestId(FlowControlInfo* lteInfo)
     {
         // packet arriving from UE, send to master
@@ -396,7 +428,7 @@ class LtePdcpRrcRelayUe : public LtePdcpRrcBase
     }
 
     // Relay doesn't set Traffic Information
-    void setTrafficInformation(FlowControlInfo* lteInfo)
+    void setTrafficInformation(LteControlInfo* lteInfo)
     {
     }
 
