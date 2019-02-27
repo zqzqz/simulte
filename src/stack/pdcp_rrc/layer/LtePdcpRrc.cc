@@ -104,8 +104,6 @@ void LtePdcpRrcBase::fromDataIn(cPacket *pkt)
 {
     emit(receivedPacketFromUpperLayer, pkt);
 
-    //TODO:Implement 2nd flow for this one.
-
     // Control Informations
     LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pkt->removeControlInfo());
     LogicalCid mylcid;
@@ -151,7 +149,7 @@ void LtePdcpRrcBase::fromDataIn(cPacket *pkt)
     {
         // NonIp flow
         FlowControlInfoNonIp* nonIpInfo = check_and_cast<FlowControlInfoNonIp*>(lteInfo);
-        ipInfo->setDestId(getDestId(nonIpInfo));
+        nonIpInfo->setDestId(getDestId(nonIpInfo));
 
         // Cid Request
         EV << "LteRrc : Received CID request for Traffic [ " << "Source: "

@@ -149,6 +149,21 @@ class LtePdcpRrcBase : public cSimpleModule
     virtual MacNodeId getDestId(FlowControlInfo* lteInfo) = 0;
 
     /**
+     * getDestId() retrieves the id of destination node according
+     * to the following rules:
+     * - On UE use masterId
+     * - On ENODEB:
+     *   - Use source Ip for directly attached UEs
+     *   - Use relay Id for UEs attahce to relays
+     * - On RELAY:
+     *   - Use masterId for packets destined to ENODEB
+     *   - Use source Ip for packets destined to UEs
+     *
+     * @param lteInfo Control Info
+     */
+    virtual MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)=0;
+
+    /**
      * getDirection() is used only on UEs and ENODEBs:
      * - direction is downlink for ENODEB
      * - direction is uplink for UE
@@ -325,6 +340,11 @@ class LtePdcpRrcUe : public LtePdcpRrcBase
         return binder_->getNextHop(nodeId_);
     }
 
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
+    {
+        return binder_->getNextHop(nodeId_);
+    }
+
     Direction getDirection()
     {
         // Data coming from DataIn on UE are always Uplink
@@ -359,6 +379,12 @@ class LtePdcpRrcEnb : public LtePdcpRrcBase
         return destId;
     }
 
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
+    {
+        // TODO: Not necessary for my current experiments, so not going to implement, but in essence need a means of getting macNodeId from dstAddr
+        return 0;
+    }
+
     Direction getDirection()
     {
         // Data coming from DataIn on ENB are always Downlink
@@ -384,6 +410,12 @@ class LtePdcpRrcRelayEnb : public LtePdcpRrcBase
     {
         // packet arriving from eNB, send to UE given the IP address
         return getBinder()->getMacNodeId(IPv4Address(lteInfo->getDstAddr()));
+    }
+
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
+    {
+        // TODO: Impement this if we need a means of getting macNodeId from nonIp packet dstAddr, realistically we will need this, but currently not an issue.
+        return 0;
     }
 
     // Relay doesn't set Traffic Information
@@ -422,6 +454,12 @@ class LtePdcpRrcRelayUe : public LtePdcpRrcBase
     }
 
     MacNodeId getDestId(FlowControlInfo* lteInfo)
+    {
+        // packet arriving from UE, send to master
+        return destId_;
+    }
+
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
     {
         // packet arriving from UE, send to master
         return destId_;
