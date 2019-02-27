@@ -85,20 +85,21 @@ class LteControlInfo {
 //
 class FlowControlInfo extends LteControlInfo {
     //# IP Control Information
-
     uint32 srcAddr;                                       // source IP
     uint32 dstAddr;                                       // destination IP
-    uint16 srcPort;                                          // source port
+    uint16 srcPort;                                       // source port
     uint16 dstPort;                                       // destination port
     unsigned int sequenceNumber;                          // packet sequence number
     int headerSize;                                       // IP + Transport header size (used by pdcp ROHC)
 }
 
-class FlowControlNonIp extends LteControlInfo {
-    //# Non-IP Control Information
-    
-    uint32 srcAddr;
-    uint32 dstAddr;
+class FlowControlInfoNonIp extends LteControlInfo {
+    //# Non-IP control Information
+    bool isBroadcast;
+    int priority;
+    long srcAddr;
+    long dstAddr;
+    unsigned int sequenceNumber;
 }
 //
 // @class UserControlInfo
