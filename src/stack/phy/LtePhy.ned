@@ -93,6 +93,23 @@ simple LtePhyUeMode4D2D extends LtePhyUeD2D {
         int numSubchannels = default(10);
 	    int subchannelSize = default(5);
 	    int selectionWindowStartingSubframe = default(1);
+	    
+	    @signal[cbr];
+ 		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
+ 		@signal[scisReceived];
+		@statistic[scisReceived](title="Number of received SCIs"; source="scisReceived"; record=sum,vector);
+		@signal[scisDecoded];
+		@statistic[scisDecoded](title="Number of SCIs successfully decoded"; source="scisDecoded"; record=sum,vector);
+		@signal[tbsReceived];
+		@statistic[tbsReceived](title="Number of TBs received"; source="tbsReceived"; record=sum,vector);
+		@signal[tbsDecoded];
+		@statistic[tbsDecoded](title="Number of TBs Decoded"; source="tbsDecoded"; record=sum,vector);
+		@signal[tbsFailedDueToNoSCI];
+		@statistic[tbsFailedDueToNoSCI](title="Number of Tbs not decoded due to no SCI"; source="tbsFailedDueToNoSCI"; record=sum,vector);
+		@signal[tbFailedButSCIReceived];
+		@statistic[tbFailedButSCIReceived](title="Number of failed TBs with a decoded SCI"; source="tbFailedButSCIReceived"; record=sum,vector);
+		@signal[tbAndSCINotReceived];
+		@statistic[tbAndSCINotReceived](title="Number of failed TBs with a failed SCI"; source="tbAndSCINotReceived"; record=sum,vector);
 }
 
 // 

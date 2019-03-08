@@ -18,6 +18,7 @@ import inet.node.ethernet.Eth10G;
 import lte.world.radio.LteChannelControl;
 import lte.epc.PgwStandardSimplified;
 import lte.corenetwork.binder.LteBinder;
+import lte.corenetwork.deployer.LteDeployer;
 import lte.corenetwork.nodes.eNodeB;
 import lte.corenetwork.nodes.Ue;
 import lte.corenetwork.nodes.cars.Car;
@@ -34,13 +35,13 @@ network Highway
 
     submodules:
 
-        routingRecorder: RoutingTableRecorder {
-            @display("p=50,75;is=s");
-        }
-        configurator: IPv4NetworkConfigurator {
-            @display("p=50,125");
-            config = xmldoc("demo.xml");
-        }
+//        routingRecorder: RoutingTableRecorder {
+//            @display("p=50,75;is=s");
+//        }
+//        configurator: IPv4NetworkConfigurator {
+//            @display("p=50,125");
+//            config = xmldoc("demo.xml");
+//        }
 
         //# Veins manager module
         veinsManager: VeinsInetManager {
@@ -54,30 +55,33 @@ network Highway
         binder: LteBinder {
             @display("p=50,175;is=s");
         }
-        server: StandardHost {
-            @display("p=660,136;is=n;i=device/server");
-        }
-        router: Router {
-            @display("p=561,135;i=device/smallrouter");
-        }
-        pgw: PgwStandardSimplified {
-            nodeType = "PGW";
-            @display("p=462,136;is=l");
-        }
-        eNodeB1: eNodeB {
-            @display("p=156,136;is=vl");
-        }
-        eNodeB2: eNodeB {
-            @display("p=391,313;is=vl");
+//        server: StandardHost {
+//            @display("p=660,136;is=n;i=device/server");
+//        }
+//        router: Router {
+//            @display("p=561,135;i=device/smallrouter");
+//        }
+//        pgw: PgwStandardSimplified {
+//            nodeType = "PGW";
+//            @display("p=462,136;is=l");
+//        }
+//        eNodeB1: eNodeB {
+//            @display("p=156,136;is=vl");
+//        }
+//       eNodeB2: eNodeB {
+//            @display("p=391,313;is=vl");
+//        }
+        deployer: LteDeployer {
+        	@display("p=50,270;is=s");
         }
 
     connections allowunconnected:
-        server.pppg++ <--> Eth10G <--> router.pppg++;
-        router.pppg++ <--> Eth10G <--> pgw.filterGate;
-        pgw.pppg++ <--> Eth10G <--> eNodeB1.ppp;
-        pgw.pppg++ <--> Eth10G <--> eNodeB2.ppp;
+//        server.pppg++ <--> Eth10G <--> router.pppg++;
+//        router.pppg++ <--> Eth10G <--> pgw.filterGate;
+//        pgw.pppg++ <--> Eth10G <--> eNodeB1.ppp;
+//        pgw.pppg++ <--> Eth10G <--> eNodeB2.ppp;
 
         //# X2 connections
-        eNodeB1.x2++ <--> Eth10G <--> eNodeB2.x2++;
+//        eNodeB1.x2++ <--> Eth10G <--> eNodeB2.x2++;
 }
 

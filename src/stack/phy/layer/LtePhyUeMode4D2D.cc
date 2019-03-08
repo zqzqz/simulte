@@ -96,6 +96,7 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
 
             // TODO: log the cbr here and send to MAC layer
             currentCBR_ = currentCBR_/numSubchannels_;
+            // TODO Signal for CBR
             cbrHistory_[cbrIndex_]=currentCBR_;
             currentCBR_=0;
             updateCBR();
@@ -375,8 +376,6 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
         sendBroadcast(frame);
     else
         sendUnicast(frame);
-
-    // TODO: Mark the current subframe as unsensed due to this sending.
 }
 
 void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)

@@ -382,6 +382,33 @@ simple LteMacUeMode4D2D extends LteMacNonIPBase
 	    
 	    bool usePreconfiguredTxParams = default(false);
 	    
+		// Signals 
+		//
+		// Must haves:
+		// Grant break due to no time
+		// Grant break due to no large enough MCS
+		// Selected MCS
+		// Selected number of subchannels
+		// Packet size on break 
+		// Maximum capacity on grant break
+
+		@signal[generatedGrants];
+		@statistic[generatedGrants](title="Number of generated Grants"; source="generatedGrants"; record=sum,vector);		
+		@signal[grantBreak];
+        @statistic[grantBreak](title="Total Number of Grant breaks"; source="grantBreak"; record=sum,vector);    
+        @signal[grantBreakTiming]; 
+        @statistic[grantBreakTiming](title="Total number of Grant breaks due to not meeting time requirements"; source="grantBreakTiming"; record=sum,vector); 
+		@signal[grantBreakSize];
+        @statistic[grantBreakSize](title="Total Number of Grant breaks due to not having enough capacity" ; source="grantBreakSize"; record=sum,vector);    
+        @signal[selectedMCS]; 
+        @statistic[selectedMCS](title="MCS selected for transmission"; source="selectedMCS"; record=mean,vector);
+        @signal[seletedNumSubchannels];
+        @statistic[selectedNumSubchannels](title="SelectedNumSubchannels"; source="selectedNumSubchannels"; record=mean,vector);    
+        @signal[tooLargePacket]; 
+        @statistic[tooLargePacket](title="Packet size that causes grant break"; source="tooLargePacket"; record=mean,vector);  
+        @signal[maximumCapacity];
+        @statistic[maximumCapacity](title="Maximum capacity of grant"; source="maximumCapacity"; record=mean,vector);     
+    	    
 	    //# AMC params ... ever so slightly hacked in
 	    
 //	    // AMC Mode:  "auto", "piloted", "multi", "das"
