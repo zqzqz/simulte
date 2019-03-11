@@ -403,7 +403,7 @@ simple LteMacUeMode4D2D extends LteMacNonIPBase
         @signal[selectedMCS]; 
         @statistic[selectedMCS](title="MCS selected for transmission"; source="selectedMCS"; record=mean,vector);
         @signal[seletedNumSubchannels];
-        @statistic[selectedNumSubchannels](title="SelectedNumSubchannels"; source="selectedNumSubchannels"; record=mean,vector);    
+        @statistic[seletedNumSubchannels](title="SelectedNumSubchannels"; source="seletedNumSubchannels"; record=mean,vector);
         @signal[tooLargePacket]; 
         @statistic[tooLargePacket](title="Packet size that causes grant break"; source="tooLargePacket"; record=mean,vector);  
         @signal[maximumCapacity];
