@@ -69,10 +69,9 @@ module LteNicBase like ILteNic
             @display("p=150,227");
             d2dCapable = d2dCapable;
         }
-        // MAC Layer
-        mac: <LteMacType> like LteMac {
-            @display("p=151,315");
-        }
+
+        // MAC removed to lower layers as both types no longer require interface table
+
         // LtePhy submodule
         phy: <LtePhyType> like LtePhy {
             @display("p=151,390");
@@ -90,16 +89,6 @@ module LteNicBase like ILteNic
         pdcpRrc.UM_Sap <--> rlc.UM_Sap;
         pdcpRrc.AM_Sap <--> rlc.AM_Sap;
         pdcpRrc.TM_Sap <--> rlc.TM_Sap;
-
-        //# RLC <-> MAC
-        rlc.RLC_to_MAC --> mac.RLC_to_MAC;
-        rlc.MAC_to_RLC <-- mac.MAC_to_RLC;
-
-        //#
-        //# Connections from LTE Stack to radio interface
-        //#
-        mac.MAC_to_PHY --> phy.upperGateIn;
-        mac.PHY_to_MAC <-- phy.upperGateOut;
 
         //# external: lower connection
         radioIn --> phy.radioIn;
@@ -122,6 +111,12 @@ module LteNicIpBase extends LteNicBase
             @display("p=150,68");
         }
 
+        // MAC Layer
+        mac: <LteMacType> like LteMac {
+            interfaceTableModule = interfaceTableModule;
+            @display("p=151,315");
+        }
+
     connections:
         ip2lte.toStackLte --> pdcpRrc.DataIn;
         ip2lte.fromStackLte <-- pdcpRrc.DataOut;
@@ -129,18 +124,45 @@ module LteNicIpBase extends LteNicBase
         //# external: lower connection
         ip2lte.upperLayerOut --> upperLayerOut;
         upperLayerIn --> ip2lte.upperLayerIn;
+
+        //# RLC <-> MAC
+        rlc.RLC_to_MAC --> mac.RLC_to_MAC;
+        rlc.MAC_to_RLC <-- mac.MAC_to_RLC;
+
+        //#
+        //# Connections from LTE Stack to radio interface
+        //#
+        mac.MAC_to_PHY --> phy.upperGateIn;
+        mac.PHY_to_MAC <-- phy.upperGateOut;
 }
 
 // Module for Non-IP Based NICs
 module LteNicNonIpBase extends LteNicBase
 {
-	   parameters:
+    parameters:
         @display("i=block/ifcard;bgb=250,444;bgl=3");
+
+    submodules:
+        // MAC Layer
+        mac: <LteMacType> like LteMac {
+            @display("p=151,315");
+        }
+
 
     connections:
         //# external: lower connection
         pdcpRrc.DataOut --> upperLayerOut;
         upperLayerIn --> pdcpRrc.DataIn;
+
+        //# RLC <-> MAC
+        rlc.RLC_to_MAC --> mac.RLC_to_MAC;
+        rlc.MAC_to_RLC <-- mac.MAC_to_RLC;
+
+        //#
+        //# Connections from LTE Stack to radio interface
+        //#
+        mac.MAC_to_PHY --> phy.upperGateIn;
+        mac.PHY_to_MAC <-- phy.upperGateOut;
 }
 
 //
