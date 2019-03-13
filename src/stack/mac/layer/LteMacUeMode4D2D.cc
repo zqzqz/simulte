@@ -75,7 +75,6 @@ void LteMacUeMode4D2D::initialize(int stage)
     }
     else if (stage == inet::INITSTAGE_NETWORK_LAYER_3)
     {
-        // TODO: When deploying a UE add the deployer here, make it so deployer can exist on the UE as well.
         deployer_ = getDeployer();
         numAntennas_ = getNumAntennas();
         mcsScaleD2D_ = deployer_->getMcsScaleUl();
@@ -100,16 +99,6 @@ void LteMacUeMode4D2D::initialize(int stage)
         info->phy = check_and_cast<LtePhyBase*>(info->ue->getSubmodule("lteNic")->getSubmodule("phy"));
 
         binder_->addUeInfo(info);
-
-        // find interface entry and use its address
-        IInterfaceTable *interfaceTable = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
-        // TODO: how do we find the LTE interface?
-        InterfaceEntry * interfaceEntry = interfaceTable->getInterfaceByName("wlan");
-
-        IPv4InterfaceData* ipv4if = interfaceEntry->ipv4Data();
-        if(ipv4if == NULL)
-            throw new cRuntimeError("no IPv4 interface data - cannot bind node %i", nodeId_);
-        binder_->setMacNodeId(ipv4if->getIPAddress(), nodeId_);
     }
 }
 
