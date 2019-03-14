@@ -81,7 +81,7 @@ unsigned int LteSchedulerEnbDlRealistic::scheduleGrant(MacCid cid, unsigned int 
     unsigned int queueLength = conn->getQueueOccupancy(); // in bytes
 
     // get traffic descriptor
-    FlowControlInfo connDesc = mac_->getConnDesc().at(cid);
+    LteControlInfo connDesc = mac_->getConnDesc().at(cid);
 
     EV << "LteSchedulerEnbDlRealistic::grant --------------------::[ START GRANT ]::--------------------" << endl;
     EV << "LteSchedulerEnbDlRealistic::grant Cell: " << mac_->getMacCellId() << endl;

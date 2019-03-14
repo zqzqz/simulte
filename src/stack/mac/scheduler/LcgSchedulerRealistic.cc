@@ -86,7 +86,7 @@ LcgSchedulerRealistic::schedule(unsigned int availableBytes, Direction grantDir)
             MacCid cid = it->second.first;
 
             // get the Flow descriptor
-            FlowControlInfo connDesc = mac_->getConnDesc().at(cid);
+            LteControlInfo connDesc = mac_->getConnDesc().at(cid);
             // TODO get the QoS parameters
 
             // connection must have the same direction of the grant

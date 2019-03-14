@@ -83,7 +83,7 @@ LcgScheduler::schedule(unsigned int availableBytes, Direction grantDir)
             MacCid cid = it->second.first;
 
             // get the Flow descriptor
-            FlowControlInfo connDesc = mac_->getConnDesc().at(cid);
+            LteControlInfo connDesc = mac_->getConnDesc().at(cid);
 
             if (connDesc.getDirection() != grantDir)  // if the connection has different direction from the grant direction, skip it
             {
