@@ -251,8 +251,7 @@ void LtePdcpRrcBase::toDataOut(cPacket *pkt)
 
         upPkt = pdcpPkt->decapsulate(); // Decapsulate packet
         delete pdcpPkt;
-
-        handleControlInfo(upPkt, lteInfo);
+        upPkt->setControlInfo(lteInfo);
     }
 
     EV << "LtePdcp : Sending packet " << upPkt->getName()

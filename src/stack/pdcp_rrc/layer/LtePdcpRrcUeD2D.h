@@ -47,11 +47,22 @@ class LtePdcpRrcUeD2D : public LtePdcpRrcUe
         return binder_->getNextHop(nodeId_);
     }
 
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
+    {
+        // UE is subject to handovers: master may change
+        return binder_->getNextHop(nodeId_);
+    }
+
     Direction getDirection(MacNodeId destId)
     {
         if (binder_->checkD2DCapability(nodeId_, destId) && binder_->getD2DMode(nodeId_, destId) == DM)
             return D2D;
         return UL;
+    }
+
+    Direction getDirection()
+    {
+        return D2D_MULTI;
     }
 
     /**
