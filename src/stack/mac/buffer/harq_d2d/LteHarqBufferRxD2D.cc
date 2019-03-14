@@ -122,7 +122,7 @@ std::list<LteMacPdu *> LteHarqBufferRxD2D::extractCorrectPdus()
                 UserControlInfo* info = check_and_cast<UserControlInfo*>(temp->getControlInfo());
 
                 // emit delay statistic
-                if (info->getDirection() == D2D)
+                if (info->getDirection() == D2D || info->getDirection() == D2D_MULTI)
                 {
                     macOwner_->emit(macDelayD2D_, (NOW - temp->getCreationTime()).dbl());
                 }
@@ -138,9 +138,13 @@ std::list<LteMacPdu *> LteHarqBufferRxD2D::extractCorrectPdus()
                 double cellTputSample = (double)totalCellRcvdBytes_ / (NOW - getSimulation()->getWarmupPeriod());
 
                 // emit throughput statistics
-                if (info->getDirection() == D2D)
+                if (info->getDirection() == D2D || info->getDirection() == D2D_MULTI)
                 {
-                    nodeB_->emit(macCellThroughputD2D_, cellTputSample);
+                    if (nodeB_ != nullptr)
+                    {
+                        // Simply to avoid in the case of MODE 4 a segfault for this being empty.
+                        nodeB_->emit(macCellThroughputD2D_, cellTputSample);
+                    }
                     macOwner_->emit(macThroughputD2D_, tputSample);
                 }
                 else
