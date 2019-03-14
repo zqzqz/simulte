@@ -340,7 +340,7 @@ void LteMacUeD2D::macPduMake(LteMacScheduleList* scheduleList)
 //            for (int i=0; i < itbuf->second->getQueueLength(); ++i)
 //            {
 //                cPacket* pkt = itbuf->second->get(i);
-//                FlowControlInfo* pktInfo = check_and_cast<FlowControlInfo*>(pkt->getControlInfo());
+//                LteControlInfo* pktInfo = check_and_cast<LteControlInfo*>(pkt->getControlInfo());
 //
 //                // check whether is a DM or a IM packet
 //                if (pktInfo->getDirection() == D2D)
@@ -390,7 +390,7 @@ void LteMacUeD2D::macPduMake(LteMacScheduleList* scheduleList)
             Codeword cw = it->first.second;
 
             // get the direction (UL/D2D/D2D_MULTI) and the corresponding destination ID
-            FlowControlInfo* lteInfo = &(connDesc_.at(destCid));
+            LteControlInfo* lteInfo = &(connDesc_.at(destCid));
             MacNodeId destId = lteInfo->getDestId();
             Direction dir = (Direction)lteInfo->getDirection();
 
@@ -633,12 +633,12 @@ void LteMacUeD2D::macHandleD2DModeSwitch(cPacket* pkt)
 
         // find the correct connection involved in the mode switch
         MacCid cid;
-        FlowControlInfo* lteInfo = NULL;
-        std::map<MacCid, FlowControlInfo>::iterator it = connDesc_.begin();
+        LteControlInfo* lteInfo = NULL;
+        std::map<MacCid, LteControlInfo>::iterator it = connDesc_.begin();
         for (; it != connDesc_.end(); )
         {
             cid = it->first;
-            lteInfo = check_and_cast<FlowControlInfo*>(&(it->second));
+            lteInfo = check_and_cast<LteControlInfo*>(&(it->second));
             if (lteInfo->getD2dRxPeerId() == peerId && (Direction)lteInfo->getDirection() == oldDirection)
             {
                 EV << NOW << " LteMacUeD2D::macHandleD2DModeSwitch - found connection with cid " << cid << ", erasing buffered data" << endl;
@@ -719,12 +719,12 @@ void LteMacUeD2D::macHandleD2DModeSwitch(cPacket* pkt)
 
         // find the correct connection involved in the mode switch
         MacCid cid;
-        FlowControlInfo* lteInfo = NULL;
-        std::map<MacCid, FlowControlInfo>::iterator it = connDescIn_.begin();
+        LteControlInfo* lteInfo = NULL;
+        std::map<MacCid, LteControlInfo>::iterator it = connDescIn_.begin();
         for (; it != connDescIn_.end(); )
         {
             cid = it->first;
-            lteInfo = check_and_cast<FlowControlInfo*>(&(it->second));
+            lteInfo = check_and_cast<LteControlInfo*>(&(it->second));
             if (lteInfo->getD2dTxPeerId() == peerId && (Direction)lteInfo->getDirection() == oldDirection)
             {
                 if (oldDirection != newDirection)
