@@ -111,7 +111,7 @@ void UmTxEntity::rlcPduMake(int pduLength)
     if (len == 0)
     {
         // send an empty message to notify the MAC that there is not enough space to send RLC PDU
-        rlcPdu->setControlInfo(flowControlInfo_->dup());
+        rlcPdu->setControlInfo(LteControlInfo_->dup());
         rlcPdu->setByteLength(len);
     }
     else
@@ -133,7 +133,7 @@ void UmTxEntity::rlcPduMake(int pduLength)
 
         rlcPdu->setFramingInfo(fi);
         rlcPdu->setPduSequenceNumber(sno_++);
-        rlcPdu->setControlInfo(flowControlInfo_->dup());
+        rlcPdu->setControlInfo(LteControlInfo_->dup());
         rlcPdu->setByteLength(RLC_HEADER_UM + len);  // add the header size
     }
 

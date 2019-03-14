@@ -29,7 +29,7 @@ void LteRlcMux::rlc2mac(cPacket *pkt)
 
 void LteRlcMux::mac2rlc(cPacket *pkt)
 {
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pkt->getControlInfo());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pkt->getControlInfo());
     switch (lteInfo->getRlcType())
     {
         case TM:

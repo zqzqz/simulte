@@ -25,7 +25,7 @@ void LteRlcUmRealisticD2D::handleLowerMessage(cPacket *pkt)
 
         // add here specific behavior for handling mode switch at the RLC layer
         D2DModeSwitchNotification* switchPkt = check_and_cast<D2DModeSwitchNotification*>(pkt);
-        FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(switchPkt->getControlInfo());
+        LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(switchPkt->getControlInfo());
 
         if (switchPkt->getTxSide())
         {

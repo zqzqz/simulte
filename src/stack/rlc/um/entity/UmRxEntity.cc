@@ -33,7 +33,7 @@ UmRxEntity::~UmRxEntity()
     if (buffered_ != NULL)
         delete buffered_;
 
-    delete flowControlInfo_;
+    delete lteControlInfo_;
 }
 
 void UmRxEntity::enque(cPacket* pkt)
@@ -42,7 +42,7 @@ void UmRxEntity::enque(cPacket* pkt)
     EV << NOW << " UmRxEntity::enque - buffering new PDU" << endl;
 
     LteRlcUmDataPdu* pdu = check_and_cast<LteRlcUmDataPdu*>(pkt);
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pdu->getControlInfo());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pdu->getControlInfo());
 
     // Get the RLC PDU Transmission sequence number (x)
     unsigned int tsn = pdu->getPduSequenceNumber();
@@ -238,7 +238,7 @@ void UmRxEntity::toPdcp(LteRlcSdu* rlcSdu)
 {
     LteRlcUm* lteRlc = check_and_cast<LteRlcUm *>(getParentModule()->getSubmodule("um"));
 
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(rlcSdu->getControlInfo());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(rlcSdu->getControlInfo());
     unsigned int sno = rlcSdu->getSnoMainPacket();
     unsigned int length = rlcSdu->getByteLength();
     simtime_t ts = rlcSdu->getCreationTime();
@@ -320,7 +320,7 @@ void UmRxEntity::reassemble(unsigned int index)
     EV << NOW << " UmRxEntity::reassemble Consider PDU at index " << index << " for reassembly" << endl;
 
     LteRlcUmDataPdu* pdu = check_and_cast<LteRlcUmDataPdu*>(pduBuffer_.get(index));
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pdu->removeControlInfo());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pdu->removeControlInfo());
 
     // get PDU seq number
     unsigned int pduSno = pdu->getPduSequenceNumber();

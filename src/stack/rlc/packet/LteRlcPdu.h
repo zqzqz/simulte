@@ -25,8 +25,8 @@ class LteRlcPdu : public LteRlcPdu_Base {
          // copy the attached control info, if any
          if (other.getControlInfo() != NULL)
          {
-             FlowControlInfo* info = check_and_cast<FlowControlInfo*>(other.getControlInfo());
-             FlowControlInfo* info_dup = info->dup();
+             LteControlInfo* info = check_and_cast<LteControlInfo*>(other.getControlInfo());
+             LteControlInfo* info_dup = info->dup();
              this->setControlInfo(info_dup);
          }
      }

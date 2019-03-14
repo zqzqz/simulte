@@ -80,7 +80,7 @@ class LteRlcUmRealistic : public LteRlcUm
      * @return pointer to the TXBuffer for the CID of the flow
      *
      */
-    UmTxEntity* getTxBuffer(FlowControlInfo* lteInfo);
+    UmTxEntity* getTxBuffer(LteControlInfo* lteInfo);
 
     /**
      * getRxBuffer() is used by the receiver to gather the RXBuffer
@@ -92,7 +92,7 @@ class LteRlcUmRealistic : public LteRlcUm
      * @return pointer to the RXBuffer for that CID
      *
      */
-    UmRxEntity* getRxBuffer(FlowControlInfo* lteInfo);
+    UmRxEntity* getRxBuffer(LteControlInfo* lteInfo);
 
     /**
      * handler for traffic coming
