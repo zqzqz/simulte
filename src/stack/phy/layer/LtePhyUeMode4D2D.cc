@@ -970,6 +970,9 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
                 decodedScis_.erase(it);
                 break;
             }
+            else{
+                (*it)->setControlInfo(sciInfo);
+            }
         }
         if(result && !foundCorrespondingSci)
         {
@@ -1009,7 +1012,7 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
         }
 
         // send decapsulated message along with result control info to upperGateOut_
-        lteInfo->setDeciderResult(false);
+        lteInfo->setDeciderResult(result);
         pkt->setControlInfo(lteInfo);
         send(pkt, upperGateOut_);
 
