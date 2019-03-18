@@ -57,6 +57,9 @@ protected:
    int cbr_;
    int missedTransmissions_;
 
+   double remainingTime_;
+   simtime_t receivedTime_;
+
    Codeword currentCw_;
 
    std::map<UnitList, int> pduRecord_;
@@ -96,7 +99,7 @@ protected:
     /**
      * Generate a scheduling grant
      */
-    virtual void macGenerateSchedulingGrant();
+    virtual void macGenerateSchedulingGrant(double maximumLatency, int priority);
 
 
     /**

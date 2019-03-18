@@ -488,19 +488,6 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
         LteMacUeRealisticD2D::handleMessage(msg);
         return;
     }
-    if (strcmp(msg->getName(), "GRANTBREAK") == 0)
-    {
-        // TODO: Signal that grant is broken due to lack of capacity.
-
-        delete schedulingGrant_;
-
-        schedulingGrant_ = NULL;
-
-        // Need to regenerate our grant
-        macGenerateSchedulingGrant();
-
-        return;
-    }
 
     cPacket* pkt = check_and_cast<cPacket *>(msg);
     cGate* incoming = pkt->getArrivalGate();
@@ -535,12 +522,36 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
     {
         if (strcmp(pkt->getName(), "newDataPkt")== 0)
         {
-            if (schedulingGrant_ == NULL)
+            FlowControlInfoNonIp* lteInfo = check_and_cast<FlowControlInfoNonIp*>(pkt->removeControlInfo());
+            receivedTime_ = NOW;
+            simtime_t elapsedTime = receivedTime_ - lteInfo->getCreationTime();
+            simtime_t* duration = new simtime_t(lteInfo->getDuration(), SIMTIME_MS);
+            (*duration) = (*duration) - elapsedTime;
+            double dur = duration->dbl();
+            remainingTime_ = lteInfo->getDuration() - dur;
+
+            if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
             {
-                macGenerateSchedulingGrant();
+                // TODO: Signal for breaking grant because of lack of time.
+                delete schedulingGrant_;
+                schedulingGrant_ = NULL;
+                macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority());
+            }
+            else if (schedulingGrant_ == NULL)
+            {
+                macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority());
+            }
+            else
+            {
+                LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
+                mode4Grant->setSpsPriority(lteInfo->getPriority());
+                // Need to get the creation time for this
+                mode4Grant->setMaximumLatency(remainingTime_);
             }
             // Need to set the size of our grant to the correct size we need to ask rlc for, i.e. for the sdu size.
             schedulingGrant_->setGrantedCwBytes((MAX_CODEWORDS - currentCw_), pkt->getBitLength());
+
+            pkt->setControlInfo(lteInfo);
         }
     }
 
@@ -623,6 +634,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
         }
         else if (expirationCounter_ == 0)
         {
+            // TODO: SIGNAL to say grant naturally breaks
             // Grant has expired, only generate new grant on receiving next message to be sent.
             delete schedulingGrant_;
             schedulingGrant_ = NULL;
@@ -835,7 +847,7 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     // TODO: Setup for HARQ retransmission, if it can't be satisfied then selection must occur again.
 }
 
-void LteMacUeMode4D2D::macGenerateSchedulingGrant()
+void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int priority)
 {
     /**
      * 1. Packet priority
@@ -848,12 +860,9 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant()
     LteMode4SchedulingGrant* mode4Grant = new LteMode4SchedulingGrant("LteMode4Grant");
 
     // Priority is the most difficult part to figure out, for the moment I will assign it as a fixed value
-    // TODO: Message Priority
-    mode4Grant -> setSpsPriority(4);
+    mode4Grant -> setSpsPriority(priority);
     mode4Grant -> setPeriod(resourceReservationInterval_ * 100);
-
-    // TODO: Maximum Latency is also an "Application Layer" specified parameter
-    mode4Grant -> setMaximumLatency(maximumLatency_);
+    mode4Grant -> setMaximumLatency(maximumLatency);
 
     int cbrIndex = defaultCbrIndex_;
     if (useCBR_)
@@ -1010,9 +1019,26 @@ void LteMacUeMode4D2D::flushHarqBuffers()
                     if (!foundValidMCS)
                     {
                         // Never found an MCS to satisfy the requirements of the message must regenerate grant
-                        delete schedulingGrant_;
-                        schedulingGrant_ = NULL;
-                        macGenerateSchedulingGrant();
+                        LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
+                        int priority = mode4Grant->getSpsPriority();
+                        int latency = mode4Grant->getMaximumLatency();
+                        simtime_t elapsedTime = NOW - receivedTime_;
+                        remainingTime_ -= elapsedTime.dbl();
+                        if (remainingTime_ <= 0)
+                        {
+                            // TODO: Signal we need to drop the packet.
+                            emit()
+                            selectedProcess->forceDropProcess();
+                            delete schedulingGrant_;
+                            schedulingGrant_ = NULL;
+
+                        }
+                        else
+                        {
+                            delete schedulingGrant_;
+                            schedulingGrant_ = NULL;
+                            macGenerateSchedulingGrant(remainingTime_, priority);
+                        }
                     }
                 }
                 break;
@@ -1024,9 +1050,10 @@ void LteMacUeMode4D2D::flushHarqBuffers()
             ++missedTransmissions_;
             if (missedTransmissions_ >= reselectAfter_)
             {
+                // Send SCI with 0 RRI
+                // TODO: Signal grant break due to missed transmission
                 delete schedulingGrant_;
                 schedulingGrant_ = NULL;
-                macGenerateSchedulingGrant();
                 missedTransmissions_ = 0;
             }
         }

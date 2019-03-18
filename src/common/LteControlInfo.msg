@@ -96,10 +96,11 @@ class FlowControlInfo extends LteControlInfo {
 
 class FlowControlInfoNonIp extends LteControlInfo {
     //# Non-IP control Information
-    bool isBroadcast;
     int priority;
+    long duration;
     long srcAddr;
     long dstAddr;
+    simtime_t creationTime;
 }
 //
 // @class UserControlInfo
