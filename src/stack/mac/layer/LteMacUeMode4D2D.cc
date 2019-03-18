@@ -532,7 +532,7 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
 
             if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
             {
-                // TODO: Signal for breaking grant because of lack of time.
+                emit(grantBreakTiming, 1);
                 delete schedulingGrant_;
                 schedulingGrant_ = NULL;
                 macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority());
@@ -634,7 +634,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
         }
         else if (expirationCounter_ == 0)
         {
-            // TODO: SIGNAL to say grant naturally breaks
+            emit(grantBreak, 1);
             // Grant has expired, only generate new grant on receiving next message to be sent.
             delete schedulingGrant_;
             schedulingGrant_ = NULL;
@@ -902,6 +902,8 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int pri
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
 
+    emit(selectedNumSubchannels, numSubchannels);
+
     LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
 
     UserControlInfo* uinfo = new UserControlInfo();
@@ -914,6 +916,8 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int pri
     sendLowerPackets(phyGrant);
 
     schedulingGrant_ = mode4Grant;
+
+    emit(grantRequests, 1);
 }
 
 void LteMacUeMode4D2D::flushHarqBuffers()
@@ -967,10 +971,9 @@ void LteMacUeMode4D2D::flushHarqBuffers()
                     bool foundValidMCS = false;
                     int totalGrantedBlocks = mode4Grant->getTotalGrantedBlocks();
 
+                    int mcsCapacity = 0;
                     for (int mcs=minMCS; mcs < maxMCS; mcs++)
                     {
-                        int mcsCapacity = 0;
-
                         LteMod mod = _QPSK;
                         if (maxMCSPSSCH_ > 9 && maxMCSPSSCH_ < 17)
                         {
@@ -1013,6 +1016,8 @@ void LteMacUeMode4D2D::flushHarqBuffers()
 
                             missedTransmissions_ = 0;
 
+                            emit(selectedMCS, mcs);
+
                             break;
                         }
                     }
@@ -1024,10 +1029,13 @@ void LteMacUeMode4D2D::flushHarqBuffers()
                         int latency = mode4Grant->getMaximumLatency();
                         simtime_t elapsedTime = NOW - receivedTime_;
                         remainingTime_ -= elapsedTime.dbl();
+
+                        emit(grantBreakSize, pduLength);
+                        emit(maximumCapacity, mcsCapacity);
+
                         if (remainingTime_ <= 0)
                         {
-                            // TODO: Signal we need to drop the packet.
-                            emit()
+                            emit(droppedTimeout, 1);
                             selectedProcess->forceDropProcess();
                             delete schedulingGrant_;
                             schedulingGrant_ = NULL;
@@ -1048,10 +1056,11 @@ void LteMacUeMode4D2D::flushHarqBuffers()
         {
             // if no transmission check if we need to break the grant.
             ++missedTransmissions_;
+            emit(missedTransmission, 1);
             if (missedTransmissions_ >= reselectAfter_)
             {
-                // Send SCI with 0 RRI
-                // TODO: Signal grant break due to missed transmission
+                // TODO: Send SCI with 0 RRI
+                emit(grantBreakMissedTrans, 1);
                 delete schedulingGrant_;
                 schedulingGrant_ = NULL;
                 missedTransmissions_ = 0;

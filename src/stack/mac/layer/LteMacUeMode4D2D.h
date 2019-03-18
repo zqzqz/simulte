@@ -83,6 +83,19 @@ protected:
    UserTxParams* preconfiguredTxParams_;
    UserTxParams* getPreconfiguredTxParams();  // build and return new user tx params
 
+   simsignal_t generatedGrants;
+   simsignal_t grantBreak;
+   simsignal_t grantBreakTiming;
+   simsignal_t grantBreakSize;
+   simsignal_t droppedTimeout;
+   simsignal_t grantBreakMissedTrans;
+   simsignal_t missedTransmission;
+   simsignal_t selectedMCS;
+   simsignal_t selectedNumSubchannels;
+   simsignal_t maximumCapacity;
+   simsignal_t grantRequests;
+
+
 //   // Lte AMC module
 //   LteAmc *amc_;
 

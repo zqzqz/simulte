@@ -399,22 +399,21 @@ simple LteMacUeMode4D2D extends LteMacNonIPBase
         @signal[grantBreakTiming];
         @statistic[grantBreakTiming](title="Total number of Grant breaks due to not meeting time requirements"; source="grantBreakTiming"; record=sum,vector);
 		@signal[grantBreakSize];
-        @statistic[grantBreakSize](title="Total Number of Grant breaks due to not having enough capacity" ; source="grantBreakSize"; record=sum,vector);
+        @statistic[grantBreakSize](title="Total Number of Grant breaks due to not having enough capacity" ; source="grantBreakSize"; record=count,sum,vector);
         @signal[droppedTimeout];
         @statistic[droppedTimeout](title="Total Number of packets dropped due to a timeout" ; source="droppedTimeout"; record=sum,vector);
-        @signal[grantBreakMissedTrans]
+        @signal[grantBreakMissedTrans];
         @statistic[grantBreakMissedTrans](title="Total grant breaks due to missed transmissions"; source="grantBreakMissedTrans; record=sum, vector);
-        @statistic[droppedTimeout](title="Packets dropped due to their timing running out"; source="droppedTimeout"; record=sum,vector);
-        @signal[missedTransmission]
+        @signal[missedTransmission];
         @statistic[missedTransmission](title="Total Missed transmissions"; source="missedTransmission"; record=sum, vector);
         @signal[selectedMCS];
         @statistic[selectedMCS](title="MCS selected for transmission"; source="selectedMCS"; record=mean,vector);
-        @signal[seletedNumSubchannels];
-        @statistic[seletedNumSubchannels](title="SelectedNumSubchannels"; source="seletedNumSubchannels"; record=mean,vector);
-        @signal[tooLargePacket];
-        @statistic[tooLargePacket](title="Packet size that causes grant break"; source="tooLargePacket"; record=mean,vector);
+        @signal[selectedNumSubchannels];
+        @statistic[selectedNumSubchannels](title="SelectedNumSubchannels"; source="selectedNumSubchannels"; record=mean,vector);
         @signal[maximumCapacity];
         @statistic[maximumCapacity](title="Maximum capacity of grant"; source="maximumCapacity"; record=mean,vector);
+        @signal[grantRequests];
+        @statistic[grantRequests](title="Total number of requested grants"; source="grantRequests"; record=sum, vector);
     	    
 	    //# AMC params ... ever so slightly hacked in
 	    
