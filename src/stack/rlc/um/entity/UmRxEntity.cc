@@ -263,7 +263,10 @@ void UmRxEntity::toPdcp(LteRlcSdu* rlcSdu)
         else
             ue->emit(rlcPacketLossD2D_, 1.0);
         ue->emit(rlcPacketLossTotal_, 1.0);
-        nodeB_->emit(rlcCellPacketLoss_, 1.0);
+        if (nodeB_ != nullptr)
+        {
+            nodeB_->emit(rlcCellPacketLoss_, 1.0);
+        }
         lastSnoDelivered_++;
     }
     // update the last sno delivered to the current sno
@@ -275,7 +278,10 @@ void UmRxEntity::toPdcp(LteRlcSdu* rlcSdu)
     double cellTputSample = (double)totalCellRcvdBytes_ / (NOW - getSimulation()->getWarmupPeriod());
     double tputSample = (double)totalRcvdBytes_ / (NOW - getSimulation()->getWarmupPeriod());
 
-    nodeB_->emit(rlcCellThroughput_, cellTputSample);
+    if (nodeB_ != nullptr)
+    {
+        nodeB_->emit(rlcCellThroughput_, cellTputSample);
+    }
     if (lteInfo->getDirection() != D2D && lteInfo->getDirection() != D2D_MULTI)  // UE in IM
     {
         ue->emit(rlcThroughput_, tputSample);
@@ -286,7 +292,10 @@ void UmRxEntity::toPdcp(LteRlcSdu* rlcSdu)
     }
 
     // emit statistic: packet loss
-    nodeB_->emit(rlcCellPacketLoss_, 0.0);
+    if (nodeB_ != nullptr)
+    {
+        nodeB_->emit(rlcCellPacketLoss_, 0.0);
+    }
     if (lteInfo->getDirection() != D2D && lteInfo->getDirection() != D2D_MULTI)  // UE in IM
     {
         ue->emit(rlcPacketLoss_, 0.0);
