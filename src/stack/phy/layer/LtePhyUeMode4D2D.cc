@@ -136,10 +136,6 @@ void LtePhyUeMode4D2D::handleAirFrame(cMessage* msg)
 {
     UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(msg->removeControlInfo());
 
-    if (useBattery_)
-    {
-        //TODO BatteryAccess::drawCurrent(rxAmount_, 0);
-    }
     connectedNodeId_ = masterId_;
     LteAirFrame* frame = check_and_cast<LteAirFrame*>(msg);
     EV << "LtePhyUeMode4D2D: received new LteAirFrame with ID " << frame->getId() << " from channel" << endl;
@@ -158,24 +154,9 @@ void LtePhyUeMode4D2D::handleAirFrame(cMessage* msg)
         return;
     }
 
-//    // Check if the frame is for us ( MacNodeId matches or - if this is a multicast communication - enrolled in multicast group)
-//    if (lteInfo->getDestId() != nodeId_ && !(binder_->isInMulticastGroup(nodeId_, lteInfo->getMulticastGroupId())))
-//    {
-//        EV << "ERROR: Frame is not for us. Delete it." << endl;
-//        EV << "Packet Type: " << phyFrameTypeToA((LtePhyFrameType)lteInfo->getFrameType()) << endl;
-//        EV << "Frame MacNodeId: " << lteInfo->getDestId() << endl;
-//        EV << "Local MacNodeId: " << nodeId_ << endl;
-//        delete lteInfo;
-//        delete frame;
-//        return;
-//    }
-
-//    if (binder_->isInMulticastGroup(nodeId_,lteInfo->getMulticastGroupId()))
-//    {
     // HACK: if this is a multicast connection, change the destId of the airframe so that upper layers can handle it
     // All packets in mode 4 are multicast
     lteInfo->setDestId(nodeId_);
-//    }
 
     // send H-ARQ feedback up
     if (lteInfo->getFrameType() == HARQPKT || lteInfo->getFrameType() == GRANTPKT || lteInfo->getFrameType() == RACPKT || lteInfo->getFrameType() == D2DMODESWITCHPKT)
@@ -203,11 +184,10 @@ void LtePhyUeMode4D2D::handleAirFrame(cMessage* msg)
 
 void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
 {
-//    if (useBattery_) {
-//    TODO     BatteryAccess::drawCurrent(txAmount_, 1);
-//    }
 
     UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(msg->removeControlInfo());
+
+    LteAirFrame* frame;
 
     if (lteInfo->getFrameType() == GRANTPKT)
     {
@@ -221,11 +201,43 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
         else
         {
             sciGrant_ = grant;
+            lteInfo->setUserTxParams(sciGrant_->getUserTxParams()->dup());
+            lteInfo->setGrantedBlocks(sciGrant_->getGrantedBlocks());
+            lteInfo->setDirection(D2D_MULTI);
+            availableRBs_ = sendSciMessage(msg, lteInfo);
         }
-        // No need to go any further.
+        return;
+    }
+    else if (lteInfo->getFrameType() == HARQPKT)
+    {
+        frame = new LteAirFrame("harqFeedback-grant");
+    }
+    else
+    {
         return;
     }
 
+    // if this is a multicast/broadcast connection, send the frame to all neighbors in the hearing range
+    // otherwise, send unicast to the destination
+
+    EV << "LtePhyUeMode4D2D::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
+           << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
+
+    // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
+    transmitting_=true;
+
+    lteInfo->setGrantedBlocks(*availableRBs_);
+
+    frame = prepareAirFrame(msg, lteInfo);
+
+    if (lteInfo->getDirection() == D2D_MULTI)
+        sendBroadcast(frame);
+    else
+        sendUnicast(frame);
+}
+
+RbMap* LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
+{
     // Store the RBs used for transmission. For interference computation
     RbMap rbMap = lteInfo->getGrantedBlocks();
     UsedRBs info;
@@ -247,141 +259,98 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
     // TODO: Find a better place to put this.
     UserControlInfo* SCIInfo = lteInfo->dup();
     LteAirFrame* frame = NULL;
-    if (lteInfo->getFrameType() == DATAPKT && lteInfo->getUserTxParams() != NULL)
-    {
-        // This realistically isn't important as we won't be using cqi in the end.
-//        double cqi = lteInfo->getUserTxParams()->readCqiVector()[lteInfo->getCw()];
-//        if (lteInfo->getDirection() == UL)
-//            emit(averageCqiUl_, cqi);
-//        else if (lteInfo->getDirection() == D2D || D2D_MULTI)
-//            emit(averageCqiD2D_, cqi);
 
-        RbMap sciRbs;
-        if (adjacencyPSCCHPSSCH_)
+    RbMap sciRbs;
+    if (adjacencyPSCCHPSSCH_)
+    {
+        // Setup so SCI gets 2 RBs from the grantedBlocks.
+        RbMap::iterator it;
+        std::map<Band, unsigned int>::iterator jt;
+        //for each Remote unit used to transmit the packet
+        int allocatedBlocks = 0;
+        for (it = rbMap.begin(); it != rbMap.end(); ++it)
         {
-            // Setup so SCI gets 2 RBs from the grantedBlocks.
-            RbMap::iterator it;
-            std::map<Band, unsigned int>::iterator jt;
-            //for each Remote unit used to transmit the packet
-            int allocatedBlocks = 0;
-            for (it = rbMap.begin(); it != rbMap.end(); ++it)
+            if (allocatedBlocks == 2)
             {
+                break;
+            }
+            //for each logical band used to transmit the packet
+            for (jt = it->second.begin(); jt != it->second.end(); ++jt)
+            {
+                Band band = jt->first;
+
                 if (allocatedBlocks == 2)
                 {
+                    // Have all the blocks allocated to the SCI so can move on.
                     break;
                 }
-                //for each logical band used to transmit the packet
-                for (jt = it->second.begin(); jt != it->second.end(); ++jt)
+
+                if (jt->second == 0) // this Rb is not allocated
+                    continue;
+                else
                 {
-                    Band band = jt->first;
-
-                    if (allocatedBlocks == 2)
-                    {
-                        // Have all the blocks allocated to the SCI so can move on.
-                        break;
-                    }
-
-                    if (jt->second == 0) // this Rb is not allocated
-                        continue;
-                    else
-                    {
-                        // RB is allocated to grant, now give it to the SCI.
-                        if (jt->second == 1){
-                            jt->second = 0;
-                            sciRbs[it->first][band] = 1;
-                            ++allocatedBlocks;
-                        }
+                    // RB is allocated to grant, now give it to the SCI.
+                    if (jt->second == 1){
+                        jt->second = 0;
+                        sciRbs[it->first][band] = 1;
+                        ++allocatedBlocks;
                     }
                 }
             }
         }
-        else
-        {
-            // Setup so SCI gets 2 RBs from the grantedBlocks.
-            RbMap::iterator it;
-            std::map<Band, unsigned int>::iterator jt;
-            int allocatedRbs = 0;
-            //for each Remote unit used to transmit the packet
-            for (it = rbMap.begin(); it != rbMap.end(); ++it)
-            {
-                if (allocatedRbs == 2)
-                {
+    }
+    else
+    {
+        // Setup so SCI gets 2 RBs from the grantedBlocks.
+        RbMap::iterator it;
+        std::map<Band, unsigned int>::iterator jt;
+        int allocatedRbs = 0;
+        //for each Remote unit used to transmit the packet
+        for (it = rbMap.begin(); it != rbMap.end(); ++it) {
+            if (allocatedRbs == 2) {
+                break;
+            }
+            //for each logical band used to transmit the packet
+            for (jt = it->second.begin(); jt != it->second.end(); ++jt) {
+                if (allocatedRbs == 2) {
+                    // Have all the blocks allocated to the SCI so can move on.
                     break;
                 }
-                //for each logical band used to transmit the packet
-                for (jt = it->second.begin(); jt != it->second.end(); ++jt)
-                {
-                    if (allocatedRbs == 2)
-                    {
-                        // Have all the blocks allocated to the SCI so can move on.
-                        break;
-                    }
-                    // sciRbs[remote][band] = assigned Rb
-                    sciRbs[it->first][jt->first] = 1;
-                    ++allocatedRbs;
-                }
+                // sciRbs[remote][band] = assigned Rb
+                sciRbs[it->first][jt->first] = 1;
+                ++allocatedRbs;
             }
         }
-
-        SCIInfo->setFrameType(SCIPKT);
-        SCIInfo->setGrantedBlocks(sciRbs);
-
-        /*
-         * Need to prepare the airframe were sending
-         * Ensure that it will fit into it's grant
-         * if not don't send anything except a break reservation message
-         */
-        EV << NOW << " LtePhyUeMode4D2D::handleUpperMessage - message from stack" << endl;
-
-        frame = prepareAirFrame(msg, lteInfo);
-
-        // Going to assume that it won't be the case that we have this issue
-//        cPacket* pkt = check_and_cast<cPacket*>(msg);
-//        if (pkt->getBitLength() > sciGrant_->getGrantedCwBytes(0))
-//        {
-//            cMessage* grantBreak = new cMessage("GRANTBREAK");
-//            send(grantBreak, upperGateOut_);
-//
-//            // At this point we need not go any further
-//            return;
-//        }
-
-        // create LteAirFrame and encapsulate the received packet
-        SidelinkControlInformation* SCI = createSCIMessage();
-        LteAirFrame* sciFrame = prepareAirFrame(SCI, SCIInfo);
-        // TODO: Set the MCS for the sciFrame to 0 for sending.
-
-        // TODO: Signal for Sending SCI
-        sendBroadcast(sciFrame);
-    }
-    else if (lteInfo->getFrameType() == HARQPKT)
-    {
-        frame = new LteAirFrame("harqFeedback-grant");
-    }
-    else
-    {
-        return;
     }
 
-    // if this is a multicast/broadcast connection, send the frame to all neighbors in the hearing range
-    // otherwise, send unicast to the destination
+    SCIInfo->setFrameType(SCIPKT);
+    SCIInfo->setGrantedBlocks(sciRbs);
 
-    EV << "LtePhyUeMode4D2D::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
-           << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
+    /*
+     * Need to prepare the airframe were sending
+     * Ensure that it will fit into it's grant
+     * if not don't send anything except a break reservation message
+     */
+    EV << NOW << " LtePhyUeMode4D2D::handleUpperMessage - message from stack" << endl;
 
-    // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
-    transmitting_=true;
+    // create LteAirFrame and encapsulate the received packet
+    SidelinkControlInformation* SCI = createSCIMessage();
+    LteAirFrame* sciFrame = prepareAirFrame(SCI, SCIInfo);
 
-    if (lteInfo->getDirection() == D2D_MULTI)
-        sendBroadcast(frame);
-    else
-        sendUnicast(frame);
+    // TODO: Signal for Sending SCI
+    sendBroadcast(sciFrame);
+
+    return (&rbMap);
 }
 
 void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
 {
     EV << NOW << " LtePhyUeMode4D2D::computeCSRs - going through sensing window to compute CSRS..." << endl;
     // Determine the total number of possible CSRs
+    if (grant->getMaximumLatency() > 100)
+    {
+        grant->setMaximumLatency(100);
+    }
     int totalPossibleCSRs = (grant->getMaximumLatency() - selectionWindowStartingSubframe_) * numSubchannels_;
     simtime_t startTime = (NOW + TTI * selectionWindowStartingSubframe_);
 
@@ -400,7 +369,6 @@ void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
         for (int i=0;i<numSubchannels_;i++)
         {
             Subchannel* subchannel = new Subchannel(subchannelSize_, t, subframeIndex, i);
-            // TODO: Need to add the bands to the individual subchannels as well.
             std::vector<Band> allocatedBands;
             for (Band b = i * subchannelSize_; b < (i * subchannelSize_) + subchannelSize_ ; b++)
             {
@@ -752,7 +720,6 @@ SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage()
      * 12 = 20ms (0.2) RRI
      * 13 - 15 = Reserved
      *
-     * TODO: Make sure the period is set to the correct level (i.e. period = 100/200/300 etc)
      */
     if (sciGrant_->getExpiration() != 0)
     {
@@ -800,7 +767,6 @@ SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage()
     /* mcs
      * 5 bits
      * 26 combos
-     * TODO: where do we find this guy
      * Technically the MAC layer determines the MCS that it wants the message sent with and as such it will be in the packet
      */
     sci->setMcs(sciGrant_->getMcs());
@@ -855,7 +821,6 @@ void LtePhyUeMode4D2D::storeAirFrame(LteAirFrame* newFrame)
     // TODO: Seems we don't really actually need the enbId, I have set it to 0 as it is referenced but never used for calc
     std::vector<double> rssiVector = channelModel_->getSINR_D2D(newFrame, newInfo, nodeId_, myCoord, 0, rsrpVector);
 
-    // TODO: Update the subchannel associated with this transmission to include the average RSRP for the sub channel
     // Need to be able to figure out which subchannel is associated to the Rbs in this case
     if (newInfo->getFrameType() == SCIPKT){
         sciFrames_.push_back(newFrame);
@@ -904,17 +869,10 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
 
     cPacket* pkt = frame->decapsulate();
 
-//    // attach the decider result to the packet as control info
-//    lteInfo->setDeciderResult(result);
-//    pkt->setControlInfo(lteInfo);
-
     if(lteInfo->getFrameType() == SCIPKT)
     {
-        //RELAY and NORMAL
-        if (lteInfo->getDirection() == D2D_MULTI)
-            result = channelModel_->error_Mode4_D2D(frame,lteInfo,rsrpVector, 0);
-        else
-            result = channelModel_->error(frame,lteInfo);
+        result = channelModel_->error_Mode4_D2D(frame,lteInfo,rsrpVector, 0);
+
         if (result)
         {
             // TODO: Signal successfully decoded SCI message

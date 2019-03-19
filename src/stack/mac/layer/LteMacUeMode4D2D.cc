@@ -532,7 +532,7 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
 
             if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
             {
-                emit(grantBreakTiming, 1);
+                //emit(grantBreakTiming, 1);
                 delete schedulingGrant_;
                 schedulingGrant_ = NULL;
                 macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority());
@@ -634,7 +634,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
         }
         else if (expirationCounter_ == 0)
         {
-            emit(grantBreak, 1);
+            //emit(grantBreak, 1);
             // Grant has expired, only generate new grant on receiving next message to be sent.
             delete schedulingGrant_;
             schedulingGrant_ = NULL;
@@ -902,7 +902,7 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int pri
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
 
-    emit(selectedNumSubchannels, numSubchannels);
+    //emit(selectedNumSubchannels, numSubchannels);
 
     LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
 
@@ -917,7 +917,7 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int pri
 
     schedulingGrant_ = mode4Grant;
 
-    emit(grantRequests, 1);
+    //emit(grantRequests, 1);
 }
 
 void LteMacUeMode4D2D::flushHarqBuffers()
@@ -1006,6 +1006,9 @@ void LteMacUeMode4D2D::flushHarqBuffers()
                             uinfo->setSourceId(getMacNodeId());
                             uinfo->setDestId(getMacNodeId());
                             uinfo->setFrameType(GRANTPKT);
+                            uinfo->setTxNumber(1);
+                            uinfo->setDirection(D2D_MULTI);
+                            uinfo->setUserTxParams(preconfiguredTxParams_->dup());
 
                             phyGrant->setControlInfo(uinfo);
 
@@ -1016,7 +1019,7 @@ void LteMacUeMode4D2D::flushHarqBuffers()
 
                             missedTransmissions_ = 0;
 
-                            emit(selectedMCS, mcs);
+                            //emit(selectedMCS, mcs);
 
                             break;
                         }
@@ -1030,12 +1033,12 @@ void LteMacUeMode4D2D::flushHarqBuffers()
                         simtime_t elapsedTime = NOW - receivedTime_;
                         remainingTime_ -= elapsedTime.dbl();
 
-                        emit(grantBreakSize, pduLength);
-                        emit(maximumCapacity, mcsCapacity);
+                        //emit(grantBreakSize, pduLength);
+                        //emit(maximumCapacity, mcsCapacity);
 
                         if (remainingTime_ <= 0)
                         {
-                            emit(droppedTimeout, 1);
+                            //emit(droppedTimeout, 1);
                             selectedProcess->forceDropProcess();
                             delete schedulingGrant_;
                             schedulingGrant_ = NULL;
@@ -1056,15 +1059,35 @@ void LteMacUeMode4D2D::flushHarqBuffers()
         {
             // if no transmission check if we need to break the grant.
             ++missedTransmissions_;
-            emit(missedTransmission, 1);
+            //emit(missedTransmission, 1);
+
+            LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
+            phyGrant->setSpsPriority(0);
+
+
+            UserControlInfo* uinfo = new UserControlInfo();
+            uinfo->setSourceId(getMacNodeId());
+            uinfo->setDestId(getMacNodeId());
+            uinfo->setFrameType(GRANTPKT);
+            uinfo->setTxNumber(1);
+            uinfo->setDirection(D2D_MULTI);
+            uinfo->setUserTxParams(preconfiguredTxParams_->dup());
+
+            phyGrant->setControlInfo(uinfo);
+
             if (missedTransmissions_ >= reselectAfter_)
             {
-                // TODO: Send SCI with 0 RRI
-                emit(grantBreakMissedTrans, 1);
+                phyGrant->setPeriod(0);
+
                 delete schedulingGrant_;
                 schedulingGrant_ = NULL;
                 missedTransmissions_ = 0;
+
+                //emit(grantBreakMissedTrans, 1);
             }
+
+            // Send Grant to PHY layer for sci creation
+            sendLowerPackets(phyGrant);
         }
     }
 }

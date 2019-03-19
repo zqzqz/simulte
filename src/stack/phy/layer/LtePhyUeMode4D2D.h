@@ -47,6 +47,8 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     double currentCBR_;
     int cbrIndex_;
 
+    RbMap* availableRBs_;
+
     LteAllocationModule* allocator_;
 
     void storeAirFrame(LteAirFrame* newFrame);
@@ -82,6 +84,8 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     virtual std::tuple<int,int> decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo);
 
     virtual void updateCBR();
+
+    virtual RbMap* sendSciMessage(cMessage* sci, UserControlInfo* lteInfo);
 
   public:
     LtePhyUeMode4D2D();
