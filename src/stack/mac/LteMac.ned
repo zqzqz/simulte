@@ -403,9 +403,9 @@ simple LteMacUeMode4D2D extends LteMacNonIPBase
         @signal[droppedTimeout];
         @statistic[droppedTimeout](title="Total Number of packets dropped due to a timeout" ; source="droppedTimeout"; record=sum,vector);
         @signal[grantBreakMissedTrans];
-        @statistic[grantBreakMissedTrans](title="Total grant breaks due to missed transmissions"; source="grantBreakMissedTrans; record=sum, vector);
+        @statistic[grantBreakMissedTrans](title="Total grant breaks due to missed transmissions"; source="grantBreakMissedTrans"; record=sum,vector);
         @signal[missedTransmission];
-        @statistic[missedTransmission](title="Total Missed transmissions"; source="missedTransmission"; record=sum, vector);
+        @statistic[missedTransmission](title="Total Missed transmissions"; source="missedTransmission"; record=sum,vector);
         @signal[selectedMCS];
         @statistic[selectedMCS](title="MCS selected for transmission"; source="selectedMCS"; record=mean,vector);
         @signal[selectedNumSubchannels];
