@@ -58,6 +58,10 @@ class Subchannel
             sci = other.sci;
             rsrpValues = other.rsrpValues;
             rssiValues = other.rssiValues;
+            occupiedBands = other.occupiedBands;
+            sensed = other.sensed;
+            subchannelIndex = other.subchannelIndex;
+            possibleCSR = other.possibleCSR;
             return *this;
         }
 
