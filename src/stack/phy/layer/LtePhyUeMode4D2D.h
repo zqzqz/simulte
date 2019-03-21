@@ -45,6 +45,19 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     std::vector<cPacket*> decodedScis_;
     std::vector<int> cbrHistory_;
 
+    simsignal_t cbr;
+    simsignal_t scisReceived;
+    simsignal_t scisDecoded;
+    simsignal_t scisNotDecoded;
+    simsignal_t scisSent;
+    simsignal_t tbsSent;
+    simsignal_t tbsReceived;
+    simsignal_t tbsDecoded;
+    simsignal_t tbsFailedDueToNoSCI;
+    simsignal_t tbFailedButSCIReceived;
+    simsignal_t tbAndSCINotReceived;
+    simsignal_t threshold;
+
     double currentCBR_;
     int cbrIndex_;
 

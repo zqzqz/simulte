@@ -58,6 +58,20 @@ void LtePhyUeMode4D2D::initialize(int stage)
         {
             ThresPSSCHRSRPvector_.push_back(i);
         }
+
+        cbr                    = registerSignal("cbr");
+        scisReceived           = registerSignal("scisReceived");
+        scisDecoded            = registerSignal("scisDecoded");
+        scisNotDecoded         = registerSignal("scisNotDecoded");
+        scisSent               = registerSignal("scisSent");
+        tbsSent                = registerSignal("tbsSent");
+        tbsReceived            = registerSignal("tbsReceived");
+        tbsDecoded             = registerSignal("tbsDecoded");
+        tbsFailedDueToNoSCI    = registerSignal("tbsFailedDueToNoSCI");
+        tbFailedButSCIReceived = registerSignal("tbFailedButSCIReceived");
+        tbAndSCINotReceived    = registerSignal("tbAndSCINotReceived");
+        threshold              = registerSignal("threshold");
+
     }
     else if (stage == INITSTAGE_NETWORK_LAYER_2)
     {
@@ -96,7 +110,6 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
             decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector);
 
             currentCBR_ = currentCBR_/numSubchannels_;
-            // TODO Signal for CBR
             cbrHistory_[cbrIndex_]=currentCBR_;
             currentCBR_=0;
             updateCBR();
@@ -250,6 +263,8 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
 
     frame = prepareAirFrame(msg, lteInfo);
 
+    emit(tbsSent, 1);
+
     if (lteInfo->getDirection() == D2D_MULTI)
         sendBroadcast(frame);
     else
@@ -278,7 +293,6 @@ RbMap LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
     }
     lastActive_ = NOW;
 
-    // TODO: Find a better place to put this.
     UserControlInfo* SCIInfo = lteInfo->dup();
     LteAirFrame* frame = NULL;
 
@@ -359,7 +373,7 @@ RbMap LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
     SidelinkControlInformation* SCI = createSCIMessage();
     LteAirFrame* sciFrame = prepareAirFrame(SCI, SCIInfo);
 
-    // TODO: Signal for Sending SCI
+    emit(scisSent, 1);
     sendBroadcast(sciFrame);
 
     delete sciGrant_;
@@ -572,7 +586,7 @@ void LtePhyUeMode4D2D::checkRSRP(LteMode4SchedulingGrant* &grant, int thresholdI
                         int threshold = ThresPSSCHRSRPvector_[index];
                         int thresholdDbm = (-128 * (threshold-1)*2) + (3 * thresholdIncreaseFactor);
 
-
+                        emit(threshold, thresholdDbm);
 
                         if (averageRSRP > thresholdDbm)
                         {
@@ -721,6 +735,7 @@ std::vector<std::vector<Subchannel*>> LtePhyUeMode4D2D::selectBestRSSIs(std::vec
         optimalCSRs.push_back(possibleCSRs[currentMinCSR]);
         possibleCSRs.erase(possibleCSRs.begin()+currentMinCSR);
         minRSSI = 0;
+        // TODO: Emit RSSI of last packet?
     }
     return optimalCSRs;
 }
@@ -850,7 +865,7 @@ void LtePhyUeMode4D2D::storeAirFrame(LteAirFrame* newFrame)
     Coord myCoord = getCoord();
 
     std::vector<double> rsrpVector = channelModel_->getRSRP_D2D(newFrame, newInfo, nodeId_, myCoord);
-    // TODO: Seems we don't really actually need the enbId, I have set it to 0 as it is referenced but never used for calc
+    // Seems we don't really actually need the enbId, I have set it to 0 as it is referenced but never used for calc
     std::vector<double> rssiVector = channelModel_->getSINR_D2D(newFrame, newInfo, nodeId_, myCoord, 0, rsrpVector);
 
     // Need to be able to figure out which subchannel is associated to the Rbs in this case
@@ -905,6 +920,8 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
     {
         result = channelModel_->error_Mode4_D2D(frame,lteInfo,rsrpVector, 0);
 
+        emit(scisReceived, 1);
+
         if (result) {
             // TODO: Signal successfully decoded SCI message
             SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
@@ -924,9 +941,11 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
             lteInfo->setDeciderResult(true);
             pkt->setControlInfo(lteInfo);
             decodedScis_.push_back(pkt);
+            emit(scisDecoded, 1);
         }
         else
         {
+            emit(scisNotDecoded, 1);
             delete lteInfo;
             delete pkt;
         }
@@ -934,6 +953,9 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
     }
     else
     {
+
+        emit(tbsReceived, 1);
+
         // Have a TB want to make sure we have the SCI for it.
         bool foundCorrespondingSci = false;
         SidelinkControlInformation* correspondingSCI;
@@ -966,20 +988,19 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
         }
         if(result && !foundCorrespondingSci)
         {
-            // TODO: Signal failed to decode TB due to lack of sci
+            emit(tbsFailedDueToNoSCI, 1);
         }
-        // TODO: Signal successfully found the SCI message
         else if (!result && foundCorrespondingSci)
         {
-            //TODO: Failed to decode TB but decoded the SCI.
+            emit(tbFailedButSCIReceived, 1);
         }
         else if (!result && ! foundCorrespondingSci)
         {
-            // TODO: Just outright fail
+            emit(tbAndSCINotReceived, 1);
         }
         else
         {
-            //TODO: Signal successfully decoded both the SCI and TB
+            emit(tbsDecoded, 1);
             // Now need to find the associated Subchannels, record the RSRP and RSSI for the message and go from there.
             // Need to again do the RIV steps
             std::tuple<int, int> indexAndLength = decodeRivValue(correspondingSCI, sciInfo);
@@ -1104,6 +1125,8 @@ void LtePhyUeMode4D2D::updateCBR()
     }
 
     cbr = std::round(cbr);
+
+    emit(cbr, cbr);
 
     Cbr* cbrPkt = new Cbr("CBR");
     cbrPkt->setCbr(cbr);

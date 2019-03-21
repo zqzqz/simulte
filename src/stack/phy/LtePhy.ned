@@ -100,6 +100,12 @@ simple LtePhyUeMode4D2D extends LtePhyUeD2D {
 		@statistic[scisReceived](title="Number of received SCIs"; source="scisReceived"; record=sum,vector);
 		@signal[scisDecoded];
 		@statistic[scisDecoded](title="Number of SCIs successfully decoded"; source="scisDecoded"; record=sum,vector);
+		@signal[scisNotDecoded];
+        @statistic[scisNotDecoded](title="Number of SCIs successfully decoded"; source="scisNotDecoded"; record=sum,vector);
+		@signal[scisSent];
+		@statistic[scisSent](title="Number of SCIs sent"; source="scisSent"; record=sum,vector);
+		@signal[tbsSent];
+		@statistic[tbsSent](title="Number of TBs sent"; source="tbsSent"; record=sum,vector);
 		@signal[tbsReceived];
 		@statistic[tbsReceived](title="Number of TBs received"; source="tbsReceived"; record=sum,vector);
 		@signal[tbsDecoded];
@@ -110,6 +116,8 @@ simple LtePhyUeMode4D2D extends LtePhyUeD2D {
 		@statistic[tbFailedButSCIReceived](title="Number of failed TBs with a decoded SCI"; source="tbFailedButSCIReceived"; record=sum,vector);
 		@signal[tbAndSCINotReceived];
 		@statistic[tbAndSCINotReceived](title="Number of failed TBs with a failed SCI"; source="tbAndSCINotReceived"; record=sum,vector);
+		@signal[threshold];
+		@statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
 }
 
 // 
