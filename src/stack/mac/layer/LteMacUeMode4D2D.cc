@@ -529,6 +529,8 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
             // message from PHY_to_MAC gate (from lower layer)
             emit(receivedPacketFromLowerLayer, pkt);
 
+            delete pkt;
+
             return;
         }
     }
@@ -576,10 +578,6 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
 
 void LteMacUeMode4D2D::handleSelfMessage()
 {
-    /**
-     * Pure copy and paste job so far, want to see if I can get away with not having to re-implement the whole thing
-     * only issue is that I'll have to make this somewhat tidier down the road as it is a bit silly doing it this way.
-     */
     EV << "----- UE MAIN LOOP -----" << endl;
 
     // extract pdus from all harqrxbuffers and pass them to unmaker
@@ -813,7 +811,6 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     for (jt=grantedBands.begin(); jt!=grantedBands.end(); jt++)
     {
         // For each band assign block on the MACRO antenna
-        // TODO: think this over at some point.
         grantedBlocks[MACRO][*jt] = 1;
         ++totalGrantedBlocks;
     }
@@ -859,6 +856,10 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     expirationCounter_=mode4Grant->getExpiration() * periodCounter_;
 
     // TODO: Setup for HARQ retransmission, if it can't be satisfied then selection must occur again.
+
+    CSRs.clear();
+
+    delete pkt;
 }
 
 void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int priority)
