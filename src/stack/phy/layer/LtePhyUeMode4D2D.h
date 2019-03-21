@@ -37,6 +37,7 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     std::vector<std::vector<double>> tbRssiVectors_;
 
     std::vector<std::vector<Subchannel*>> sensingWindow_;
+    std::vector<std::vector<Subchannel*>> selectionWindow_;
     LteMode4SchedulingGrant* sciGrant_;
     std::vector<std::vector<double>> sciRsrpVectors_;
     std::vector<std::vector<double>> sciRssiVectors_;
@@ -47,7 +48,7 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     double currentCBR_;
     int cbrIndex_;
 
-    RbMap* availableRBs_;
+    RbMap availableRBs_;
 
     LteAllocationModule* allocator_;
 
@@ -73,11 +74,11 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
 
     virtual void createSubframe(simtime_t subframeTime);
 
-    virtual void checkSensed(std::vector<std::vector<Subchannel*>> &selectionWindow, LteMode4SchedulingGrant* &grant);
+    virtual void checkSensed(LteMode4SchedulingGrant* &grant);
 
-    virtual void checkRSRP(std::vector<std::vector<Subchannel*>> &selectionWindow, LteMode4SchedulingGrant* &grant, int thresholdIncreaseFactor);
+    virtual void checkRSRP(LteMode4SchedulingGrant* &grant, int thresholdIncreaseFactor);
 
-    virtual std::vector<std::vector<Subchannel*>> getPossibleCSRs(std::vector<std::vector<Subchannel*>> &selectionWindow, LteMode4SchedulingGrant* &grant);
+    virtual std::vector<std::vector<Subchannel*>> getPossibleCSRs(LteMode4SchedulingGrant* &grant);
 
     virtual std::vector<std::vector<Subchannel*>> selectBestRSSIs(std::vector<std::vector<Subchannel*>> &possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
 
@@ -85,7 +86,7 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
 
     virtual void updateCBR();
 
-    virtual RbMap* sendSciMessage(cMessage* sci, UserControlInfo* lteInfo);
+    virtual RbMap sendSciMessage(cMessage* sci, UserControlInfo* lteInfo);
 
   public:
     LtePhyUeMode4D2D();

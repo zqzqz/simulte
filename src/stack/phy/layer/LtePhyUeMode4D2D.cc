@@ -94,7 +94,6 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
             // decode the selected frame
             decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector);
 
-            // TODO: log the cbr here and send to MAC layer
             currentCBR_ = currentCBR_/numSubchannels_;
             // TODO Signal for CBR
             cbrHistory_[cbrIndex_]=currentCBR_;
@@ -116,6 +115,7 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
             // decode the selected frame
             decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector);
         }
+        decodedScis_.clear();
         delete msg;
         d2dDecodingTimer_ = NULL;
     }
@@ -126,6 +126,15 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
             cbrIndex_ = 0;
         cbrHistory_[cbrIndex_] = currentCBR_;
         createSubframe(NOW);
+        delete msg;
+    }
+    else if (msg->isName("deleteSelectionWindow"))
+    {
+        if (selectionWindow_.size()>0)
+        {
+            selectionWindow_.clear();
+        }
+        delete msg;
     }
     else
         LtePhyUe::handleSelfMessage(msg);
@@ -203,18 +212,13 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
             sciGrant_ = grant;
             lteInfo->setUserTxParams(sciGrant_->getUserTxParams()->dup());
             lteInfo->setGrantedBlocks(sciGrant_->getGrantedBlocks());
-            lteInfo->setDirection(D2D_MULTI);
-            availableRBs_ = sendSciMessage(msg, lteInfo);
+            lteInfo->setDirection(D2D_MULTI);availableRBs_ = sendSciMessage(msg, lteInfo);
         }
         return;
     }
     else if (lteInfo->getFrameType() == HARQPKT)
     {
         frame = new LteAirFrame("harqFeedback-grant");
-    }
-    else
-    {
-        return;
     }
 
     // if this is a multicast/broadcast connection, send the frame to all neighbors in the hearing range
@@ -226,7 +230,7 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
     // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
     transmitting_=true;
 
-    lteInfo->setGrantedBlocks(*availableRBs_);
+    lteInfo->setGrantedBlocks(availableRBs_);
 
     frame = prepareAirFrame(msg, lteInfo);
 
@@ -236,7 +240,7 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
         sendUnicast(frame);
 }
 
-RbMap* LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
+RbMap LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
 {
     // Store the RBs used for transmission. For interference computation
     RbMap rbMap = lteInfo->getGrantedBlocks();
@@ -340,7 +344,7 @@ RbMap* LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
     // TODO: Signal for Sending SCI
     sendBroadcast(sciFrame);
 
-    return (&rbMap);
+    return (rbMap);
 }
 
 void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
@@ -351,7 +355,7 @@ void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
     {
         grant->setMaximumLatency(100);
     }
-    int totalPossibleCSRs = (grant->getMaximumLatency() - selectionWindowStartingSubframe_) * numSubchannels_;
+    int totalPossibleCSRs = ((grant->getMaximumLatency() - selectionWindowStartingSubframe_) * numSubchannels_)/grant->getNumSubchannels();
     simtime_t startTime = (NOW + TTI * selectionWindowStartingSubframe_);
 
     simtime_t endTime = (NOW + TTI * 100);
@@ -362,7 +366,7 @@ void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
     }
 
     int subframeIndex = sensingWindow_.size() + selectionWindowStartingSubframe_;
-    std::vector<std::vector<Subchannel*>> selectionWindow;
+
     for (simtime_t t = startTime; t <= endTime ; t+=TTI)
     {
         std::vector<Subchannel*> subframe;
@@ -377,7 +381,7 @@ void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
             subchannel->setOccupiedBands(allocatedBands);
             subframe.push_back(subchannel);
         }
-        selectionWindow.insert(selectionWindow.begin(), subframe);
+        selectionWindow_.insert(selectionWindow_.begin(), subframe);
         ++subframeIndex;
     }
 
@@ -390,11 +394,11 @@ void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
     {
         if(!checkedSensed)
         {
-            checkSensed(selectionWindow, grant);
+            checkSensed(grant);
             checkedSensed = true;
         }
-        checkRSRP(selectionWindow, grant, thresholdIncreaseFactor);
-        possibleCSRs = getPossibleCSRs(selectionWindow, grant);
+        checkRSRP(grant, thresholdIncreaseFactor);
+        possibleCSRs = getPossibleCSRs(grant);
         ++thresholdIncreaseFactor;
     }
 
@@ -416,18 +420,25 @@ void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
     // Send the packet up to the MAC layer where it will choose the CSR and the retransmission if that is specified
     // Need to generate the message that is to be sent to the upper layers.
     SpsCandidateResources* candidateResourcesMessage = new SpsCandidateResources("CSRs");
-    candidateResourcesMessage->setCSRs(optimalCSRs);
+    std::vector<std::vector<Subchannel*>> reportedCSRs;
+    std::copy(optimalCSRs.begin(), optimalCSRs.end(), back_inserter(reportedCSRs));
+    candidateResourcesMessage->setCSRs(reportedCSRs);
     send(candidateResourcesMessage, upperGateOut_);
+
+    // Send self message to trigger another subframes creation and insertion. Need one for every TTI
+    cMessage* deleteSelectionWindow = new cMessage("deleteSelectionWindow");
+    deleteSelectionWindow->setSchedulingPriority(0);        // Generate the subframe at start of next TTI
+    scheduleAt(NOW + TTI, deleteSelectionWindow);
 }
 
-void LtePhyUeMode4D2D::checkSensed(std::vector<std::vector<Subchannel*>> &selectionWindow, LteMode4SchedulingGrant* &grant)
+void LtePhyUeMode4D2D::checkSensed(LteMode4SchedulingGrant* &grant)
 {
     EV << NOW << " LtePhyUeMode4D2D::checkSensed - eliminating CSRS which were not sensed in sensing window selectionWindow..." << endl;
     int pRsvpTx = grant->getPeriod();
     unsigned int grantLength = grant->getNumSubchannels();
     int cResel = grant->getResourceReselectionCounter();
     std::vector<double> allowedRRIs = grant->getPossibleRRIs();
-    for (int i=0; i < selectionWindow.size();i++)
+    for (int i=0; i < selectionWindow_.size();i++)
     {
         int adjustedIndex = i+1000+selectionWindowStartingSubframe_;
         bool noUnsensed;
@@ -467,8 +478,8 @@ void LtePhyUeMode4D2D::checkSensed(std::vector<std::vector<Subchannel*>> &select
                             {
                                 if (adjustedIndex + resel * pRsvpTxPrime == z + pStep_ * (*kt) * q)
                                 {
-                                    selectionWindow[i][0]->setSensed(false);
-                                    selectionWindow[i][0]->setPossibleCSR(false);
+                                    selectionWindow_[i][0]->setSensed(false);
+                                    selectionWindow_[i][0]->setPossibleCSR(false);
                                     // Allows us to move onto the next subframe and ignore this one as it isn't one that can be selected.
                                     noUnsensed=false;
                                 }
@@ -483,7 +494,7 @@ void LtePhyUeMode4D2D::checkSensed(std::vector<std::vector<Subchannel*>> &select
     }
 }
 
-void LtePhyUeMode4D2D::checkRSRP(std::vector<std::vector<Subchannel*>> &selectionWindow, LteMode4SchedulingGrant* &grant, int thresholdIncreaseFactor)
+void LtePhyUeMode4D2D::checkRSRP(LteMode4SchedulingGrant* &grant, int thresholdIncreaseFactor)
 {
     EV << NOW << " LtePhyUeMode4D2D::checkRSRP - checking selectionWindow and filtering CSRs based on RSRP..." << endl;
     std::vector<double> averageRSRPs;
@@ -583,21 +594,21 @@ void LtePhyUeMode4D2D::checkRSRP(std::vector<std::vector<Subchannel*>> &selectio
             std::vector<int>::iterator jt;
             for (jt=it->second.begin(); jt!=it->second.end(); jt++)
             {
-                selectionWindow[it->first - (1000 + selectionWindowStartingSubframe_)][*jt]->setPossibleCSR(false);
+                selectionWindow_[it->first - (1000 + selectionWindowStartingSubframe_)][*jt]->setPossibleCSR(false);
             }
         }
     }
 }
 
-std::vector<std::vector<Subchannel*>> LtePhyUeMode4D2D::getPossibleCSRs(std::vector<std::vector<Subchannel*>> &selectionWindow, LteMode4SchedulingGrant* &grant)
+std::vector<std::vector<Subchannel*>> LtePhyUeMode4D2D::getPossibleCSRs(LteMode4SchedulingGrant* &grant)
 {
     // Go through the selection window and determine the number of possible CSRs available
     EV << NOW << " LtePhyUeMode4D2D::getPossibleCSRs - Getting possible CSRs from from selectionWindow..." << endl;
     int grantLength = grant->getNumSubchannels();
     std::vector<std::vector<Subchannel*>> possibleCSRs;
-    for (int i=0; i < selectionWindow.size(); i++)
+    for (int i=0; i < selectionWindow_.size(); i++)
     {
-        if (selectionWindow[i][0]->getSensed())
+        if (selectionWindow_[i][0]->getSensed())
         {
             int j=0;
             while (j < numSubchannels_)
@@ -610,13 +621,13 @@ std::vector<std::vector<Subchannel*>> LtePhyUeMode4D2D::getPossibleCSRs(std::vec
                 std::vector<Subchannel*> possibleCSR;
                 for (int k=j; k < j+grantLength; k++)
                 {
-                    if (!selectionWindow[i][k]->getPossibleCSR())
+                    if (!selectionWindow_[i][k]->getPossibleCSR())
                     {
                         // This range of subchannels will not fit the CSR
                         j = k + 1;
                         break;
                     }
-                    possibleCSR.push_back(selectionWindow[i][k]);
+                    possibleCSR.push_back(selectionWindow_[i][k]);
                 }
                 possibleCSRs.push_back(possibleCSR);
                 ++j;
@@ -894,11 +905,6 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
             pkt->setControlInfo(lteInfo);
             decodedScis_.push_back(pkt);
         }
-        else
-        {
-            // TODO: Signal failed to decode the SCI message
-        }
-        // We do not want to send SCIs to the upper layers, as such return now.
     }
     else
     {
@@ -967,6 +973,8 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
                     (*kt)->addRssiValue(rssiVector[(*lt)], (*lt));
                 }
             }
+            // Need to delete the message now
+            delete correspondingSCI;
         }
 
         // send decapsulated message along with result control info to upperGateOut_
@@ -979,13 +987,19 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
     }
 
     // update statistics
-    if (result)
+    if (result) {
         numAirFrameReceived_++;
-    else
+        EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
+           << (result ? "RECEIVED" : "NOT RECEIVED") << endl;
+    }
+    else {
         numAirFrameNotReceived_++;
-
-    EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
-       << ( result ? "RECEIVED" : "NOT RECEIVED" ) << endl;
+        EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
+           << (result ? "RECEIVED" : "NOT RECEIVED") << endl;
+        if (lteInfo->getFrameType() == SCIPKT) {
+            delete frame;
+        }
+    }
 }
 
 std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo)
@@ -1107,6 +1121,8 @@ void LtePhyUeMode4D2D::createSubframe(simtime_t subframeTime)
     }
     else
     {
+        std::vector<Subchannel*> oldestSubframe = sensingWindow_.front();
+        oldestSubframe.clear();
         sensingWindow_.erase(sensingWindow_.begin());
         sensingWindow_.push_back(subframe);
     }
