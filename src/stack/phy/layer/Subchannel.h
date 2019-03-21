@@ -170,6 +170,15 @@ class Subchannel
         {
             return possibleCSR;
         }
+        void reset(simtime_t simulationTime)
+        {
+            reserved = false;
+            sensed = true;
+            possibleCSR = true;
+            subframeTime = simulationTime;
+            rsrpValues.clear();
+            rssiValues.clear();
+        }
 };
 
 #endif

@@ -72,7 +72,7 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     // Compute Candidate Single Subframe Resources which the MAC layer can use for transmission
     virtual void computeCSRs(LteMode4SchedulingGrant* &grant);
 
-    virtual void createSubframe(simtime_t subframeTime);
+    virtual void updateSubframe();
 
     virtual void checkSensed(LteMode4SchedulingGrant* &grant);
 
@@ -87,6 +87,8 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     virtual void updateCBR();
 
     virtual RbMap sendSciMessage(cMessage* sci, UserControlInfo* lteInfo);
+
+    virtual void initialiseSensingWindow();
 
   public:
     LtePhyUeMode4D2D();

@@ -70,7 +70,8 @@ void LtePhyUeMode4D2D::initialize(int stage)
 //        LteMacBase* mac = binder_->getMacFromMacNodeId(nodeId_);
         allocator_ = new LteAllocationModule(mac_, D2D);
         allocator_->initAndReset(deployer_->getNumRbUl(), deployer_->getNumBands());
-        createSubframe(NOW);
+
+        initialiseSensingWindow();
     }
 }
 
@@ -115,23 +116,37 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
             // decode the selected frame
             decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector);
         }
+        std::vector<cPacket*>::iterator it;
+        for(it=decodedScis_.begin();it!=decodedScis_.end();it++)
+        {
+            delete(*it);
+        }
         decodedScis_.clear();
         delete msg;
         d2dDecodingTimer_ = NULL;
     }
-    else if (msg->isName("createSubframe"))
+    else if (msg->isName("updateSubframe"))
     {
         cbrIndex_++;
         if (cbrIndex_ == 100)
             cbrIndex_ = 0;
         cbrHistory_[cbrIndex_] = currentCBR_;
-        createSubframe(NOW);
+        updateSubframe();
         delete msg;
     }
     else if (msg->isName("deleteSelectionWindow"))
     {
         if (selectionWindow_.size()>0)
         {
+            std::vector<std::vector<Subchannel *>>::iterator it;
+            for (it=selectionWindow_.begin();it!=selectionWindow_.end();it++)
+            {
+                std::vector<Subchannel *>::iterator jt;
+                for (jt=it->begin();jt!=it->end();jt++)
+                {
+                    delete (*jt);
+                }
+            }
             selectionWindow_.clear();
         }
         delete msg;
@@ -212,7 +227,8 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
             sciGrant_ = grant;
             lteInfo->setUserTxParams(sciGrant_->getUserTxParams()->dup());
             lteInfo->setGrantedBlocks(sciGrant_->getGrantedBlocks());
-            lteInfo->setDirection(D2D_MULTI);availableRBs_ = sendSciMessage(msg, lteInfo);
+            lteInfo->setDirection(D2D_MULTI);
+            availableRBs_ = sendSciMessage(msg, lteInfo);
         }
         return;
     }
@@ -238,6 +254,8 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
         sendBroadcast(frame);
     else
         sendUnicast(frame);
+
+
 }
 
 RbMap LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
@@ -343,6 +361,9 @@ RbMap LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
 
     // TODO: Signal for Sending SCI
     sendBroadcast(sciFrame);
+
+    delete sciGrant_;
+    delete lteInfo;
 
     return (rbMap);
 }
@@ -884,20 +905,19 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
     {
         result = channelModel_->error_Mode4_D2D(frame,lteInfo,rsrpVector, 0);
 
-        if (result)
-        {
+        if (result) {
             // TODO: Signal successfully decoded SCI message
-            SidelinkControlInformation* sci = check_and_cast<SidelinkControlInformation*>(pkt);
+            SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
             std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
             int subchannelIndex = std::get<0>(indexAndLength);
             int lengthInSubchannels = std::get<1>(indexAndLength);
 
             currentCBR_ += lengthInSubchannels;
 
-            std::vector<Subchannel*>::iterator kt;
-            std::vector<Subchannel*> currentSubframe = sensingWindow_.back();
-            for(kt=currentSubframe.begin()+subchannelIndex; kt!=currentSubframe.begin()+subchannelIndex+lengthInSubchannels; kt++)
-            {
+            std::vector<Subchannel *>::iterator kt;
+            std::vector < Subchannel * > currentSubframe = sensingWindow_.back();
+            for (kt = currentSubframe.begin() + subchannelIndex;
+                 kt != currentSubframe.begin() + subchannelIndex + lengthInSubchannels; kt++) {
                 // Record the SCI in the subchannel.
                 (*kt)->setSCI(sci->dup());
             }
@@ -905,6 +925,12 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
             pkt->setControlInfo(lteInfo);
             decodedScis_.push_back(pkt);
         }
+        else
+        {
+            delete lteInfo;
+            delete pkt;
+        }
+        delete frame;
     }
     else
     {
@@ -975,7 +1001,10 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
             }
             // Need to delete the message now
             delete correspondingSCI;
+            delete sciInfo;
         }
+
+        delete frame;
 
         // send decapsulated message along with result control info to upperGateOut_
         lteInfo->setDeciderResult(result);
@@ -987,19 +1016,17 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
     }
 
     // update statistics
-    if (result) {
+    if (result)
+    {
         numAirFrameReceived_++;
-        EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
-           << (result ? "RECEIVED" : "NOT RECEIVED") << endl;
     }
-    else {
+    else
+    {
         numAirFrameNotReceived_++;
-        EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
-           << (result ? "RECEIVED" : "NOT RECEIVED") << endl;
-        if (lteInfo->getFrameType() == SCIPKT) {
-            delete frame;
-        }
     }
+
+    EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
+       << (result ? "RECEIVED" : "NOT RECEIVED") << endl;
 }
 
 std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo)
@@ -1083,10 +1110,36 @@ void LtePhyUeMode4D2D::updateCBR()
     send(cbrPkt, upperGateOut_);
 }
 
-void LtePhyUeMode4D2D::createSubframe(simtime_t subframeTime)
+void LtePhyUeMode4D2D::updateSubframe()
 {
-    EV << NOW << " LtePhyUeMode4D2D::createSubframe - creating subframe to be added to sensingWindow..." << endl;
-    std::vector<Subchannel*> subframe;
+    EV << NOW << " LtePhyUeMode4D2D::updateSubframe - updating subframe in the sensingWindow..." << endl;
+
+    // First find the subframe that we want to look at i.e. the front one I imagine
+    // If the front isn't occupied then skip on
+    // If it is occupied, pop it off, update it and push it back
+    // All good then.
+
+    std::vector<Subchannel*> subframe = sensingWindow_.front();
+
+    if (subframe.at(0)->getSubframeTime() <= NOW - SimTime(10*pStep_, SIMTIME_MS))
+    {
+        std::vector<Subchannel*>::iterator it;
+        for (it=subframe.begin(); it!=subframe.end(); it++)
+        {
+            (*it)->reset(NOW);
+        }
+        sensingWindow_.erase(sensingWindow_.begin());
+        sensingWindow_.push_back(subframe);
+    }
+
+    cMessage* updateSubframe = new cMessage("updateSubframe");
+    updateSubframe->setSchedulingPriority(0);        // Generate the subframe at start of next TTI
+    scheduleAt(NOW + TTI, updateSubframe);
+}
+
+void LtePhyUeMode4D2D::initialiseSensingWindow()
+{
+    EV << NOW << " LtePhyUeMode4D2D::initialiseSensingWindow - creating subframes to be added to sensingWindow..." << endl;
 
     Band band = 0;
 
@@ -1095,42 +1148,38 @@ void LtePhyUeMode4D2D::createSubframe(simtime_t subframeTime)
         // This assumes the bands only every have 1 Rb (which is fine as that appears to be the case)
         band = numSubchannels_*2;
     }
-    for (int i = 0; i < numSubchannels_; i++)
+
+    simtime_t subframeTime = NOW;
+
+    while(sensingWindow_.size() < 10*pStep_)
     {
-        Subchannel* currentSubchannel = new Subchannel(subchannelSize_, subframeTime);
-        // Need to determine the RSRP and RSSI that corresponds to background noise
-        // Best off implementing this in the channel model as a method.
+        std::vector<Subchannel*> subframe;
+        for (int i = 0; i < numSubchannels_; i++) {
+            Subchannel *currentSubchannel = new Subchannel(subchannelSize_, subframeTime);
+            // Need to determine the RSRP and RSSI that corresponds to background noise
+            // Best off implementing this in the channel model as a method.
 
-        std::vector<Band> occupiedBands;
+            std::vector <Band> occupiedBands;
 
-        int overallCapacity = 0;
-        // Ensure the subchannel is allocated the correct number of RBs
-        while(overallCapacity < subchannelSize_ && band < getBinder()->getNumBands())
-        {
-            // This acts like there are multiple RBs per band which is not allowed.
-            overallCapacity += allocator_->getAllocatedBlocks(MAIN_PLANE, MACRO, band);
-            occupiedBands.push_back(band);
-            ++band;
+            int overallCapacity = 0;
+            // Ensure the subchannel is allocated the correct number of RBs
+            while (overallCapacity < subchannelSize_ && band < getBinder()->getNumBands()) {
+                // This acts like there are multiple RBs per band which is not allowed.
+                overallCapacity += allocator_->getAllocatedBlocks(MAIN_PLANE, MACRO, band);
+                occupiedBands.push_back(band);
+                ++band;
+            }
+            currentSubchannel->setOccupiedBands(occupiedBands);
+            subframe.push_back(currentSubchannel);
         }
-        currentSubchannel->setOccupiedBands(occupiedBands);
-        subframe.push_back(currentSubchannel);
-    }
-    if (sensingWindow_.size() < 10*pStep_)
-    {
         sensingWindow_.push_back(subframe);
-    }
-    else
-    {
-        std::vector<Subchannel*> oldestSubframe = sensingWindow_.front();
-        oldestSubframe.clear();
-        sensingWindow_.erase(sensingWindow_.begin());
-        sensingWindow_.push_back(subframe);
-    }
+        subframeTime += TTI;
 
+    }
     // Send self message to trigger another subframes creation and insertion. Need one for every TTI
-    cMessage* createSubframe = new cMessage("createSubframe");
-    createSubframe->setSchedulingPriority(0);        // Generate the subframe at start of next TTI
-    scheduleAt(NOW + TTI, createSubframe);
+    cMessage* updateSubframe = new cMessage("updateSubframe");
+    updateSubframe->setSchedulingPriority(0);        // Generate the subframe at start of next TTI
+    scheduleAt(NOW + TTI, updateSubframe);
 }
 
 void LtePhyUeMode4D2D::finish()
@@ -1153,4 +1202,15 @@ void LtePhyUeMode4D2D::finish()
         // deployer call
         deployer_->detachUser(nodeId_);
     }
+
+    std::vector<std::vector<Subchannel *>>::iterator it;
+    for (it=sensingWindow_.begin();it!=sensingWindow_.end();it++)
+    {
+        std::vector<Subchannel *>::iterator jt;
+        for (jt=it->begin();jt!=it->end();jt++)
+        {
+            delete (*jt);
+        }
+    }
+    sensingWindow_.clear();
 }

@@ -167,6 +167,8 @@ protected:
      */
     void flushHarqBuffers();
 
+    void finish();
+
 public:
     LteMacUeMode4D2D();
     virtual ~LteMacUeMode4D2D();

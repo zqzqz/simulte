@@ -541,9 +541,9 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
             FlowControlInfoNonIp* lteInfo = check_and_cast<FlowControlInfoNonIp*>(pkt->removeControlInfo());
             receivedTime_ = NOW;
             simtime_t elapsedTime = receivedTime_ - lteInfo->getCreationTime();
-            simtime_t* duration = new simtime_t(lteInfo->getDuration(), SIMTIME_MS);
-            (*duration) = (*duration) - elapsedTime;
-            double dur = duration->dbl();
+            simtime_t duration = SimTime(lteInfo->getDuration(), SIMTIME_MS);
+            duration = duration - elapsedTime;
+            double dur = duration.dbl();
             remainingTime_ = lteInfo->getDuration() - dur;
 
             if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
@@ -1105,6 +1105,11 @@ void LteMacUeMode4D2D::flushHarqBuffers()
             sendLowerPackets(phyGrant);
         }
     }
+}
+
+void LteMacUeMode4D2D::finish()
+{
+    delete preconfiguredTxParams_;
 }
 
 
