@@ -337,6 +337,15 @@ LteRealisticChannelModel::~LteRealisticChannelModel()
 {
 }
 
+double LteRealisticChannelModel::getTxRxDistance(UserControlInfo* lteInfo)
+{
+    Coord coord = lteInfo->getCoord();
+
+    double distance = coord.distance(myCoord_);
+
+    return distance;
+}
+
 double LteRealisticChannelModel::getAttenuation(MacNodeId nodeId, Direction dir,
         Coord coord)
 {
@@ -1467,9 +1476,17 @@ double LteRealisticChannelModel::rayleighFading(MacNodeId id,
 {
     //get raylegh variable from trace file
     double temp1 = binder_->phyPisaData.getChannel(
-            getDeployer(id)->getLambda(id)->channelIndex + band);
+            getDeployer()->getLambda(id)->channelIndex + band);
     return linearToDb(temp1);
 }
+
+//double LteRealisticChannelModel::rayleighFading(unsigned int band)
+//{
+//    //get raylegh variable from trace file
+//    double temp1 = binder_->phyPisaData.getChannel(
+//            getDeployer()->getLambda(id)->channelIndex + band);
+//    return linearToDb(temp1);
+//}
 
 double LteRealisticChannelModel::jakesFading(MacNodeId nodeId, double speed,
         unsigned int band, bool cqiDl)

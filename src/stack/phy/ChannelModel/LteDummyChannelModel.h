@@ -85,6 +85,8 @@ class LteDummyChannelModel : public LteChannelModel
         throw cRuntimeError("DAS PHY LAYER TO BE IMPLEMENTED");
         return false;
     }
+
+    virtual double getTxRxDistance(UserControlInfo* lteInfo);
 };
 
 #endif

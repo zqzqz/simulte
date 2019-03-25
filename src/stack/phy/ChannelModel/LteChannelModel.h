@@ -84,6 +84,8 @@ class LteChannelModel
      */
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo,MacNodeId peerUeId,inet::Coord peerUeCoord,MacNodeId enbId=0)=0;
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector)=0;
+
+    virtual double getTxRxDistance(UserControlInfo* lteInfo)=0;
 };
 
 #endif

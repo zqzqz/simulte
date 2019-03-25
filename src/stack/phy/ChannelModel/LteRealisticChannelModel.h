@@ -144,6 +144,9 @@ class LteRealisticChannelModel : public LteChannelModel
   public:
     LteRealisticChannelModel(ParameterMap& params, const inet::Coord& myCoord, unsigned int band);
     virtual ~LteRealisticChannelModel();
+
+    virtual double getTxRxDistance(UserControlInfo* lteInfo);
+
     /*
      * Compute Attenuation caused by pathloss and shadowing (optional)
      *

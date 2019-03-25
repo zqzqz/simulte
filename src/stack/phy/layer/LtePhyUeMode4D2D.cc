@@ -71,6 +71,16 @@ void LtePhyUeMode4D2D::initialize(int stage)
         tbFailedButSCIReceived = registerSignal("tbFailedButSCIReceived");
         tbAndSCINotReceived    = registerSignal("tbAndSCINotReceived");
         threshold              = registerSignal("threshold");
+        txRxDistance           = registerSignal("txRxDistance");
+
+        scisReceived_ = 0;
+        scisDecoded_ = 0;
+        scisNotDecoded_ = 0;
+        tbsReceived_ = 0;
+        tbsDecoded_ = 0;
+        tbsFailedDueToNoSCI_ = 0;
+        tbFailedButSCIReceived_ = 0;
+        tbAndSCINotReceived_ = 0;
 
     }
     else if (stage == INITSTAGE_NETWORK_LAYER_2)
@@ -109,6 +119,14 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
             // decode the selected frame
             decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector);
 
+            emit(scisReceived, scisReceived_);
+            emit(scisDecoded, scisDecoded_);
+            emit(scisNotDecoded, scisNotDecoded_);
+
+            scisReceived_ = 0;
+            scisDecoded_ = 0;
+            scisNotDecoded_ = 0;
+
             currentCBR_ = currentCBR_/numSubchannels_;
             cbrHistory_[cbrIndex_]=currentCBR_;
             currentCBR_=0;
@@ -128,6 +146,16 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
 
             // decode the selected frame
             decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector);
+
+            emit(tbsReceived, tbsReceived_);
+            emit(tbsDecoded, tbsDecoded_);
+            emit(tbsFailedDueToNoSCI, tbsFailedDueToNoSCI_);
+            emit(tbFailedButSCIReceived, tbFailedButSCIReceived_);
+
+            tbsReceived_ = 0;
+            tbsDecoded_ = 0;
+            tbsFailedDueToNoSCI_ = 0;
+            tbFailedButSCIReceived_ = 0;
         }
         std::vector<cPacket*>::iterator it;
         for(it=decodedScis_.begin();it!=decodedScis_.end();it++)
@@ -886,7 +914,7 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
     EV << NOW << " LtePhyUeMode4D2D::decodeAirFrame - Start decoding..." << endl;
 
     // apply decider to received packet
-    bool result = true;
+    bool result = false;
 
     RemoteSet r = lteInfo->getUserTxParams()->readAntennaSet();
     if (r.size() > 1)
@@ -918,12 +946,15 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
 
     if(lteInfo->getFrameType() == SCIPKT)
     {
+        double pkt_dist = channelModel_->getTxRxDistance(lteInfo);
+
+        emit(txRxDistance, pkt_dist);
+
         result = channelModel_->error_Mode4_D2D(frame,lteInfo,rsrpVector, 0);
 
-        emit(scisReceived, 1);
+        scisReceived_ += 1;
 
         if (result) {
-            // TODO: Signal successfully decoded SCI message
             SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
             std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
             int subchannelIndex = std::get<0>(indexAndLength);
@@ -941,11 +972,11 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
             lteInfo->setDeciderResult(true);
             pkt->setControlInfo(lteInfo);
             decodedScis_.push_back(pkt);
-            emit(scisDecoded, 1);
+            scisDecoded_ += 1;
         }
         else
         {
-            emit(scisNotDecoded, 1);
+            scisNotDecoded_ += 1;
             delete lteInfo;
             delete pkt;
         }
@@ -954,7 +985,11 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
     else
     {
 
-        emit(tbsReceived, 1);
+        double pkt_dist = channelModel_->getTxRxDistance(lteInfo);
+
+        emit(txRxDistance, pkt_dist);
+
+        tbsReceived_ += 1;
 
         // Have a TB want to make sure we have the SCI for it.
         bool foundCorrespondingSci = false;
@@ -986,21 +1021,17 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
                 (*it)->setControlInfo(sciInfo);
             }
         }
-        if(result && !foundCorrespondingSci)
+        if(!foundCorrespondingSci)
         {
-            emit(tbsFailedDueToNoSCI, 1);
+            tbsFailedDueToNoSCI_ += 1;
         }
-        else if (!result && foundCorrespondingSci)
+        else if (!result)
         {
-            emit(tbFailedButSCIReceived, 1);
-        }
-        else if (!result && ! foundCorrespondingSci)
-        {
-            emit(tbAndSCINotReceived, 1);
+            tbFailedButSCIReceived_ += 1;
         }
         else
         {
-            emit(tbsDecoded, 1);
+            tbsDecoded_ += 1;
             // Now need to find the associated Subchannels, record the RSRP and RSSI for the message and go from there.
             // Need to again do the RIV steps
             std::tuple<int, int> indexAndLength = decodeRivValue(correspondingSCI, sciInfo);

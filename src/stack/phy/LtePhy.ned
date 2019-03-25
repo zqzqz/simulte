@@ -118,6 +118,9 @@ simple LtePhyUeMode4D2D extends LtePhyUeD2D {
 		@statistic[tbAndSCINotReceived](title="Number of failed TBs with a failed SCI"; source="tbAndSCINotReceived"; record=sum,vector);
 		@signal[threshold];
 		@statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
+
+		@signal[txRxDistance];
+		@statistic[txRxDistance](title="Distance between transmitter and receiver"; source="txRxDistance"; record=mean,vector);
 }
 
 // 

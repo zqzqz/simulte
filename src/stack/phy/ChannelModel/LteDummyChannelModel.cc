@@ -162,3 +162,8 @@ bool LteDummyChannelModel::error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* 
        << ") -> Receive AirFrame." << endl;
     return true;
 }
+
+double LteDummyChannelModel::getTxRxDistance(UserControlInfo* lteInfo)
+{
+    return 1.0;
+}
