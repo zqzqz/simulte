@@ -2584,8 +2584,6 @@ bool LteRealisticChannelModel::computeInCellD2DInterference(MacNodeId eNbId, Mac
 {
     EV << "**** In Cell D2D Interference for cellId[" << eNbId << "] node["<<destId<<"] ****" << endl;
 
-    // Reference to the Physical Channel  of the UeId
-    LtePhyBase * ltePhy_destId;
     // Reference to the Physical Channel  of the Interfering UE
     LtePhyBase * ltePhy;
 
@@ -2596,8 +2594,6 @@ bool LteRealisticChannelModel::computeInCellD2DInterference(MacNodeId eNbId, Mac
     std::vector<bool> band_status;
     band_status.resize(band_,false);
 
-    // Get PhyData from the destId
-    ltePhy_destId = check_and_cast<LtePhyBase*>(getSimulation()->getModule(binder_->getOmnetId(destId))->getSubmodule("lteNic")->getSubmodule("phy"));
     EV<<NOW<<"ComputeInCellD2DInterference for Node: "<<destId<<endl;
 
     // Get the list of all UEs
