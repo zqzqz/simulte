@@ -261,6 +261,7 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
         if (grant->getTotalGrantedBlocks() == 0){
             // Generate a vector of CSRs and send it to the MAC layer
             computeCSRs(grant);
+            delete lteInfo;
             delete grant;
         }
         else
@@ -1267,4 +1268,6 @@ void LtePhyUeMode4D2D::finish()
         }
     }
     sensingWindow_.clear();
+
+    delete allocator_;
 }

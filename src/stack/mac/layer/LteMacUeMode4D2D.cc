@@ -103,16 +103,16 @@ void LteMacUeMode4D2D::initialize(int stage)
         nodeId_ = getAncestorPar("macNodeId");
 
         /* Insert UeInfo in the Binder */
-        UeInfo* info = new UeInfo();
-        info->id = nodeId_;            // local mac ID
-        info->cellId = cellId_;        // cell ID
-        info->init = false;            // flag for phy initialization
-        info->ue = this->getParentModule()->getParentModule();  // reference to the UE module
+        ueInfo_ = new UeInfo();
+        ueInfo_->id = nodeId_;            // local mac ID
+        ueInfo_->cellId = cellId_;        // cell ID
+        ueInfo_->init = false;            // flag for phy initialization
+        ueInfo_->ue = this->getParentModule()->getParentModule();  // reference to the UE module
 
         // Get the Physical Channel reference of the node
-        info->phy = check_and_cast<LtePhyBase*>(info->ue->getSubmodule("lteNic")->getSubmodule("phy"));
+        ueInfo_->phy = check_and_cast<LtePhyBase*>(ueInfo_->ue->getSubmodule("lteNic")->getSubmodule("phy"));
 
-        binder_->addUeInfo(info);
+        binder_->addUeInfo(ueInfo_);
     }
 }
 
@@ -1057,7 +1057,6 @@ void LteMacUeMode4D2D::flushHarqBuffers()
                             selectedProcess->forceDropProcess();
                             delete schedulingGrant_;
                             schedulingGrant_ = NULL;
-
                         }
                         else
                         {
@@ -1110,6 +1109,7 @@ void LteMacUeMode4D2D::flushHarqBuffers()
 void LteMacUeMode4D2D::finish()
 {
     delete preconfiguredTxParams_;
+    delete ueInfo_;
 }
 
 

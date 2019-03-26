@@ -83,6 +83,8 @@ protected:
    UserTxParams* preconfiguredTxParams_;
    UserTxParams* getPreconfiguredTxParams();  // build and return new user tx params
 
+   UeInfo* ueInfo_;
+
    simsignal_t generatedGrants;
    simsignal_t grantBreak;
    simsignal_t grantBreakTiming;

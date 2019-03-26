@@ -35,6 +35,7 @@ class Subchannel
             reserved = false;
             sensed = true;
             possibleCSR = true;
+            sci = nullptr;
             subframeTime = simulationTime;
             this->subframeIndex = subframeIndex;
             this->subchannelIndex = subchannelIndex;
@@ -43,6 +44,11 @@ class Subchannel
 
         ~Subchannel()
         {
+            if (sci != nullptr)
+            {
+                delete sci;
+                sci = nullptr;
+            }
         }
 
         Subchannel(const Subchannel& other)
@@ -172,6 +178,11 @@ class Subchannel
         }
         void reset(simtime_t simulationTime)
         {
+            if (sci != nullptr)
+            {
+                delete sci;
+                sci = nullptr;
+            }
             reserved = false;
             sensed = true;
             possibleCSR = true;

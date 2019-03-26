@@ -85,5 +85,6 @@ void LteChannelControl::sendToChannel(RadioRef srcRadio, AirFrame *airFrame)
     }
 
     // the original frame can be deleted
+    delete airFrame->removeControlInfo();
     delete airFrame;
 }
