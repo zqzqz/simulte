@@ -1108,6 +1108,8 @@ void LteMacUeMode4D2D::flushHarqBuffers()
 
 void LteMacUeMode4D2D::finish()
 {
+    binder_->removeUeInfo(ueInfo_);
+
     delete preconfiguredTxParams_;
     delete ueInfo_;
 }
