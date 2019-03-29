@@ -384,6 +384,19 @@ class LteBinder : public cSimpleModule
         return &ueList_;
     }
 
+    void removeUeInfo(UeInfo* info)
+    {
+        std::vector<UeInfo*>::iterator it;
+        for (it=ueList_.begin(); it!=ueList_.end(); it++)
+        {
+            if (*(it) == info)
+            {
+                ueList_.erase(it);
+                break;
+            }
+        }
+    }
+
     Cqi meanCqi(std::vector<Cqi> bandCqi,MacNodeId id,Direction dir);
 
     /*
