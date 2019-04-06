@@ -15,6 +15,7 @@
 #include "common/LteCommon.h"
 #include "corenetwork/nodes/ExtCell.h"
 #include "stack/phy/layer/LtePhyUe.h"
+#include "inet/physicallayer/pathloss/NakagamiFading.h"
 
 // attenuation value to be returned if max. distance of a scenario has been violated
 // and tolerating the maximum distance violation is enabled
@@ -281,6 +282,8 @@ LteRealisticChannelModel::LteRealisticChannelModel(ParameterMap& params,
             fadingType_ = JAKES;
         else if (strcmp(it->second.stringValue(), "RAYLEIGH") == 0)
             fadingType_ = RAYLEIGH;
+        else if (strcmp(it->second.stringValue(), "NAKAGAMI") == 0)
+            fadingType_= NAKAGAMI;
     }
     else
         fadingType_ = JAKES;
@@ -331,6 +334,8 @@ LteRealisticChannelModel::LteRealisticChannelModel(ParameterMap& params,
     binder_ = getBinder();
     //clear jakes fading map structure
     jakesFadingMap_.clear();
+
+    nkgmf = new inet::physicallayer::NakagamiFading();
 }
 
 LteRealisticChannelModel::~LteRealisticChannelModel()
@@ -510,6 +515,9 @@ double LteRealisticChannelModel::getAttenuation_D2D(MacNodeId nodeId, Direction 
             break;
         case SUBURBAN_MACROCELL:
             attenuation = computeSubUrbanMacro(sqrDistance, dbp, nodeId);
+            break;
+        case WINNER:
+            attenuation = computerWinnerB1(coord, myCoord_, nodeId);
             break;
         default:
             throw cRuntimeError("Wrong value %d for path-loss scenario", scenario_);
@@ -1062,11 +1070,19 @@ std::vector<double> LteRealisticChannelModel::getRSRP_D2D(LteAirFrame *frame, Us
         {
             //Appling fading
             if (fadingType_ == RAYLEIGH)
+            {
                 fadingAttenuation = rayleighFading(sourceId, i);
-
+            }
             else if (fadingType_ == JAKES)
             {
                 fadingAttenuation = jakesFading(sourceId, speed, i, cqiDl);
+            }
+            else if (fadingType_ == NAKAGAMI)
+            {
+                inet::units::values::mps speed = inet::units::values::mps(SPEED_OF_LIGHT);
+                inet::units::values::Hz freq = inet::units::values::Hz(carrierFrequency_ * 1000000000);
+                inet::units::values::m dist = inet::units::values::m(sourceCoord.distance(destCoord));
+                fadingAttenuation = nkgmf->computePathLoss(speed, freq, dist);
             }
         }
         // add fading contribution to the received pwr
@@ -1581,6 +1597,94 @@ double LteRealisticChannelModel::jakesFading(MacNodeId nodeId, double speed,
     return linearToDb(re_h * re_h + im_h * im_h);
 }
 
+
+
+double LteRealisticChannelModel::computerWinnerB1 (Coord destCoord, Coord sendCoord, MacNodeId nodeId)
+{
+    // Free space pathloss
+    double loss = 0.0;
+
+    // Frequency in GHz
+    // orig double fc = m_frequency / 1e9;
+    double fc = carrierFrequency_;
+    // Distance between the two nodes in meter
+    double dist = destCoord.distance(sendCoord);
+
+    // Calculate the pathloss based on 3GPP specifications : 3GPP TR 36.843 V12.0.1
+    // WINNER II Channel Models, D1.1.2 V1.2., Equation (4.24) p.43, available at
+    // http://www.cept.org/files/1050/documents/winner2%20-%20final%20report.pdf
+
+    loss = 20 * std::log10 (dist) + 46.6 + 20 * std::log10 (fc / 5.0);
+//    NS_LOG_INFO (this << "Outdoor , the free space loss = " << loss);
+
+    // WINNER II channel model for Urban Microcell scenario (UMi) : B1
+    double pl_b1 = 0.0;
+    // Actual antenna heights (1.5 m for UEs)
+    double hms = destCoord.z;
+    double hbs = sendCoord.z;
+    // Effective antenna heights (0.8 m for UEs)
+    double hbs1 = hbs - 1;
+    double hms1 = hms - 0.7;
+    // Propagation velocity in free space
+    double c = 3 * std::pow (10, 8);
+    // LOS offset = LOS loss to add to the computed pathloss
+    double los = 0;
+    // NLOS offset = NLOS loss to add to the computed pathloss
+    double nlos = -5;
+
+    double d1 = 4 * hbs1 * hms1 * (carrierFrequency_ * 1000000000) * (1 / c);
+
+    // Calculate the LOS probability based on 3GPP specifications : 3GPP TR 36.843 V12.0.1
+    // WINNER II Channel Models, D1.1.2 V1.2., Table 4-7 p.48, available at
+    // http://www.cept.org/files/1050/documents/winner2%20-%20final%20report.pdf
+    double plos = std::min ((18 / dist), 1.0) * (1 - std::exp (-dist / 36)) + std::exp (-dist / 36);
+
+    // Compute the WINNER II B1 pathloss based on 3GPP specifications : 3GPP TR 36.843 V12.0.1
+    // D5.3: WINNER+ Final Channel Models, Table 4-1 p.74, available at
+    // http://projects.celtic-initiative.org/winner%2B/WINNER+%20Deliverables/D5.3_v1.0.pdf
+
+    // Generate a random number between 0 and 1 (if it doesn't already exist) to evaluate the LOS/NLOS situation
+    double r = uniform(getEnvir()->getRNG(0), 0.0, 1.0);
+
+    // This model is only valid to a minimum distance of 3 meters
+    if (dist >= 3)
+    {
+        if (losMap_[nodeId])
+        {
+            // LOS
+            if (dist <= d1)
+            {
+                pl_b1 = 22.7 * std::log10 (dist) + 27.0 + 20.0 * std::log10 (fc) + los;
+//                NS_LOG_INFO (this << "Outdoor LOS (Distance <= " << d1 << ") : the WINNER B1 loss = " << pl_b1);
+            }
+            else
+            {
+                pl_b1 = 40 * std::log10 (dist) + 7.56 - 17.3 * std::log10 (hbs1) - 17.3 * std::log10 (hms1) + 2.7 * std::log10 (fc) + los;
+//                NS_LOG_INFO (this << "Outdoor LOS (Distance > " << d1 << ") : the WINNER B1 loss = " << pl_b1);
+            }
+        }
+        else
+        {
+            // NLOS
+            if ((fc >= 0.758)and (fc <= 0.798))
+            {
+                // Frequency = 700 MHz for Public Safety
+                pl_b1 = (44.9 - 6.55 * std::log10 (hbs)) * std::log10 (dist) + 5.83 * std::log10 (hbs) + 16.33 + 26.16 * std::log10 (fc) + nlos;
+//                NS_LOG_INFO (this << "Outdoor NLOS (Frequency 0.7 GHz) , the WINNER B1 loss = " << pl_b1);
+            }
+            if ((fc >= 1.92)and (fc <= 2.17))
+            {
+                // Frequency = 2 GHz for general scenarios
+                pl_b1 = (44.9 - 6.55 * std::log10 (hbs)) * std::log10 (dist) + 5.83 * std::log10 (hbs) + 14.78 + 34.97 * std::log10 (fc) + nlos;
+//                NS_LOG_INFO (this << "Outdoor NLOS (Frequency 2 GHz) , the WINNER B1 loss = " << pl_b1);
+            }
+        }
+    }
+
+    loss = std::max (loss, pl_b1);
+    return std::max (0.0, loss);
+}
+
 bool LteRealisticChannelModel::error(LteAirFrame *frame,
         UserControlInfo* lteInfo)
 {
@@ -2068,6 +2172,11 @@ void LteRealisticChannelModel::computeLosProbability(double d,
         else
             p = exp(-1 * (d - 10) / 1000);
         break;
+    case WINNER:
+        if (d <= 3)
+            p = 1;
+        else
+            p = std::min ((18 / d), 1.0) * (1 - std::exp (-d / 36)) + std::exp (-d / 36);
     default:
         throw cRuntimeError("Wrong path-loss scenario value %d", scenario_);
     }
@@ -2269,6 +2378,7 @@ double LteRealisticChannelModel::getStdDev(bool dist, MacNodeId nodeId)
     {
     case URBAN_MICROCELL:
     case INDOOR_HOTSPOT:
+    case WINNER:
         if (losMap_[nodeId])
             return 3.;
         else

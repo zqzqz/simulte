@@ -11,6 +11,7 @@
 #define _LTE_LTEREALISTICCHANNELMODEL_H_
 
 #include "stack/phy/ChannelModel/LteChannelModel.h"
+#include "inet/physicallayer/pathloss/NakagamiFading.h"
 
 class LteBinder;
 
@@ -129,7 +130,7 @@ class LteRealisticChannelModel : public LteChannelModel
 
     enum FadingType
     {
-        RAYLEIGH, JAKES
+        RAYLEIGH, JAKES, NAKAGAMI
     };
 
     //Fading type (JAKES or RAYLEIGH)
@@ -140,6 +141,8 @@ class LteRealisticChannelModel : public LteChannelModel
 
     //if dynamicLos is false this boolean is initialized to true if all user will be in LOS or false otherwise
     bool fixedLos_;
+
+    inet::physicallayer::NakagamiFading* nkgmf;
 
   public:
     LteRealisticChannelModel(ParameterMap& params, const inet::Coord& myCoord, unsigned int band);
@@ -285,6 +288,8 @@ class LteRealisticChannelModel : public LteChannelModel
      * @param cqiDl if true, the jakesMap in the UE side should be used
      */
     double jakesFading(MacNodeId noedId, double speed, unsigned int band, bool cqiDl);
+
+    double computerWinnerB1(const inet::Coord destCoord, const inet::Coord sourceCoord, MacNodeId nodeId);
     /*
      * Compute LOS probability
      *
