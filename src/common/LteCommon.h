@@ -349,6 +349,7 @@ enum DeploymentScenario
     URBAN_MACROCELL,
     RURAL_MACROCELL,
     SUBURBAN_MACROCELL,
+    WINNER,
     UNKNOW_SCENARIO
 };
 
@@ -364,6 +365,7 @@ const DeploymentScenarioMapping DeploymentScenarioTable[] = {
     ELEM(URBAN_MACROCELL),
     ELEM(RURAL_MACROCELL),
     ELEM(SUBURBAN_MACROCELL),
+    ELEM(WINNER),
     ELEM(UNKNOW_SCENARIO)
 };
 
