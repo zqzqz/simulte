@@ -59,22 +59,27 @@ void LtePhyUeMode4D2D::initialize(int stage)
             ThresPSSCHRSRPvector_.push_back(i);
         }
 
-        cbr                    = registerSignal("cbr");
-        scisReceived           = registerSignal("scisReceived");
-        scisDecoded            = registerSignal("scisDecoded");
-        scisNotDecoded         = registerSignal("scisNotDecoded");
-        scisSent               = registerSignal("scisSent");
-        tbsSent                = registerSignal("tbsSent");
-        tbsReceived            = registerSignal("tbsReceived");
-        tbsDecoded             = registerSignal("tbsDecoded");
-        tbsFailedDueToNoSCI    = registerSignal("tbsFailedDueToNoSCI");
-        tbFailedButSCIReceived = registerSignal("tbFailedButSCIReceived");
-        tbAndSCINotReceived    = registerSignal("tbAndSCINotReceived");
-        threshold              = registerSignal("threshold");
-        txRxDistanceTB         = registerSignal("txRxDistanceTB");
-        txRxDistanceSCI        = registerSignal("txRxDistanceSCI");
-        sciFailedHalfDuplex    = registerSignal("sciFailedHalfDuplex");
-        tbFailedHalfDuplex     = registerSignal("tbFailedHalfDuplex");
+        cbr                         = registerSignal("cbr");
+        scisReceived                = registerSignal("scisReceived");
+        scisDecoded                 = registerSignal("scisDecoded");
+        scisNotDecoded              = registerSignal("scisNotDecoded");
+        scisSent                    = registerSignal("scisSent");
+        tbsSent                     = registerSignal("tbsSent");
+        tbsReceived                 = registerSignal("tbsReceived");
+        tbsDecoded                  = registerSignal("tbsDecoded");
+        tbFailedDueToNoSCI          = registerSignal("tbFailedDueToNoSCI");
+        tbFailedButSCIReceived      = registerSignal("tbFailedButSCIReceived");
+        tbAndSCINotReceived         = registerSignal("tbAndSCINotReceived");
+        threshold                   = registerSignal("threshold");
+        txRxDistanceTB              = registerSignal("txRxDistanceTB");
+        txRxDistanceSCI             = registerSignal("txRxDistanceSCI");
+        sciFailedHalfDuplex         = registerSignal("sciFailedHalfDuplex");
+        tbFailedHalfDuplex          = registerSignal("tbFailedHalfDuplex");
+
+        tbFailedDueToProp           = registerSignal("tbFailedDueToProp");
+        tbFailedDueToInterference   = registerSignal("tbFailedDueToInterference");
+        sciFailedDueToProp          = registerSignal("sciFailedDueToProp");
+        sciFailedDueToInterference = registerSignal("sciFailedDueToInterference");
 
         scisReceived_ = 0;
         scisDecoded_ = 0;
@@ -82,10 +87,15 @@ void LtePhyUeMode4D2D::initialize(int stage)
         sciFailedHalfDuplex_ = 0;
         tbsReceived_ = 0;
         tbsDecoded_ = 0;
-        tbsFailedDueToNoSCI_ = 0;
+        tbFailedDueToNoSCI_ = 0;
         tbFailedButSCIReceived_ = 0;
         tbAndSCINotReceived_ = 0;
         tbFailedHalfDuplex_ = 0;
+
+        tbFailedDueToProp_ = 0;
+        tbFailedDueToInterference_ = 0;
+        sciFailedDueToProp_ = 0;
+        sciFailedDueToInterference_ = 0;
     }
     else if (stage == INITSTAGE_NETWORK_LAYER_2)
     {
@@ -125,13 +135,16 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
 
             emit(scisReceived, scisReceived_);
             emit(scisDecoded, scisDecoded_);
-            emit(scisNotDecoded, scisNotDecoded_);
+            emit(sciFailedDueToProp, sciFailedDueToProp_);
+            emit(sciFailedDueToInterference, sciFailedDueToInterference_);
             emit(sciFailedHalfDuplex, sciFailedHalfDuplex_);
 
             scisReceived_ = 0;
             scisDecoded_ = 0;
             scisNotDecoded_ = 0;
             sciFailedHalfDuplex_ = 0;
+            sciFailedDueToInterference_ = 0;
+            sciFailedDueToProp_ = 0;
 
             currentCBR_ = currentCBR_/numSubchannels_;
             cbrHistory_[cbrIndex_]=currentCBR_;
@@ -155,15 +168,18 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
 
             emit(tbsReceived, tbsReceived_);
             emit(tbsDecoded, tbsDecoded_);
-            emit(tbsFailedDueToNoSCI, tbsFailedDueToNoSCI_);
-            emit(tbFailedButSCIReceived, tbFailedButSCIReceived_);
+            emit(tbFailedDueToNoSCI, tbFailedDueToNoSCI_);
+            emit(tbFailedDueToProp, tbFailedDueToProp_);
+            emit(tbFailedDueToInterference, tbFailedDueToInterference_);
             emit(tbFailedHalfDuplex, tbFailedHalfDuplex_);
 
             tbsReceived_ = 0;
             tbsDecoded_ = 0;
-            tbsFailedDueToNoSCI_ = 0;
+            tbFailedDueToNoSCI_ = 0;
             tbFailedButSCIReceived_ = 0;
             tbFailedHalfDuplex_ = 0;
+            tbFailedDueToProp_ = 0;
+            tbFailedDueToInterference_ = 0;
         }
         std::vector<cPacket*>::iterator it;
         for(it=decodedScis_.begin();it!=decodedScis_.end();it++)
@@ -922,6 +938,7 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
 
     // apply decider to received packet
     bool result = false;
+    bool prop_result = false;
 
     RemoteSet r = lteInfo->getUserTxParams()->readAntennaSet();
     if (r.size() > 1)
@@ -958,7 +975,9 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
 
         if (!transmitting_)
         {
-            result = channelModel_->error_Mode4_D2D(frame, lteInfo, rsrpVector, 0);
+            prop_result = channelModel_->error_Mode4_D2D(frame, lteInfo, rsrpVector, 0, false);
+
+            result = channelModel_->error_Mode4_D2D(frame, lteInfo, rsrpVector, 0, true);
 
             scisReceived_ += 1;
 
@@ -982,13 +1001,15 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
                 decodedScis_.push_back(pkt);
                 scisDecoded_ += 1;
             }
-            else
-            {
-                scisNotDecoded_ += 1;
+            else if (!prop_result){
+                sciFailedDueToProp_ += 1;
+                delete lteInfo;
+                delete pkt;
+            } else if (!result){
+                sciFailedDueToInterference_ += 1;
                 delete lteInfo;
                 delete pkt;
             }
-
         }
         else
         {
@@ -1022,8 +1043,12 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
                     correspondingSCI = check_and_cast<SidelinkControlInformation *>(*it);
 
                     //RELAY and NORMAL
-                    if (lteInfo->getDirection() == D2D_MULTI)
-                        result = channelModel_->error_Mode4_D2D(frame, lteInfo, rsrpVector, correspondingSCI->getMcs());
+                    if (lteInfo->getDirection() == D2D_MULTI) {
+                        prop_result = channelModel_->error_Mode4_D2D(frame, lteInfo, rsrpVector,
+                                                                     correspondingSCI->getMcs(), false);
+                        result = channelModel_->error_Mode4_D2D(frame, lteInfo, rsrpVector, correspondingSCI->getMcs(),
+                                                                true);
+                    }
                     else
                         result = channelModel_->error(frame, lteInfo);
 
@@ -1035,9 +1060,11 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
                 }
             }
             if (!foundCorrespondingSci) {
-                tbsFailedDueToNoSCI_ += 1;
+                tbFailedDueToNoSCI_ += 1;
+            } else if (!prop_result) {
+                tbFailedDueToProp_ += 1;
             } else if (!result) {
-                tbFailedButSCIReceived_ += 1;
+                tbFailedDueToInterference_ += 1;
             } else {
                 tbsDecoded_ += 1;
                 // Now need to find the associated Subchannels, record the RSRP and RSSI for the message and go from there.

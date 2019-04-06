@@ -66,7 +66,7 @@ class LteDummyChannelModel : public LteChannelModel
      * @param rsrpVector the received signal for each RB, if it has already been computed
      * @param mcs the modulation and coding scheme used in sending the message.
      */
-    virtual bool error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, int mcs);
+    virtual bool error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, int mcs, bool interference);
     /*
      * Compute Received useful signal for D2D transmissions
      */
@@ -79,6 +79,7 @@ class LteDummyChannelModel : public LteChannelModel
      */
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId);
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector);
+    virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector, bool interference);
     //TODO
     virtual bool errorDas(LteAirFrame *frame, UserControlInfo* lteI)
     {

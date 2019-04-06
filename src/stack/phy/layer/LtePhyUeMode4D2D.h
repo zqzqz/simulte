@@ -53,7 +53,7 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     simsignal_t tbsSent;
     simsignal_t tbsReceived;
     simsignal_t tbsDecoded;
-    simsignal_t tbsFailedDueToNoSCI;
+    simsignal_t tbFailedDueToNoSCI;
     simsignal_t tbFailedButSCIReceived;
     simsignal_t tbAndSCINotReceived;
     simsignal_t sciFailedHalfDuplex;
@@ -62,16 +62,26 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     simsignal_t txRxDistanceSCI;
     simsignal_t txRxDistanceTB;
 
+    simsignal_t tbFailedDueToProp;
+    simsignal_t tbFailedDueToInterference;
+    simsignal_t sciFailedDueToProp;
+    simsignal_t sciFailedDueToInterference;
+
     int scisReceived_;
     int scisDecoded_;
     int scisNotDecoded_;
     int tbsReceived_;
     int tbsDecoded_;
-    int tbsFailedDueToNoSCI_;
+    int tbFailedDueToNoSCI_;
     int tbFailedButSCIReceived_;
     int tbAndSCINotReceived_;
     int sciFailedHalfDuplex_;
     int tbFailedHalfDuplex_;
+
+    int tbFailedDueToProp_;
+    int tbFailedDueToInterference_;
+    int sciFailedDueToProp_;
+    int sciFailedDueToInterference_;
 
     double currentCBR_;
     int cbrIndex_;

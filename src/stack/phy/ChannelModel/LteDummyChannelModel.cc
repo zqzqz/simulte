@@ -73,6 +73,15 @@ std::vector<double> LteDummyChannelModel::getSINR_D2D(LteAirFrame *frame, UserCo
     return tmp;
 }
 
+std::vector<double> LteDummyChannelModel::getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector, bool interference)
+{
+    std::vector<double> tmp;
+    tmp.push_back(10000);
+    // fake SINR is needed by das (to decide which antenna set are used by the terminal)
+    // and handhover function to decide if the terminal should trigger the hanhover
+    return tmp;
+}
+
 std::vector<double> LteDummyChannelModel::getSIR(LteAirFrame *frame, UserControlInfo* lteInfo)
 {
     std::vector<double> tmp;
@@ -136,7 +145,7 @@ bool LteDummyChannelModel::error_D2D(LteAirFrame *frame, UserControlInfo* lteInf
     return true;
 }
 
-bool LteDummyChannelModel::error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* lteInfo,std::vector<double> rsrpVector, int mcs)
+bool LteDummyChannelModel::error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* lteInfo,std::vector<double> rsrpVector, int mcs, bool interference)
 {
     // Number of RTX
     unsigned char nTx = lteInfo->getTxNumber();

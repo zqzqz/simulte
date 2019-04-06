@@ -111,8 +111,8 @@ simple LtePhyUeMode4D2D extends LtePhyUeD2D {
 		@statistic[tbsReceived](title="Number of TBs received"; source="tbsReceived"; record=sum,vector);
 		@signal[tbsDecoded];
 		@statistic[tbsDecoded](title="Number of TBs Decoded"; source="tbsDecoded"; record=sum,vector);
-		@signal[tbsFailedDueToNoSCI];
-		@statistic[tbsFailedDueToNoSCI](title="Number of Tbs not decoded due to no SCI"; source="tbsFailedDueToNoSCI"; record=sum,vector);
+		@signal[tbFailedDueToNoSCI];
+		@statistic[tbFailedDueToNoSCI](title="Number of Tbs not decoded due to no SCI"; source="tbFailedDueToNoSCI"; record=sum,vector);
 		@signal[tbFailedButSCIReceived];
 		@statistic[tbFailedButSCIReceived](title="Number of failed TBs with a decoded SCI"; source="tbFailedButSCIReceived"; record=sum,vector);
 		@signal[tbAndSCINotReceived];
@@ -121,9 +121,18 @@ simple LtePhyUeMode4D2D extends LtePhyUeD2D {
 		@statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
 
         @signal[sciFailedHalfDuplex];
-        @statistic[sciFailedHalfDuplex](title="Number of failed TBs with a decoded SCI"; source="sciFailedHalfDuplex"; record=sum,vector);
+        @statistic[sciFailedHalfDuplex](title="Number of failed SCIs due to Half Duplex"; source="sciFailedHalfDuplex"; record=sum,vector);
         @signal[tbFailedHalfDuplex];
-        @statistic[tbFailedHalfDuplex](title="Number of failed TBs with a failed SCI"; source="tbFailedHalfDuplex"; record=sum,vector);
+        @statistic[tbFailedHalfDuplex](title="Number of failed TBs due to Half Duplex"; source="tbFailedHalfDuplex"; record=sum,vector);
+
+        @signal[tbFailedDueToProp];
+        @statistic[tbFailedDueToProp](title="Number of failed TBs due to propogation"; source="tbFailedDueToProp"; record=sum,vector);
+        @signal[tbFailedDueToInterference];
+        @statistic[tbFailedDueToInterference](title="Number of failed TBs due to interference"; source="tbFailedDueToInterference"; record=sum,vector);
+        @signal[sciFailedDueToProp];
+        @statistic[sciFailedDueToProp](title="Number of failed SCIs due to propogation"; source="sciFailedDueToProp"; record=sum,vector);
+        @signal[sciFailedDueToInterference];
+        @statistic[sciFailedDueToInterference](title="Number of failed SCIs due to interference"; source="sciFailedDueToInterference"; record=sum,vector);
 
 		@signal[txRxDistanceSCI];
 		@statistic[txRxDistanceSCI](title="Distance between transmitter and receiver"; source="txRxDistanceSCI"; record=mean,vector);

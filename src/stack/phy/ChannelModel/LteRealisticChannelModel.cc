@@ -1328,6 +1328,103 @@ std::vector<double> LteRealisticChannelModel::getSINR_D2D(LteAirFrame *frame, Us
     if( dir == UL || dir==DL)
     {
         //consistency check
+        throw cRuntimeError("Direction should neither be UL or DL");
+    }
+    else
+    {
+        //In D2D case the noise figure is the ueNoiseFigure_
+        noiseFigure = ueNoiseFigure_;
+    }
+
+    EV << "------------ GET SINR D2D----------------" << endl;
+
+    /*
+     * The SINR will be calculated as follows
+     *
+     *              Pwr
+     * SINR = ---------
+     *           N  +  I
+     *
+     * N = thermalNoise_ + noiseFigure (measured in dBm)
+     * I = extCellInterference + inCellInterference (measured in mW)
+     */
+    //============ IN CELL D2D INTERFERENCE COMPUTATION =================
+    /*
+     * In calculating a D2D CQI the Interference from others D2D UEs discriminates between calculating a CQI
+     * following direction D2D_Tx--->D2D_Rx or D2D_Tx<---D2D_Rx (This happens due to the different positions of the
+     * interfering UEs relative to the position of the UE for whom we are calculating the CQI). We need that the CQI
+     * for the D2D_Tx is the same of the D2D_Rx(This is an help for the simulator because when the eNodeB allocates
+     * resources to a D2D_Tx it must refer to quality channel of the D2D_Rx).
+     * To do so here we must check if the ueId is the ID of the D2D_Tx:if it
+     * is so we swap the ueId with the one of his Peer(D2D_Rx). We do the same for the coord.
+     */
+    //vector containing the sum of inCell interference for each band
+    std::vector<double> inCellInterference; // Linear value (mW)
+    // prepare data structure
+    inCellInterference.resize(band_, 0);
+
+    if (enableD2DInCellInterference_ && dir == D2D) {
+        computeInCellD2DInterference(enbId, sourceId, sourceCoord, destId, destCoord,
+                                     (lteInfo_1->getFrameType() == FEEDBACKPKT), &inCellInterference, dir);
+    }
+
+    //===================== SINR COMPUTATION ========================
+    if (enableD2DInCellInterference_ && dir == D2D) {
+        // compute and linearize total noise
+        double totN = dBmToLinear(thermalNoise_ + noiseFigure);
+
+        // denominator expressed in dBm as (N+extCell+inCell)
+        double den;
+        EV << "LteRealisticChannelModel::getSINR - distance from my Peer = " << destCoord.distance(sourceCoord)
+           << " - DIR=" << dirToA(dir) << endl;
+
+        // Add interference for each band
+        for (unsigned int i = 0; i < band_; i++) {
+            //               (      mW            +  mW  +        mW            )
+            den = linearToDBm(extCellInterference + totN + inCellInterference[i]);
+
+            EV << "\t ext[" << extCellInterference << "] - in[" << inCellInterference[i] << "] - recvPwr["
+               << dBmToLinear(snrVector[i]) << "] - sinr[" << snrVector[i] - den << "]\n";
+
+            // compute final SINR. Subtraction in dB is equivalent to linear division
+            snrVector[i] -= den;
+        }
+    }
+    // compute snr with no incellD2D interference
+    else
+    {
+        for (unsigned int i = 0; i < band_; i++)
+        {
+            // compute final SINR
+            snrVector[i] -=  (noiseFigure + thermalNoise_);
+
+            EV << "LteRealisticChannelModel::getSINR_D2D - distance from my Peer = " << destCoord.distance(sourceCoord) << " - DIR=" << dirToA(dir) << " - snr[" << snrVector[i] << "]\n";
+        }
+    }
+
+    //sender is a UE
+    updatePositionHistory(sourceId, sourceCoord);
+
+    return snrVector;
+}
+
+
+std::vector<double> LteRealisticChannelModel::getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector, bool interference)
+{
+    std::vector<double> snrVector = rsrpVector;
+
+    MacNodeId sourceId = lteInfo_1->getSourceId();
+    Coord sourceCoord = lteInfo_1->getCoord();
+
+    // Get the direction
+    Direction dir = (Direction) lteInfo_1->getDirection();
+    dir = D2D;
+
+    double noiseFigure = 0.0;
+    double extCellInterference = 0.0;
+    if( dir == UL || dir==DL)
+    {
+        //consistency check
          throw cRuntimeError("Direction should neither be UL or DL");
     }
     else
@@ -1362,33 +1459,35 @@ std::vector<double> LteRealisticChannelModel::getSINR_D2D(LteAirFrame *frame, Us
     std::vector<double> inCellInterference; // Linear value (mW)
     // prepare data structure
     inCellInterference.resize(band_, 0);
-    if (enableD2DInCellInterference_ && dir == D2D)
-    {
-        computeInCellD2DInterference(enbId, sourceId, sourceCoord, destId, destCoord, (lteInfo_1->getFrameType() == FEEDBACKPKT), &inCellInterference,dir);
-    }
 
-    //===================== SINR COMPUTATION ========================
-    if( enableD2DInCellInterference_ && dir==D2D  )
-    {
+    if (interference) {
+        if (enableD2DInCellInterference_ && dir == D2D) {
+            computeInCellD2DInterference(enbId, sourceId, sourceCoord, destId, destCoord,
+                                         (lteInfo_1->getFrameType() == FEEDBACKPKT), &inCellInterference, dir);
+        }
+
+        //===================== SINR COMPUTATION ========================
+        if (enableD2DInCellInterference_ && dir == D2D) {
             // compute and linearize total noise
             double totN = dBmToLinear(thermalNoise_ + noiseFigure);
 
             // denominator expressed in dBm as (N+extCell+inCell)
             double den;
-            EV << "LteRealisticChannelModel::getSINR - distance from my Peer = " << destCoord.distance(sourceCoord) << " - DIR=" << dirToA(dir)  << endl;
+            EV << "LteRealisticChannelModel::getSINR - distance from my Peer = " << destCoord.distance(sourceCoord)
+               << " - DIR=" << dirToA(dir) << endl;
 
             // Add interference for each band
-            for (unsigned int i = 0; i < band_; i++)
-            {
+            for (unsigned int i = 0; i < band_; i++) {
                 //               (      mW            +  mW  +        mW            )
                 den = linearToDBm(extCellInterference + totN + inCellInterference[i]);
 
                 EV << "\t ext[" << extCellInterference << "] - in[" << inCellInterference[i] << "] - recvPwr["
-                        << dBmToLinear(snrVector[i]) << "] - sinr[" << snrVector[i]-den << "]\n";
+                   << dBmToLinear(snrVector[i]) << "] - sinr[" << snrVector[i] - den << "]\n";
 
                 // compute final SINR. Subtraction in dB is equivalent to linear division
                 snrVector[i] -= den;
             }
+        }
     }
     // compute snr with no incellD2D interference
     else
@@ -1892,7 +1991,7 @@ bool LteRealisticChannelModel::error_D2D(LteAirFrame *frame, UserControlInfo* lt
         }
         else  // D2D_MULTI
         {
-            snrV = getSINR_D2D(frame,lteInfo,peerUeMacNodeId,peerCoord,enbId,rsrpVector);
+            snrV = getSINR_D2D(frame,lteInfo,peerUeMacNodeId,peerCoord,enbId,rsrpVector, true);
         }
     }
     //ROSSALI-------END------------------------------------------------
@@ -1978,7 +2077,7 @@ bool LteRealisticChannelModel::error_D2D(LteAirFrame *frame, UserControlInfo* lt
     return true;
 }
 
-bool LteRealisticChannelModel::error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, int mcs)
+bool LteRealisticChannelModel::error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, int mcs, bool interference)
 {
     EV << "LteRealisticChannelModel::error_Mode4_D2D" << endl;
 
@@ -2041,7 +2140,7 @@ bool LteRealisticChannelModel::error_Mode4_D2D(LteAirFrame *frame, UserControlIn
         }
         else  // D2D_MULTI
         {
-            snrV = getSINR_D2D(frame,lteInfo,peerUeMacNodeId,peerCoord,enbId,rsrpVector);
+            snrV = getSINR_D2D(frame,lteInfo,peerUeMacNodeId,peerCoord,enbId,rsrpVector, interference);
         }
     }
     //ROSSALI-------END------------------------------------------------
