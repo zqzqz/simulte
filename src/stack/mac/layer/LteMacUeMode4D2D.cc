@@ -843,14 +843,6 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     // Simply flips the codeword.
     currentCw_ = MAX_CODEWORDS - currentCw_;
 
-
-    // Based on restrictResourceReservation interval But will be between 1 and 15
-    // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
-    std::uniform_int_distribution<int> range(5, 15);
-    int resourceReselectionCounter = range(generator_);
-
-    mode4Grant -> setExpiration(resourceReselectionCounter);
-
     periodCounter_=mode4Grant->getPeriod();
     expirationCounter_=mode4Grant->getExpiration() * periodCounter_;
 
@@ -917,6 +909,13 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int pri
     mode4Grant -> setNumberSubchannels(numSubchannels);
 
     emit(selectedNumSubchannels, numSubchannels);
+
+    // Based on restrictResourceReservation interval But will be between 1 and 15
+    // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
+    std::uniform_int_distribution<int> range(5, 15);
+    int resourceReselectionCounter = range(generator_);
+
+    mode4Grant -> setExpiration(resourceReselectionCounter);
 
     LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
 
