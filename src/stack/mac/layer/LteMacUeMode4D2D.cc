@@ -63,7 +63,6 @@ void LteMacUeMode4D2D::initialize(int stage)
         numSubchannels_ = par("numSubchannels");
         probResourceKeep_ = par("probResourceKeep");
         usePreconfiguredTxParams_ = par("usePreconfiguredTxParams");
-        maximumLatency_ = par("maximumLatency");
         resourceReservationInterval_ = par("resourceReservationInterval");
         reselectAfter_ = par("reselectAfter");
         useCBR_ = par("useCBR");
@@ -624,7 +623,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
             {
                 std::uniform_int_distribution<int> range(5, 15);
                 int expiration = range(generator_);
-                mode4Grant -> setExpiration(expiration);
+                mode4Grant -> setResourceReselectionCounter(expiration);
                 mode4Grant -> setFirstTransmission(true);
                 expirationCounter_ = expiration * mode4Grant->getPeriod();
             }
@@ -844,7 +843,7 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     currentCw_ = MAX_CODEWORDS - currentCw_;
 
     periodCounter_=mode4Grant->getPeriod();
-    expirationCounter_=mode4Grant->getExpiration() * periodCounter_;
+    expirationCounter_=mode4Grant->getResourceReselectionCounter() * periodCounter_;
 
     // TODO: Setup for HARQ retransmission, if it can't be satisfied then selection must occur again.
 
@@ -915,7 +914,7 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int pri
     std::uniform_int_distribution<int> range(5, 15);
     int resourceReselectionCounter = range(generator_);
 
-    mode4Grant -> setExpiration(resourceReselectionCounter);
+    mode4Grant -> setResourceReselectionCounter(resourceReselectionCounter);
 
     LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
 
