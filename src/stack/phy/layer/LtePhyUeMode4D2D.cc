@@ -71,17 +71,21 @@ void LtePhyUeMode4D2D::initialize(int stage)
         tbFailedButSCIReceived = registerSignal("tbFailedButSCIReceived");
         tbAndSCINotReceived    = registerSignal("tbAndSCINotReceived");
         threshold              = registerSignal("threshold");
-        txRxDistance           = registerSignal("txRxDistance");
+        txRxDistanceTB         = registerSignal("txRxDistanceTB");
+        txRxDistanceSCI        = registerSignal("txRxDistanceSCI");
+        sciFailedHalfDuplex    = registerSignal("sciFailedHalfDuplex");
+        tbFailedHalfDuplex     = registerSignal("tbFailedHalfDuplex");
 
         scisReceived_ = 0;
         scisDecoded_ = 0;
         scisNotDecoded_ = 0;
+        sciFailedHalfDuplex_ = 0;
         tbsReceived_ = 0;
         tbsDecoded_ = 0;
         tbsFailedDueToNoSCI_ = 0;
         tbFailedButSCIReceived_ = 0;
         tbAndSCINotReceived_ = 0;
-
+        tbFailedHalfDuplex_ = 0;
     }
     else if (stage == INITSTAGE_NETWORK_LAYER_2)
     {
@@ -122,10 +126,12 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
             emit(scisReceived, scisReceived_);
             emit(scisDecoded, scisDecoded_);
             emit(scisNotDecoded, scisNotDecoded_);
+            emit(sciFailedHalfDuplex, sciFailedHalfDuplex_);
 
             scisReceived_ = 0;
             scisDecoded_ = 0;
             scisNotDecoded_ = 0;
+            sciFailedHalfDuplex_ = 0;
 
             currentCBR_ = currentCBR_/numSubchannels_;
             cbrHistory_[cbrIndex_]=currentCBR_;
@@ -151,11 +157,13 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
             emit(tbsDecoded, tbsDecoded_);
             emit(tbsFailedDueToNoSCI, tbsFailedDueToNoSCI_);
             emit(tbFailedButSCIReceived, tbFailedButSCIReceived_);
+            emit(tbFailedHalfDuplex, tbFailedHalfDuplex_);
 
             tbsReceived_ = 0;
             tbsDecoded_ = 0;
             tbsFailedDueToNoSCI_ = 0;
             tbFailedButSCIReceived_ = 0;
+            tbFailedHalfDuplex_ = 0;
         }
         std::vector<cPacket*>::iterator it;
         for(it=decodedScis_.begin();it!=decodedScis_.end();it++)
@@ -168,6 +176,7 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
     }
     else if (msg->isName("updateSubframe"))
     {
+        transmitting_ = false;
         cbrIndex_++;
         if (cbrIndex_ == 100)
             cbrIndex_ = 0;
@@ -271,6 +280,7 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
             lteInfo->setGrantedBlocks(sciGrant_->getGrantedBlocks());
             lteInfo->setDirection(D2D_MULTI);
             availableRBs_ = sendSciMessage(msg, lteInfo);
+            sensingWindow_.back()[0]->setSensed(false);
         }
         return;
     }
@@ -298,8 +308,6 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
         sendBroadcast(frame);
     else
         sendUnicast(frame);
-
-
 }
 
 RbMap LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
@@ -513,7 +521,6 @@ void LtePhyUeMode4D2D::checkSensed(LteMode4SchedulingGrant* &grant)
                 // We cannot fill this grant in this subframe and should move to the next one
                 break;
             }
-            // Check if the current subframe was sensed
 
             // Check that this frame is allowed to be used i.e. all the previous corresponding frames are sensed.
             int pRsvpTxPrime = pStep_ * pRsvpTx / 100;
@@ -717,7 +724,6 @@ std::vector<std::vector<Subchannel*>> LtePhyUeMode4D2D::selectBestRSSIs(std::vec
     while(optimalCSRs.size() < (totalPossibleCSRs * 0.2)){
         // I feel like there is definitely a better approach (going through once makes the most sense)
         // But based on the wording of the text this is what they describe.
-        // But TODO: Fix this to be more efficient.
         int minRSSI = 0;
         int currentMinCSR = 0;
         for (it=possibleCSRs.begin(); it != possibleCSRs.end(); it++)
@@ -947,37 +953,46 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
 
     if(lteInfo->getFrameType() == SCIPKT)
     {
-        double pkt_dist = channelModel_->getTxRxDistance(lteInfo);
+        double pkt_dist = getCoord().distance(lteInfo->getCoord());
+        emit(txRxDistanceSCI, pkt_dist);
 
-        emit(txRxDistance, pkt_dist);
+        if (!transmitting)
+        {
+            result = channelModel_->error_Mode4_D2D(frame, lteInfo, rsrpVector, 0);
 
-        result = channelModel_->error_Mode4_D2D(frame,lteInfo,rsrpVector, 0);
+            scisReceived_ += 1;
 
-        scisReceived_ += 1;
+            if (result) {
+                SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
+                std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
+                int subchannelIndex = std::get<0>(indexAndLength);
+                int lengthInSubchannels = std::get<1>(indexAndLength);
 
-        if (result) {
-            SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
-            std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
-            int subchannelIndex = std::get<0>(indexAndLength);
-            int lengthInSubchannels = std::get<1>(indexAndLength);
+                currentCBR_ += lengthInSubchannels;
 
-            currentCBR_ += lengthInSubchannels;
-
-            std::vector<Subchannel *>::iterator kt;
-            std::vector < Subchannel * > currentSubframe = sensingWindow_.back();
-            for (kt = currentSubframe.begin() + subchannelIndex;
-                 kt != currentSubframe.begin() + subchannelIndex + lengthInSubchannels; kt++) {
-                // Record the SCI in the subchannel.
-                (*kt)->setSCI(sci->dup());
+                std::vector<Subchannel *>::iterator kt;
+                std::vector < Subchannel * > currentSubframe = sensingWindow_.back();
+                for (kt = currentSubframe.begin() + subchannelIndex;
+                     kt != currentSubframe.begin() + subchannelIndex + lengthInSubchannels; kt++) {
+                    // Record the SCI in the subchannel.
+                    (*kt)->setSCI(sci->dup());
+                }
+                lteInfo->setDeciderResult(true);
+                pkt->setControlInfo(lteInfo);
+                decodedScis_.push_back(pkt);
+                scisDecoded_ += 1;
             }
-            lteInfo->setDeciderResult(true);
-            pkt->setControlInfo(lteInfo);
-            decodedScis_.push_back(pkt);
-            scisDecoded_ += 1;
+            else
+            {
+                scisNotDecoded_ += 1;
+                delete lteInfo;
+                delete pkt;
+            }
+
         }
         else
         {
-            scisNotDecoded_ += 1;
+            sciFailedHalfDuplex_ += 1;
             delete lteInfo;
             delete pkt;
         }
@@ -985,76 +1000,71 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
     }
     else
     {
+        double pkt_dist = getCoord().distance(lteInfo->getCoord());
+        emit(txRxDistanceTB, pkt_dist);
 
-        double pkt_dist = channelModel_->getTxRxDistance(lteInfo);
+        if(!transmitting_){
 
-        emit(txRxDistance, pkt_dist);
+            tbsReceived_ += 1;
 
-        tbsReceived_ += 1;
+            // Have a TB want to make sure we have the SCI for it.
+            bool foundCorrespondingSci = false;
+            SidelinkControlInformation *correspondingSCI;
+            UserControlInfo *sciInfo;
+            std::vector<cPacket *>::iterator it;
+            for (it = decodedScis_.begin(); it != decodedScis_.end(); it++) {
+                sciInfo = check_and_cast<UserControlInfo *>((*it)->removeControlInfo());
+                // if the SCI and TB have same source then we have the right SCI
+                if (sciInfo->getSourceId() == lteInfo->getSourceId()) {
+                    //Successfully received the SCI
+                    foundCorrespondingSci = true;
 
-        // Have a TB want to make sure we have the SCI for it.
-        bool foundCorrespondingSci = false;
-        SidelinkControlInformation* correspondingSCI;
-        UserControlInfo* sciInfo;
-        std::vector<cPacket*>::iterator it;
-        for(it=decodedScis_.begin(); it!=decodedScis_.end(); it++)
-        {
-            sciInfo = check_and_cast<UserControlInfo*>((*it)->removeControlInfo());
-            // if the SCI and TB have same source then we have the right SCI
-            if (sciInfo->getSourceId() == lteInfo->getSourceId())
-            {
-                //Successfully received the SCI
-                foundCorrespondingSci = true;
+                    correspondingSCI = check_and_cast<SidelinkControlInformation *>(*it);
 
-                correspondingSCI = check_and_cast<SidelinkControlInformation*>(*it);
+                    //RELAY and NORMAL
+                    if (lteInfo->getDirection() == D2D_MULTI)
+                        result = channelModel_->error_Mode4_D2D(frame, lteInfo, rsrpVector, correspondingSCI->getMcs());
+                    else
+                        result = channelModel_->error(frame, lteInfo);
 
-                //RELAY and NORMAL
-                if (lteInfo->getDirection() == D2D_MULTI)
-                    result = channelModel_->error_Mode4_D2D(frame,lteInfo,rsrpVector, correspondingSCI->getMcs());
-                else
-                    result = channelModel_->error(frame,lteInfo);
-
-                // Remove the SCI
-                decodedScis_.erase(it);
-                break;
-            }
-            else{
-                (*it)->setControlInfo(sciInfo);
-            }
-        }
-        if(!foundCorrespondingSci)
-        {
-            tbsFailedDueToNoSCI_ += 1;
-        }
-        else if (!result)
-        {
-            tbFailedButSCIReceived_ += 1;
-        }
-        else
-        {
-            tbsDecoded_ += 1;
-            // Now need to find the associated Subchannels, record the RSRP and RSSI for the message and go from there.
-            // Need to again do the RIV steps
-            std::tuple<int, int> indexAndLength = decodeRivValue(correspondingSCI, sciInfo);
-            int subchannelIndex = std::get<0>(indexAndLength);
-            int lengthInSubchannels = std::get<1>(indexAndLength);
-
-            std::vector<Subchannel*>::iterator kt;
-            std::vector<Subchannel*> currentSubframe = sensingWindow_.back();
-            for(kt=currentSubframe.begin()+subchannelIndex; kt!=currentSubframe.begin()+subchannelIndex+lengthInSubchannels; kt++)
-            {
-                std::vector<Band>::iterator lt;
-                std::vector<Band> allocatedBands = (*kt)->getOccupiedBands();
-                for (lt=allocatedBands.begin(); lt!=allocatedBands.end(); lt++)
-                {
-                    // Record RSRP and RSSI for this band
-                    (*kt)->addRsrpValue(rsrpVector[(*lt)], (*lt));
-                    (*kt)->addRssiValue(rssiVector[(*lt)], (*lt));
+                    // Remove the SCI
+                    decodedScis_.erase(it);
+                    break;
+                } else {
+                    (*it)->setControlInfo(sciInfo);
                 }
             }
-            // Need to delete the message now
-            delete correspondingSCI;
-            delete sciInfo;
+            if (!foundCorrespondingSci) {
+                tbsFailedDueToNoSCI_ += 1;
+            } else if (!result) {
+                tbFailedButSCIReceived_ += 1;
+            } else {
+                tbsDecoded_ += 1;
+                // Now need to find the associated Subchannels, record the RSRP and RSSI for the message and go from there.
+                // Need to again do the RIV steps
+                std::tuple<int, int> indexAndLength = decodeRivValue(correspondingSCI, sciInfo);
+                int subchannelIndex = std::get<0>(indexAndLength);
+                int lengthInSubchannels = std::get<1>(indexAndLength);
+
+                std::vector<Subchannel *>::iterator kt;
+                std::vector < Subchannel * > currentSubframe = sensingWindow_.back();
+                for (kt = currentSubframe.begin() + subchannelIndex;
+                     kt != currentSubframe.begin() + subchannelIndex + lengthInSubchannels; kt++) {
+                    std::vector<Band>::iterator lt;
+                    std::vector <Band> allocatedBands = (*kt)->getOccupiedBands();
+                    for (lt = allocatedBands.begin(); lt != allocatedBands.end(); lt++) {
+                        // Record RSRP and RSSI for this band
+                        (*kt)->addRsrpValue(rsrpVector[(*lt)], (*lt));
+                        (*kt)->addRssiValue(rssiVector[(*lt)], (*lt));
+                    }
+                }
+                // Need to delete the message now
+                delete correspondingSCI;
+                delete sciInfo;
+            }
+        }
+        else{
+            tbFailedHalfDuplex_ += 1;
         }
 
         delete frame;

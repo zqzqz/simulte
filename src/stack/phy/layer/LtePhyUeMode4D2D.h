@@ -56,8 +56,11 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     simsignal_t tbsFailedDueToNoSCI;
     simsignal_t tbFailedButSCIReceived;
     simsignal_t tbAndSCINotReceived;
+    simsignal_t sciFailedHalfDuplex;
+    simsignal_t tbFailedHalfDuplex;
     simsignal_t threshold;
-    simsignal_t txRxDistance;
+    simsignal_t txRxDistanceSCI;
+    simsignal_t txRxDistanceTB;
 
     int scisReceived_;
     int scisDecoded_;
@@ -67,6 +70,8 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     int tbsFailedDueToNoSCI_;
     int tbFailedButSCIReceived_;
     int tbAndSCINotReceived_;
+    int sciFailedHalfDuplex_;
+    int tbFailedHalfDuplex_;
 
     double currentCBR_;
     int cbrIndex_;

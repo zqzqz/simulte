@@ -93,6 +93,7 @@ simple LtePhyUeMode4D2D extends LtePhyUeD2D {
         int numSubchannels = default(10);
 	    int subchannelSize = default(5);
 	    int selectionWindowStartingSubframe = default(1);
+	    int shapeFactor = default(6);
 	    
 	    @signal[cbr];
  		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
@@ -119,8 +120,15 @@ simple LtePhyUeMode4D2D extends LtePhyUeD2D {
 		@signal[threshold];
 		@statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
 
-		@signal[txRxDistance];
-		@statistic[txRxDistance](title="Distance between transmitter and receiver"; source="txRxDistance"; record=mean,vector);
+        @signal[sciFailedHalfDuplex];
+        @statistic[sciFailedHalfDuplex](title="Number of failed TBs with a decoded SCI"; source="sciFailedHalfDuplex"; record=sum,vector);
+        @signal[tbFailedHalfDuplex];
+        @statistic[tbFailedHalfDuplex](title="Number of failed TBs with a failed SCI"; source="tbFailedHalfDuplex"; record=sum,vector);
+
+		@signal[txRxDistanceSCI];
+		@statistic[txRxDistanceSCI](title="Distance between transmitter and receiver"; source="txRxDistanceSCI"; record=mean,vector);
+		@signal[txRxDistanceTB];
+        @statistic[txRxDistanceTB](title="Distance between transmitter and receiver"; source="txRxDistanceTB"; record=mean,vector);
 }
 
 // 
