@@ -59,7 +59,6 @@ void LteMacUeMode4D2D::initialize(int stage)
         parseCbrTxConfig(par("txConfig").xmlValue());
         parseRriConfig(par("txConfig").xmlValue());
         resourceReservationInterval_ = validResourceReservationIntervals_.at(0);
-        maximumLatency_ = par("maximumLatency");
         subchannelSize_ = par("subchannelSize");
         numSubchannels_ = par("numSubchannels");
         probResourceKeep_ = par("probResourceKeep");
