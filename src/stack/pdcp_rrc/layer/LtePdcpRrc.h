@@ -262,6 +262,8 @@ class LtePdcpRrcBase : public cSimpleModule
     cGate* umSap_[2];
     cGate* amSap_[2];
 
+    int three_hundred;
+
     // FIXME D2 support
 
     struct DropInfo
