@@ -956,7 +956,7 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
         double pkt_dist = getCoord().distance(lteInfo->getCoord());
         emit(txRxDistanceSCI, pkt_dist);
 
-        if (!transmitting)
+        if (!transmitting_)
         {
             result = channelModel_->error_Mode4_D2D(frame, lteInfo, rsrpVector, 0);
 
