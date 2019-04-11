@@ -382,13 +382,13 @@ void LtePhyUe::handleAirFrame(cMessage* msg)
         return;
     }
 
-        /*
-         * This could happen if the ue associates with a new master while the old one
-         * already scheduled a packet for him: the packet is in the air while the ue changes master.
-         * Event timing:      TTI x: packet scheduled and sent for UE (tx time = 1ms)
-         *                     TTI x+0.1: ue changes master
-         *                     TTI x+1: packet from old master arrives at ue
-         */
+    /*
+     * This could happen if the ue associates with a new master while the old one
+     * already scheduled a packet for him: the packet is in the air while the ue changes master.
+     * Event timing:      TTI x: packet scheduled and sent for UE (tx time = 1ms)
+     *                     TTI x+0.1: ue changes master
+     *                     TTI x+1: packet from old master arrives at ue
+     */
     if (lteInfo->getSourceId() != masterId_)
     {
         EV << "WARNING: frame from an old master during handover: deleted " << endl;
@@ -445,7 +445,7 @@ void LtePhyUe::handleAirFrame(cMessage* msg)
         result = channelModel_->error(frame,lteInfo);
     }
 
-            // update statistics
+    // update statistics
     if (result)
         numAirFrameReceived_++;
     else

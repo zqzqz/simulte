@@ -16,7 +16,7 @@ Define_Module(LtePdcpRrcEnbD2D);
 /*
  * Upper Layer handlers
  */
-void LtePdcpRrcEnbD2D::fromDataPort(cPacket *pkt)
+void LtePdcpRrcEnbD2D::fromDataIn(cPacket *pkt)
 {
     emit(receivedPacketFromUpperLayer, pkt);
 

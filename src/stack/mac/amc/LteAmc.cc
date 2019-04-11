@@ -9,6 +9,7 @@
 
 #include "stack/mac/amc/LteAmc.h"
 #include "stack/mac/layer/LteMacEnb.h"
+#include "stack/mac/layer/LteMacUeMode4D2D.h"
 
 // NOTE: AMC Pilots header file inclusions must go here
 #include "stack/mac/amc/AmcPilotAuto.h"
@@ -196,9 +197,17 @@ void LteAmc::printMuMimoMatrix(const char* s)
  * PUBLIC FUNCTIONS
  ********************/
 
-LteAmc::LteAmc(LteMacEnb *mac, LteBinder *binder, LteDeployer *deployer, int numAntennas)
+LteAmc::LteAmc(LteMacBase *mac, LteBinder *binder, LteDeployer *deployer, int numAntennas)
 {
-    mac_ = mac;
+
+    LteMacEnb* macEnb = dynamic_cast<LteMacEnb*>(mac);
+    if (macEnb){
+        mac_ = macEnb;
+    }
+    else
+    {
+        mac_ = dynamic_cast<LteMacUeMode4D2D*>(mac);
+    }
     binder_ = binder;
     deployer_ = deployer;
     numAntennas_ = numAntennas;
@@ -529,7 +538,7 @@ bool LteAmc::existTxParams(MacNodeId id, const Direction dir)
         return dlTxParams_.at(dlNodeIndex_.at(id)).isSet();
     else if (dir == UL)
         return ulTxParams_.at(ulNodeIndex_.at(id)).isSet();
-    else if (dir == D2D)
+    else if (dir == D2D || dir == D2D_MULTI)
         return d2dTxParams_.at(d2dNodeIndex_.at(id)).isSet();
     else
     {
@@ -564,7 +573,7 @@ const UserTxParams& LteAmc::setTxParams(MacNodeId id, const Direction dir, UserT
         return (dlTxParams_.at(dlNodeIndex_.at(id)) = info);
     else if (dir == UL)
         return (ulTxParams_.at(ulNodeIndex_.at(id)) = info);
-    else if (dir == D2D)
+    else if (dir == D2D || dir == D2D_MULTI)
         return (d2dTxParams_.at(d2dNodeIndex_.at(id)) = info);
     else
     {
@@ -915,6 +924,53 @@ unsigned int LteAmc::getItbsPerCqi(Cqi cqi, const Direction dir)
 
     // Return the iTbs found.
     return iTbs;
+}
+
+unsigned int LteAmc::getCqiForMcs(unsigned int mcsIndex, const Direction dir)
+{
+    // CQI threshold table selection
+    McsTable* mcsTable;
+    if (dir == DL)
+        mcsTable = &dlMcsTable_;
+    else if ((dir == UL) || (dir == D2D) || (dir == D2D_MULTI))
+        mcsTable = &ulMcsTable_;
+    else
+    {
+        throw cRuntimeError("LteAmc::getItbsPerCqi(): Unrecognized direction");
+    }
+
+    MCSelem elem = mcsTable->at(mcsIndex);
+
+    LteMod mod = elem.mod_;
+    unsigned int iTbs = elem.iTbs_;
+    double threshold = elem.threshold_;
+
+    unsigned int min = 0;
+    unsigned int max = 6;
+    if (mod == _16QAM)
+    {
+        min = 7;
+        max = 9;
+    }
+    if (mod == _64QAM)
+    {
+        min = 10;
+        max = 15;
+    }
+
+    CQIelem entry = cqiTable[min];
+    unsigned int cqiValue = min;
+
+    for (unsigned int i = min; i <= max; i++)
+    {
+        entry = cqiTable[i];
+        if (entry.rate_ <= threshold)
+            cqiValue = i;
+        else
+            break;
+    }
+
+    return cqiValue;
 }
 
 const UserTxParams& LteAmc::getTxParams(MacNodeId id, const Direction dir)
@@ -1373,7 +1429,7 @@ void LteAmc::attachUser(MacNodeId nodeId, Direction dir)
         fbhbCapacity = fbhbCapacityUl_;
         numTxModes = UL_NUM_TXMODE;
     }
-    else if(dir==D2D)
+    else if(dir==D2D || dir == D2D_MULTI)
     {
         connectedUe = &d2dConnectedUe_;
         nodeIndexMap = &d2dNodeIndex_;

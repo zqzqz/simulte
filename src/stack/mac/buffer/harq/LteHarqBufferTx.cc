@@ -321,7 +321,19 @@ LteHarqBufferTx::getProcess(unsigned char acid)
 LteHarqProcessTx *
 LteHarqBufferTx::getSelectedProcess()
 {
-    return getProcess(selectedAcid_);
+    if (selectedAcid_ != HARQ_NONE)
+    {
+        return getProcess(selectedAcid_);
+    }
+}
+
+bool LteHarqBufferTx::isSelected()
+{
+    if (selectedAcid_ != HARQ_NONE)
+    {
+        return true;
+    }
+    return false;
 }
 
 LteHarqBufferTx::~LteHarqBufferTx()

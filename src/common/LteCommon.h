@@ -349,6 +349,7 @@ enum DeploymentScenario
     URBAN_MACROCELL,
     RURAL_MACROCELL,
     SUBURBAN_MACROCELL,
+    WINNER,
     UNKNOW_SCENARIO
 };
 
@@ -364,6 +365,7 @@ const DeploymentScenarioMapping DeploymentScenarioTable[] = {
     ELEM(URBAN_MACROCELL),
     ELEM(RURAL_MACROCELL),
     ELEM(SUBURBAN_MACROCELL),
+    ELEM(WINNER),
     ELEM(UNKNOW_SCENARIO)
 };
 
@@ -460,6 +462,7 @@ enum LtePhyFrameType
     GRANTPKT,
     RACPKT,
     D2DMODESWITCHPKT,
+    SCIPKT,
     UNKNOWN_TYPE
 };
 
@@ -476,6 +479,7 @@ const LtePhyFrameTable phytypes[] = {
     ELEM(HANDOVERPKT),
     ELEM(GRANTPKT),
     ELEM(D2DMODESWITCHPKT),
+    ELEM(SCIPKT),
     ELEM(UNKNOWN_TYPE)
 };
 
@@ -857,6 +861,7 @@ GrantType aToGrantType(std::string a);
 const std::string grantTypeToA(GrantType gType);
 LteBinder* getBinder();
 LteDeployer* getDeployer(MacNodeId nodeId);
+LteDeployer* getDeployer();
 cModule* getMacByMacNodeId(MacNodeId nodeId);
 cModule* getRlcByMacNodeId(MacNodeId nodeId, LteRlcType rlcType);
 LteMacBase* getMacUe(MacNodeId nodeId);

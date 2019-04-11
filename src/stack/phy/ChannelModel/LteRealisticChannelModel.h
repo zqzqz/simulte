@@ -11,6 +11,7 @@
 #define _LTE_LTEREALISTICCHANNELMODEL_H_
 
 #include "stack/phy/ChannelModel/LteChannelModel.h"
+#include "inet/physicallayer/pathloss/NakagamiFading.h"
 
 class LteBinder;
 
@@ -129,7 +130,7 @@ class LteRealisticChannelModel : public LteChannelModel
 
     enum FadingType
     {
-        RAYLEIGH, JAKES
+        RAYLEIGH, JAKES, NAKAGAMI
     };
 
     //Fading type (JAKES or RAYLEIGH)
@@ -141,9 +142,14 @@ class LteRealisticChannelModel : public LteChannelModel
     //if dynamicLos is false this boolean is initialized to true if all user will be in LOS or false otherwise
     bool fixedLos_;
 
+    inet::physicallayer::NakagamiFading* nkgmf;
+
   public:
     LteRealisticChannelModel(ParameterMap& params, const inet::Coord& myCoord, unsigned int band);
     virtual ~LteRealisticChannelModel();
+
+    virtual double getTxRxDistance(UserControlInfo* lteInfo);
+
     /*
      * Compute Attenuation caused by pathloss and shadowing (optional)
      *
@@ -195,6 +201,16 @@ class LteRealisticChannelModel : public LteChannelModel
      * @param rsrpVector the received signal for each RB, if it has already been computed
      */
     virtual bool error_D2D(LteAirFrame *frame, UserControlInfo* lteI, std::vector<double> rsrpVector);
+    /*
+     * Compute the error probability of the transmitted packet according to mcs used, txmode, and the received power
+     * after that it throws a random number in order to check if this packet will be corrupted or not
+     *
+     * @param frame pointer to the packet
+     * @param lteinfo pointer to the user control info
+     * @param rsrpVector the received signal for each RB, if it has already been computed
+     * @param mcs the modulation and coding scheme used in sending the message.
+     */
+    virtual bool error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, int mcs);
     /*
      * Compute the error probability of the transmitted packet according to cqi used, txmode, and the received power
      * after that it throws a random number in order to check if this packet will be corrupted or not
@@ -272,6 +288,8 @@ class LteRealisticChannelModel : public LteChannelModel
      * @param cqiDl if true, the jakesMap in the UE side should be used
      */
     double jakesFading(MacNodeId noedId, double speed, unsigned int band, bool cqiDl);
+
+    double computerWinnerB1(const inet::Coord destCoord, const inet::Coord sourceCoord, MacNodeId nodeId);
     /*
      * Compute LOS probability
      *

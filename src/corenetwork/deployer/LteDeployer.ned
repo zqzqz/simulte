@@ -34,6 +34,8 @@ simple LteDeployer {
           
         // eNodeB type (MICRO / MACRO) - valid only for eNodeBs
         bool microCell = default(false);  
+        
+        bool independentDeployer = default(false);
           
         //#
         //# Remote Units (DAS)

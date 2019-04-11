@@ -646,6 +646,18 @@ void LteBinder::unregisterNode(MacNodeId id)
             it++;
         }
     }
+    std::map<long, MacNodeId>::iterator jt;
+    for(jt = macNodeIdToNonIPAddress_.begin(); jt != macNodeIdToNonIPAddress_.end(); )
+    {
+        if(jt->second == id)
+        {
+            macNodeIdToNonIPAddress_.erase(jt++);
+        }
+        else
+        {
+            jt++;
+        }
+    }
 }
 
 MacNodeId LteBinder::registerNode(cModule *module, LteNodeType type,

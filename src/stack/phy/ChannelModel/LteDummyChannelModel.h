@@ -58,6 +58,16 @@ class LteDummyChannelModel : public LteChannelModel
      */
     virtual bool error_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector);
     /*
+     * Compute the error probability of the transmitted packet according to mcs used, txmode, and the received power
+     * after that it throws a random number in order to check if this packet will be corrupted or not
+     *
+     * @param frame pointer to the packet
+     * @param lteinfo pointer to the user control info
+     * @param rsrpVector the received signal for each RB, if it has already been computed
+     * @param mcs the modulation and coding scheme used in sending the message.
+     */
+    virtual bool error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, int mcs);
+    /*
      * Compute Received useful signal for D2D transmissions
      */
     virtual std::vector<double> getRSRP_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord);
@@ -75,6 +85,8 @@ class LteDummyChannelModel : public LteChannelModel
         throw cRuntimeError("DAS PHY LAYER TO BE IMPLEMENTED");
         return false;
     }
+
+    virtual double getTxRxDistance(UserControlInfo* lteInfo);
 };
 
 #endif

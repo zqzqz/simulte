@@ -63,6 +63,16 @@ class LteChannelModel
      */
     virtual bool error_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector)=0;
     /*
+     * Compute the error probability of the transmitted packet according to mcs used, txmode, and the received power
+     * after that it throws a random number in order to check if this packet will be corrupted or not
+     *
+     * @param frame pointer to the packet
+     * @param lteinfo pointer to the user control info
+     * @param rsrpVector the received signal for each RB, if it has already been computed
+     * @param mcs the modulation and coding scheme used in sending the message.
+     */
+    virtual bool error_Mode4_D2D(LteAirFrame *frame, UserControlInfo* lteInfo, std::vector<double> rsrpVector, int mcs)=0;
+    /*
      * Compute Received useful signal for D2D transmissions
      */
     virtual std::vector<double> getRSRP_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord)=0;
@@ -74,6 +84,8 @@ class LteChannelModel
      */
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo,MacNodeId peerUeId,inet::Coord peerUeCoord,MacNodeId enbId=0)=0;
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector)=0;
+
+    virtual double getTxRxDistance(UserControlInfo* lteInfo)=0;
 };
 
 #endif

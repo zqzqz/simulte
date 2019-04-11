@@ -16,7 +16,7 @@ package lte.stack.mac;
 moduleinterface LteMac {
     parameters:
         @display("i=block/mac");
-        string interfaceTableModule;
+        bool ipBased;
    
     gates:
         input RLC_to_MAC;    // RLC to MAC
@@ -28,16 +28,142 @@ moduleinterface LteMac {
 // 
 // Base module for the MAC layer of LTE Stack.
 //
-simple LteMacBase like LteMac {
+simple LteMacIPBase like LteMac {
     parameters:
         @display("i=block/mac");
         string interfaceTableModule;
+        
+        bool ipBased = default(true);
 
         //# Mac Queues
         int queueSize @unit(B) = default(2MiB);              // MAC Buffers queue size
         
         //# Mac Scheduler
-        int    maxBytesPerTti @unit(B) = default(3000KiB);          // Schedulable Bytes
+        int maxBytesPerTti @unit(B) = default(3000KiB);          // Schedulable Bytes
+        
+        //# Mac MIB
+        
+        bool muMimo = default(true);
+        
+                
+        //# H-ARQ
+        int harqProcesses = default(8);
+        int maxHarqRtx = default(4);
+         
+        //#
+        //# Statistic recording: end2end delay and throughput at the mac layer
+        //#
+        @signal[macDelayDl];
+        @statistic[macDelayDl](title="Delay at the MAC layer UL"; unit="s"; source="macDelayDl"; record=mean,vector);
+        @signal[macThroughputDl];
+        @statistic[macThroughputDl](title="Throughput at the MAC layer DL"; unit="Bps"; source="macThroughputDl"; record=mean);
+        @signal[macDelayUl];
+        @statistic[macDelayUl](title="Delay at the MAC layer UL"; unit="s"; source="macDelayUl"; record=mean,vector);
+        @signal[macThroughputUl];
+        @statistic[macThroughputUl](title="Throughput at the MAC layer UL"; unit="Bps"; source="macThroughputUl"; record=mean);
+        @signal[macDelayD2D];
+        @statistic[macDelayD2D](title="Delay at the MAC layer D2D"; unit="s"; source="macDelayD2D"; record=mean,vector);
+        @signal[macThroughputD2D];
+        @statistic[macThroughputD2D](title="Throughput at the MAC layer D2D"; unit="Bps"; source="macThroughputD2D"; record=mean);
+        @signal[macCellThroughputUl];
+        @statistic[macCellThroughputUl](title="Cell Throughput at the MAC layer UL"; unit="Bps"; source="macCellThroughputUl"; record=mean);
+        @signal[macCellThroughputDl];
+        @statistic[macCellThroughputDl](title="Cell Throughput at the MAC layer DL"; unit="Bps"; source="macCellThroughputDl"; record=mean);
+        @signal[macCellThroughputD2D];
+        @statistic[macCellThroughputD2D](title="Cell Throughput at the MAC layer D2D"; unit="Bps"; source="macCellThroughputD2D"; record=mean);  
+        @signal[macCellPacketLossDl];
+        @statistic[macCellPacketLossDl](title="Mac Cell Packet Loss"; unit=""; source="macCellPacketLossDl"; record=mean);
+        @signal[macCellPacketLossUl];
+        @statistic[macCellPacketLossUl](title="Mac Cell Packet Loss"; unit=""; source="macCellPacketLossUl"; record=mean);
+        @signal[macCellPacketLossD2D];
+        @statistic[macCellPacketLossD2D](title="Mac Cell Packet Loss D2D"; unit=""; source="macCellPacketLossD2D"; record=mean);
+        @signal[macPacketLossUl];
+        @statistic[macPacketLossUl](title="Mac Packet Loss"; unit=""; source="macPacketLossUl"; record=mean);
+        @signal[macPacketLossDl];
+        @statistic[macPacketLossDl](title="Mac Packet Loss"; unit=""; source="macPacketLossDl"; record=mean);
+        @signal[macPacketLossD2D];
+        @statistic[macPacketLossD2D](title="Mac Packet Loss D2D"; unit=""; source="macPacketLossD2D"; record=mean);
+        @signal[macBufferOverFlowDl];
+        @statistic[macBufferOverFlowDl](title="Mac buffer overflow as function of time"; unit="Byte/s"; source="macBufferOverFlowDl"; record=mean);
+        @signal[macBufferOverFlowUl];
+        @statistic[macBufferOverFlowUl](title="Mac buffer overflow as function of time"; unit="Byte/s"; source="macBufferOverFlowUl"; record=mean);
+        @signal[macBufferOverFlowD2D];
+    	@statistic[macBufferOverFlowD2D](title="Mac buffer overflow as function of time"; unit="Byte/s"; source="macBufferOverFlowD2D"; record=mean);
+        @signal[harqErrorRateUl];
+        @statistic[harqErrorRateUl](title="Harq Error Rate Dl"; unit=""; source="harqErrorRateUl"; record=mean,vector);
+        @signal[harqErrorRateDl];
+        @statistic[harqErrorRateDl](title="Harq Error Rate Dl"; unit=""; source="harqErrorRateDl"; record=mean,vector);
+        @signal[harqErrorRateD2D];
+        @statistic[harqErrorRateD2D](title="Harq Error Rate D2D"; unit=""; source="harqErrorRateD2D"; record=mean,vector);
+        @signal[harqErrorRate_1st_Ul];
+        @statistic[harqErrorRate_1st_Ul](title="Harq Error Rate Dl"; unit=""; source="harqErrorRate_1st_Ul"; record=mean,vector);
+        @signal[harqErrorRate_1st_Dl];
+        @statistic[harqErrorRate_1st_Dl](title="Harq Error Rate Dl"; unit=""; source="harqErrorRate_1st_Dl"; record=mean,vector);
+        @signal[harqErrorRate_1st_D2D];
+        @statistic[harqErrorRate_1st_D2D](title="Harq Error Rate D2D"; unit=""; source="harqErrorRate_1st_D2D"; record=mean,vector);
+        @signal[harqErrorRate_2nd_Ul];
+        @statistic[harqErrorRate_2nd_Ul](title="Harq Error Rate Dl"; unit=""; source="harqErrorRate_2nd_Ul"; record=mean,vector);
+        @signal[harqErrorRate_2nd_Dl];
+        @statistic[harqErrorRate_2nd_Dl](title="Harq Error Rate Dl"; unit=""; source="harqErrorRate_2nd_Dl"; record=mean,vector);
+        @signal[harqErrorRate_2nd_D2D];
+        @statistic[harqErrorRate_2nd_D2D](title="Harq Error Rate D2D"; unit=""; source="harqErrorRate_2nd_D2D"; record=mean,vector);
+        @signal[harqErrorRate_3rd_Ul];
+        @statistic[harqErrorRate_3rd_Ul](title="Harq Error Rate Dl"; unit=""; source="harqErrorRate_3rd_Ul"; record=mean,vector);
+        @signal[harqErrorRate_3rd_Dl];
+        @statistic[harqErrorRate_3rd_Dl](title="Harq Error Rate Dl"; unit=""; source="harqErrorRate_3rd_Dl"; record=mean,vector);
+        @signal[harqErrorRate_3rd_D2D];
+        @statistic[harqErrorRate_3rd_D2D](title="Harq Error Rate D2D"; unit=""; source="harqErrorRate_3rd_D2D"; record=mean,vector);
+        @signal[harqErrorRate_4th_Ul];
+        @statistic[harqErrorRate_4th_Ul](title="Harq Error Rate Dl"; unit=""; source="harqErrorRate_4th_Ul"; record=mean,vector);
+        @signal[harqErrorRate_4th_Dl];
+        @statistic[harqErrorRate_4th_Dl](title="Harq Error Rate Dl"; unit=""; source="harqErrorRate_4th_Dl"; record=mean,vector);
+        @signal[harqErrorRate_4th_D2D];
+        @statistic[harqErrorRate_4th_D2D](title="Harq Error Rate D2D"; unit=""; source="harqErrorRate_4th_D2D"; record=mean,vector);
+        @signal[receivedPacketFromUpperLayer];
+        @statistic[receivedPacketFromUpperLayer](source="receivedPacketFromUpperLayer"; record=count,"sum(packetBytes)","vector(packetBytes)"; interpolationmode=none);
+        @signal[receivedPacketFromLowerLayer];
+        @statistic[receivedPacketFromLowerLayer](source="receivedPacketFromLowerLayer"; record=count,"sum(packetBytes)","vector(packetBytes)"; interpolationmode=none);
+        @signal[sentPacketToUpperLayer];
+        @statistic[sentPacketToUpperLayer](source="sentPacketToUpperLayer"; record=count,"sum(packetBytes)","vector(packetBytes)"; interpolationmode=none);
+        @signal[sentPacketToLowerLayer];
+        @statistic[sentPacketToLowerLayer](source="sentPacketToLowerLayer"; record=count,"sum(packetBytes)","vector(packetBytes)"; interpolationmode=none);
+        @signal[measuredItbs];
+        @statistic[measuredItbs](title="TBS index"; unit=""; source="measuredItbs"; record=mean,vector);
+
+        //# signals for indicating buffer overflow
+        @signal[macBufferOverflowUl];
+        @signal[macBufferOverflowDl];
+
+    gates:
+        //# 
+        //# Gates connecting RLC and MAC Layers
+        //# 
+        
+        input RLC_to_MAC;    // RLC to MAC
+        output MAC_to_RLC;    // MAC to RLC
+        
+        //# 
+        //# Gates connecting MAC and PHY Layers
+        //# 
+        
+        input PHY_to_MAC;    // PHY to MAC
+        output MAC_to_PHY;    // MAC to PHY
+}
+
+// 
+// Base module for the MAC layer of LTE Stack.
+//
+simple LteMacNonIPBase like LteMac {
+    parameters:
+        @display("i=block/mac");
+        
+        bool ipBased = default(false);
+
+        //# Mac Queues
+        int queueSize @unit(B) = default(2MiB);              // MAC Buffers queue size
+        
+        //# Mac Scheduler
+        int maxBytesPerTti @unit(B) = default(3000KiB);          // Schedulable Bytes
         
         //# Mac MIB
         
@@ -151,7 +277,7 @@ simple LteMacBase like LteMac {
 //
 // User Equipment MAC layer of LTE stack
 //
-simple LteMacUe extends LteMacBase 
+simple LteMacUe extends LteMacIPBase 
 {
    
     parameters:
@@ -233,10 +359,102 @@ simple LteMacUeRealisticD2D extends LteMacUeRealistic
     int d2dCqi = default(7);
 }
 
+simple LteMacUeMode4D2D extends LteMacNonIPBase
+{
+	parameters:
+	    
+	    @class("LteMacUeMode4D2D");
+	    
+	    //# TODO: Change this to use xmldoc to fill in these params as it's more complex than this.
+	    xml txConfig;
+	    int resourceReservationInterval = default(1);
+	    int maximumLatency = default(100);
+	    int minSubchannelNumberPSSCH = default(1);
+	    int maxSubchannelNumberPSSCH = default(10);
+	    int minMCSPSSCH = default(1);
+	    int maxMCSPSSCH = default(28);
+	    int allowedRetxNumberPSSCH = default(0);
+	    int numSubchannels = default(10);
+	    int subchannelSize = default(5);
+	    int reselectAfter = default(1);
+	    double probResourceKeep = default(0.4);
+	    bool useCBR = default(false);
+	    
+	    bool usePreconfiguredTxParams = default(false);
+	    
+		// Signals 
+		//
+		// Must haves:
+		// Grant break due to no time
+		// Grant break due to no large enough MCS
+		// Selected MCS
+		// Selected number of subchannels
+		// Packet size on break 
+		// Maximum capacity on grant break
+
+		@signal[generatedGrants];
+		@statistic[generatedGrants](title="Number of generated Grants"; source="generatedGrants"; record=sum,vector);
+		@signal[grantBreak];
+        @statistic[grantBreak](title="Total Number of Grant breaks"; source="grantBreak"; record=sum,vector);
+        @signal[grantBreakTiming];
+        @statistic[grantBreakTiming](title="Total number of Grant breaks due to not meeting time requirements"; source="grantBreakTiming"; record=sum,vector);
+		@signal[grantBreakSize];
+        @statistic[grantBreakSize](title="Total Number of Grant breaks due to not having enough capacity" ; source="grantBreakSize"; record=count,sum,vector);
+        @signal[droppedTimeout];
+        @statistic[droppedTimeout](title="Total Number of packets dropped due to a timeout" ; source="droppedTimeout"; record=sum,vector);
+        @signal[grantBreakMissedTrans];
+        @statistic[grantBreakMissedTrans](title="Total grant breaks due to missed transmissions"; source="grantBreakMissedTrans"; record=sum,vector);
+        @signal[missedTransmission];
+        @statistic[missedTransmission](title="Total Missed transmissions"; source="missedTransmission"; record=sum,vector);
+        @signal[selectedMCS];
+        @statistic[selectedMCS](title="MCS selected for transmission"; source="selectedMCS"; record=mean,vector);
+        @signal[selectedNumSubchannels];
+        @statistic[selectedNumSubchannels](title="SelectedNumSubchannels"; source="selectedNumSubchannels"; record=mean,vector);
+        @signal[maximumCapacity];
+        @statistic[maximumCapacity](title="Maximum capacity of grant"; source="maximumCapacity"; record=mean,vector);
+        @signal[grantRequests];
+        @statistic[grantRequests](title="Total number of requested grants"; source="grantRequests"; record=sum, vector);
+    	    
+	    //# AMC params ... ever so slightly hacked in
+	    
+//	    // AMC Mode:  "auto", "piloted", "multi", "das"
+//        string amcMode = default("AUTO");
+//        
+//        //Min disance used to pair two MuMimo UE
+//        int muMimoMinDistance =default(50);
+//        
+//        // resource allocation type ("distributed" or "localized")
+//        string rbAllocationType = default("distributed");
+//
+//        // summary feedback confidence function lower bound
+//        double summaryLowerBound @unit(s) = default(5ms);
+//
+//        // summary feedback confidence function upper bound
+//        double summaryUpperBound @unit(s) = default(20ms);
+//
+//        // FeedBack Historical Base capacity in DL (number of stored feedback samples per UE) 
+//        int fbhbCapacityDl = default(5);
+//
+//        // FeedBack Historical Base capacity in UL (number of stored feedback samples per UE)
+//        int fbhbCapacityUl = default(5);
+//
+//        // FeedBack Historical Base capacity in D2D (number of stored feedback samples per UE)
+//        int fbhbCapacityD2D = default(5);
+//        
+//        // wideband PMI generation parameter (0.0 means "use the mean value" )        
+//        double pmiWeight = default(0.0);
+//
+//        // wideband CQI generation parameter (0.0 means "use the mean value" )
+//        double cqiWeight = default(0.0);
+//
+//        // AMC k CQI: used in DAS AMC mode
+//        int kCqi = default(0);
+}
+
 //
 // eNodeB MAC layer of LTE stack
 //
-simple LteMacEnb extends LteMacBase {
+simple LteMacEnb extends LteMacIPBase {
     
     parameters:
         

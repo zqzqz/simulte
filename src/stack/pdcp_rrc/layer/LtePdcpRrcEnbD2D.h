@@ -33,11 +33,16 @@ class LtePdcpRrcEnbD2D : public LtePdcpRrcEnb
         delete lteInfo;
     }
 
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        delete lteInfo;
+    }
+
     /**
      * handler for data port
      * @param pkt incoming packet
      */
-    virtual void fromDataPort(cPacket *pkt);
+    virtual void fromDataIn(cPacket *pkt);
 
     void pdcpHandleD2DModeSwitch(MacNodeId peerId, LteD2DMode newMode);
 

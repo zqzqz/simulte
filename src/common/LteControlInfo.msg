@@ -69,6 +69,8 @@ class LteControlInfo {
     uint16 lcid;                                        // Logical Connection Identifier
     int32 multicastGroupId = -1;                        // Identifier for a multicast group (it is in range [0:[2^28)-1] ) 
                                                         // For unicast communications, this field is -1
+
+    unsigned int sequenceNumber;                        // packet sequence number
     
 }
 
@@ -85,15 +87,21 @@ class LteControlInfo {
 //
 class FlowControlInfo extends LteControlInfo {
     //# IP Control Information
-
     uint32 srcAddr;                                       // source IP
     uint32 dstAddr;                                       // destination IP
-    uint16 srcPort;                                          // source port
+    uint16 srcPort;                                       // source port
     uint16 dstPort;                                       // destination port
-    unsigned int sequenceNumber;                          // packet sequence number
     int headerSize;                                       // IP + Transport header size (used by pdcp ROHC)
 }
 
+class FlowControlInfoNonIp extends LteControlInfo {
+    //# Non-IP control Information
+    int priority;
+    long duration;
+    long srcAddr;
+    long dstAddr;
+    simtime_t creationTime;
+}
 //
 // @class UserControlInfo
 // @brief contains information flowing from Mac to Phy

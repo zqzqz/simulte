@@ -84,6 +84,53 @@ simple LtePhyUeD2D extends LtePhyUe {
          @statistic[averageCqiD2D](title="Average Cqi reported in D2D"; unit="cqi"; source="averageCqiD2D"; record=mean,vector);
 }
 
+simple LtePhyUeMode4D2D extends LtePhyUeD2D {
+	parameters:   
+	    @class("LtePhyUeMode4D2D");
+	    
+	    bool adjacencyPSCCHPSSCH = default(true);
+	    int pStep = default(100); 
+        int numSubchannels = default(10);
+	    int subchannelSize = default(5);
+	    int selectionWindowStartingSubframe = default(1);
+	    int shapeFactor = default(6);
+	    
+	    @signal[cbr];
+ 		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
+ 		@signal[scisReceived];
+		@statistic[scisReceived](title="Number of received SCIs"; source="scisReceived"; record=sum,vector);
+		@signal[scisDecoded];
+		@statistic[scisDecoded](title="Number of SCIs successfully decoded"; source="scisDecoded"; record=sum,vector);
+		@signal[scisNotDecoded];
+        @statistic[scisNotDecoded](title="Number of SCIs successfully decoded"; source="scisNotDecoded"; record=sum,vector);
+		@signal[scisSent];
+		@statistic[scisSent](title="Number of SCIs sent"; source="scisSent"; record=sum,vector);
+		@signal[tbsSent];
+		@statistic[tbsSent](title="Number of TBs sent"; source="tbsSent"; record=sum,vector);
+		@signal[tbsReceived];
+		@statistic[tbsReceived](title="Number of TBs received"; source="tbsReceived"; record=sum,vector);
+		@signal[tbsDecoded];
+		@statistic[tbsDecoded](title="Number of TBs Decoded"; source="tbsDecoded"; record=sum,vector);
+		@signal[tbsFailedDueToNoSCI];
+		@statistic[tbsFailedDueToNoSCI](title="Number of Tbs not decoded due to no SCI"; source="tbsFailedDueToNoSCI"; record=sum,vector);
+		@signal[tbFailedButSCIReceived];
+		@statistic[tbFailedButSCIReceived](title="Number of failed TBs with a decoded SCI"; source="tbFailedButSCIReceived"; record=sum,vector);
+		@signal[tbAndSCINotReceived];
+		@statistic[tbAndSCINotReceived](title="Number of failed TBs with a failed SCI"; source="tbAndSCINotReceived"; record=sum,vector);
+		@signal[threshold];
+		@statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
+
+        @signal[sciFailedHalfDuplex];
+        @statistic[sciFailedHalfDuplex](title="Number of failed TBs with a decoded SCI"; source="sciFailedHalfDuplex"; record=sum,vector);
+        @signal[tbFailedHalfDuplex];
+        @statistic[tbFailedHalfDuplex](title="Number of failed TBs with a failed SCI"; source="tbFailedHalfDuplex"; record=sum,vector);
+
+		@signal[txRxDistanceSCI];
+		@statistic[txRxDistanceSCI](title="Distance between transmitter and receiver"; source="txRxDistanceSCI"; record=mean,vector);
+		@signal[txRxDistanceTB];
+        @statistic[txRxDistanceTB](title="Distance between transmitter and receiver"; source="txRxDistanceTB"; record=mean,vector);
+}
+
 // 
 // eNodeB LtePhy module of PHY Layer
 //

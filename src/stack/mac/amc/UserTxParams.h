@@ -32,7 +32,7 @@ class UserTxParams
 
     TxMode txMode_; // tx mode da usare
     Rank ri_;       // RI
-    CqiVector cqiVector_; // vettore con tanti elementi quante sono le cw: quindi contiente dei wb cqi
+    CqiVector cqiVector_; // vector with as many elements as there are cw: therefore, it contains the cbi wb
     Pmi pmi_;       // WB pmi
 
     std::set<Band> allowedBands_;     // bande su cui l'utente puo' trasmettere

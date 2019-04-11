@@ -27,7 +27,8 @@ typedef std::pair<IPv4Address, IPv4Address> AddressPair;
  */
 class IP2lte : public cSimpleModule
 {
-    cGate *stackGateOut_;       // gate connecting IP2lte module to LTE stack
+    cGate *toStackGateOut_;       // gate connecting IP2lte module to LTE stack
+    cGate *fromStackGateIn_;
     cGate *ipGateOut_;          // gate connecting IP2lte module to network layer
     LteNodeType nodeType_;      // node type: can be ENODEB, UE
 

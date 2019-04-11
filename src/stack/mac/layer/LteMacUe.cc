@@ -90,6 +90,8 @@ void LteMacUe::initialize(int stage)
         cqiDlSiso2_ = registerSignal("cqiDlSiso2");
         cqiDlSiso3_ = registerSignal("cqiDlSiso3");
         cqiDlSiso4_ = registerSignal("cqiDlSiso4");
+
+        isIpBased_ = par("ipBased");
     }
     else if (stage == INITSTAGE_LINK_LAYER)
     {
@@ -116,15 +118,23 @@ void LteMacUe::initialize(int stage)
         amc->attachUser(nodeId_, UL);
         amc->attachUser(nodeId_, DL);
 
-        // find interface entry and use its address
-        IInterfaceTable *interfaceTable = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
-        // TODO: how do we find the LTE interface?
-        InterfaceEntry * interfaceEntry = interfaceTable->getInterfaceByName("wlan");
+        if (isIpBased_)
+        {
+            // find interface entry and use its address
+            IInterfaceTable *interfaceTable = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
+            // TODO: how do we find the LTE interface?
+            InterfaceEntry * interfaceEntry = interfaceTable->getInterfaceByName("wlan");
 
-        IPv4InterfaceData* ipv4if = interfaceEntry->ipv4Data();
-        if(ipv4if == NULL)
-            throw new cRuntimeError("no IPv4 interface data - cannot bind node %i", nodeId_);
-        binder_->setMacNodeId(ipv4if->getIPAddress(), nodeId_);
+            IPv4InterfaceData* ipv4if = interfaceEntry->ipv4Data();
+            if(ipv4if == NULL)
+                throw new cRuntimeError("no IPv4 interface data - cannot bind node %i", nodeId_);
+            binder_->setMacNodeId(ipv4if->getIPAddress(), nodeId_);
+        }
+        else
+        {
+            // todo defer binding to submodules? or somehow get an address from artery by some magic feat without giving myself a dependency :/
+            // So first and foremost
+        }
     }
 }
 
@@ -338,13 +348,13 @@ void LteMacUe::macPduUnmake(cPacket* pkt)
         EV << "LteMacBase: pduUnmaker extracted SDU" << endl;
 
         // store descriptor for the incoming connection, if not already stored
-        FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(upPkt->getControlInfo());
+        LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(upPkt->getControlInfo());
         MacNodeId senderId = lteInfo->getSourceId();
         LogicalCid lcid = lteInfo->getLcid();
         MacCid cid = idToMacCid(senderId, lcid);
         if (connDescIn_.find(cid) == connDescIn_.end())
         {
-            FlowControlInfo toStore(*lteInfo);
+            LteControlInfo toStore(*lteInfo);
             connDescIn_[cid] = toStore;
         }
         sendUpperPackets(upPkt);

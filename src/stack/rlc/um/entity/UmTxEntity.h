@@ -42,11 +42,11 @@ class UmTxEntity : public cSimpleModule
   public:
     UmTxEntity()
     {
-        flowControlInfo_ = NULL;
+        LteControlInfo_ = NULL;
     }
     virtual ~UmTxEntity()
     {
-        delete flowControlInfo_;
+        delete LteControlInfo_;
     }
 
     /*
@@ -63,8 +63,8 @@ class UmTxEntity : public cSimpleModule
      */
     void rlcPduMake(int pduSize);
 
-    void setFlowControlInfo(FlowControlInfo* lteInfo) { flowControlInfo_ = lteInfo; }
-    FlowControlInfo* getFlowControlInfo() { return flowControlInfo_; }
+    void setLteControlInfo(LteControlInfo* lteInfo) { LteControlInfo_ = lteInfo; }
+    LteControlInfo* getLteControlInfo() { return LteControlInfo_; }
 
     // force the sequence number to assume the sno passed as argument
     void setNextSequenceNumber(unsigned int nextSno) { sno_ = nextSno; }
@@ -81,7 +81,7 @@ class UmTxEntity : public cSimpleModule
      * Flow-related info.
      * Initialized with the control info of the first packet of the flow
      */
-    FlowControlInfo* flowControlInfo_;
+    LteControlInfo* LteControlInfo_;
 
     /*
      * The SDU enqueue buffer.

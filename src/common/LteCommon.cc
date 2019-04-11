@@ -530,6 +530,11 @@ LteDeployer* getDeployer(MacNodeId nodeId)
     return check_and_cast<LteDeployer*>(getSimulation()->getModule(omnetid)->getSubmodule("deployer"));
 }
 
+LteDeployer* getDeployer()
+{
+    return check_and_cast<LteDeployer*>(getSimulation()->getModuleByPath("deployer"));
+}
+
 cModule* getMacByMacNodeId(MacNodeId nodeId)
 {
     // UE might have left the simulation, return NULL in this case
@@ -586,7 +591,7 @@ void getParametersFromXML(cXMLElement* xmlData, ParameterMap& outputMap)
         {
             param.setBoolValue(sValue == "true" || sValue == "1");
         }
-        else if (sType == "double")
+        else if (sType == "double" || sType == "int")
         {
             param.setDoubleValue(strtod(value, 0));
         }

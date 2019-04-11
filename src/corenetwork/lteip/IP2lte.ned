@@ -30,5 +30,6 @@ simple IP2lte
         output upperLayerOut;
 
         // connection to the lte stack
-        inout stackLte @labels(IPDatagram);
+        output toStackLte @labels(IPDatagram);
+        input fromStackLte;
 }

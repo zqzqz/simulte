@@ -134,13 +134,13 @@ void LteMacEnbRealisticD2D::macPduUnmake(cPacket* pkt)
         EV << "LteMacBase: pduUnmaker extracted SDU" << endl;
 
         // store descriptor for the incoming connection, if not already stored
-        FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(upPkt->getControlInfo());
+        LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(upPkt->getControlInfo());
         MacNodeId senderId = lteInfo->getSourceId();
         LogicalCid lcid = lteInfo->getLcid();
         MacCid cid = idToMacCid(senderId, lcid);
         if (connDescIn_.find(cid) == connDescIn_.end())
         {
-            FlowControlInfo toStore(*lteInfo);
+            LteControlInfo toStore(*lteInfo);
             connDescIn_[cid] = toStore;
         }
 
@@ -383,11 +383,11 @@ void LteMacEnbRealisticD2D::macHandleD2DModeSwitch(cPacket* pkt)
     if (!switchPkt->getTxSide())   // address the receiving endpoint of the D2D flow (tx entities at the eNB)
     {
         // get the outgoing connection corresponding to the DL connection for the RX endpoint of the D2D flow
-        std::map<MacCid, FlowControlInfo>::iterator jt = connDesc_.begin();
+        std::map<MacCid, LteControlInfo>::iterator jt = connDesc_.begin();
         for (; jt != connDesc_.end(); ++jt)
         {
             MacCid cid = jt->first;
-            FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(&(jt->second));
+            LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(&(jt->second));
             if (MacCidToNodeId(cid) == nodeId)
             {
                 EV << NOW << " LteMacEnbRealisticD2D::sendModeSwitchNotification - send signal for TX entity to upper layers in the eNB (cid=" << cid << ")" << endl;
@@ -409,11 +409,11 @@ void LteMacEnbRealisticD2D::macHandleD2DModeSwitch(cPacket* pkt)
         clearBsrBuffers(nodeId);
 
         // get the incoming connection corresponding to the UL connection for the TX endpoint of the D2D flow
-        std::map<MacCid, FlowControlInfo>::iterator jt = connDescIn_.begin();
+        std::map<MacCid, LteControlInfo>::iterator jt = connDescIn_.begin();
         for (; jt != connDescIn_.end(); ++jt)
         {
             MacCid cid = jt->first;
-            FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(&(jt->second));
+            LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(&(jt->second));
             if (MacCidToNodeId(cid) == nodeId)
             {
                 // interrupt H-ARQ processes for UL

@@ -12,7 +12,7 @@
 
 Define_Module(LteRlcUmRealistic);
 
-UmTxEntity* LteRlcUmRealistic::getTxBuffer(FlowControlInfo* lteInfo)
+UmTxEntity* LteRlcUmRealistic::getTxBuffer(LteControlInfo* lteInfo)
 {
     MacNodeId nodeId = ctrlInfoToUeId(lteInfo);
     LogicalCid lcid = lteInfo->getLcid();
@@ -34,7 +34,7 @@ UmTxEntity* LteRlcUmRealistic::getTxBuffer(FlowControlInfo* lteInfo)
         if (lteInfo != NULL)
         {
             // store control info for this flow
-            txEnt->setFlowControlInfo(lteInfo->dup());
+            txEnt->setLteControlInfo(lteInfo->dup());
         }
 
         EV << "LteRlcUmRealistic : Added new UmTxEntity: " << txEnt->getId() <<
@@ -53,7 +53,7 @@ UmTxEntity* LteRlcUmRealistic::getTxBuffer(FlowControlInfo* lteInfo)
 }
 
 
-UmRxEntity* LteRlcUmRealistic::getRxBuffer(FlowControlInfo* lteInfo)
+UmRxEntity* LteRlcUmRealistic::getRxBuffer(LteControlInfo* lteInfo)
 {
     MacNodeId nodeId;
     if (lteInfo->getDirection() == DL)
@@ -79,7 +79,7 @@ UmRxEntity* LteRlcUmRealistic::getRxBuffer(FlowControlInfo* lteInfo)
         rxEntities_[cid] = rxEnt;    // Add to rx_entities map
 
         // store control info for this flow
-        rxEnt->setFlowControlInfo(lteInfo->dup());
+        rxEnt->setLteControlInfo(lteInfo->dup());
 
         EV << "LteRlcUmRealistic : Added new UmRxEntity: " << rxEnt->getId() <<
         " for node: " << nodeId << " for Lcid: " << lcid << "\n";
@@ -100,7 +100,7 @@ void LteRlcUmRealistic::handleUpperMessage(cPacket *pkt)
 {
     EV << "LteRlcUmRealistic::handleUpperMessage - Received packet " << pkt->getName() << " from upper layer, size " << pkt->getByteLength() << "\n";
 
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pkt->removeControlInfo());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pkt->removeControlInfo());
 
     UmTxEntity* txbuf = getTxBuffer(lteInfo);
 
@@ -134,7 +134,7 @@ void LteRlcUmRealistic::handleLowerMessage(cPacket *pkt)
 {
     EV << "LteRlcUmRealistic::handleLowerMessage - Received packet " << pkt->getName() << " from lower layer\n";
 
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pkt->getControlInfo());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pkt->getControlInfo());
 
     if (strcmp(pkt->getName(), "LteMacSduRequest") == 0)
     {

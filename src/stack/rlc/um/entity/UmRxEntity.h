@@ -42,8 +42,8 @@ class UmRxEntity : public cSimpleModule
      */
     void enque(cPacket* pkt);
 
-    void setFlowControlInfo(FlowControlInfo* lteInfo) { flowControlInfo_ = lteInfo; }
-    FlowControlInfo* getFlowControlInfo() { return flowControlInfo_; }
+    void setLteControlInfo(LteControlInfo* lteInfo) { lteControlInfo_ = lteInfo; }
+    LteControlInfo* getLteControlInfo() { return lteControlInfo_; }
 
     // called when a D2D mode switch is triggered
     void rlcHandleD2DModeSwitch(bool oldConnection, bool oldMode);
@@ -94,7 +94,7 @@ class UmRxEntity : public cSimpleModule
      * Flow-related info.
      * Initialized with the control info of the first packet of the flow
      */
-    FlowControlInfo* flowControlInfo_;
+    LteControlInfo* lteControlInfo_;
 
     // The PDU enqueue buffer.
     cArray pduBuffer_;

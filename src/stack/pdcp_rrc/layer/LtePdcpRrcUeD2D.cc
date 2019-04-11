@@ -16,120 +16,178 @@ Define_Module(LtePdcpRrcUeD2D);
 /*
  * Upper Layer handlers
  */
-void LtePdcpRrcUeD2D::fromDataPort(cPacket *pkt)
+void LtePdcpRrcUeD2D::fromDataIn(cPacket *pkt)
 {
     emit(receivedPacketFromUpperLayer, pkt);
 
     // Control Informations
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pkt->removeControlInfo());
-    setTrafficInformation(pkt, lteInfo);
-    headerCompress(pkt, lteInfo->getHeaderSize()); // header compression
-
-    // get destination info
-    IPv4Address destAddr = IPv4Address(lteInfo->getDstAddr());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pkt->removeControlInfo());
+    LogicalCid mylcid;
+    // get the PDCP entity for this LCID
+    LtePdcpEntity* entity;
     MacNodeId destId;
 
-    // the direction of the incoming connection is a D2D_MULTI one if the application is of the same type,
-    // else the direction will be selected according to the current status of the UE, i.e. D2D or UL
-    if (destAddr.isMulticast())
+    if (three_hundred == 0)
     {
-        lteInfo->setDirection(D2D_MULTI);
-
-        // assign a multicast group id
-        // multicast IP addresses are 224.0.0.0/4.
-        // We consider the host part of the IP address (the remaining 28 bits) as identifier of the group,
-        // so as it is univocally determined for the whole network
-        uint32 address = IPv4Address(lteInfo->getDstAddr()).getInt();
-        uint32 mask = ~((uint32)255 << 28);      // 0000 1111 1111 1111
-        uint32 groupId = address & mask;
-        lteInfo->setMulticastGroupId((int32)groupId);
+        pkt->setBitLength(2400);
+        three_hundred = 4;
     }
     else
     {
-        if (binder_->getMacNodeId(destAddr) == 0)
-        {
-            EV << NOW << " LtePdcpRrcUeD2D::fromDataPort - Destination " << destAddr << " has left the simulation. Delete packet." << endl;
-            delete pkt;
-            return;
-        }
+        pkt->setBitLength(1520);
+        three_hundred -= 1;
+    }
 
-        // This part is required for supporting D2D unicast with dynamic-created modules
-        // the first time we see a new destination address, we need to check whether the endpoint
-        // is a D2D peer and, eventually, add it to the binder
-        const char* destName = (L3AddressResolver().findHostWithAddress(destAddr))->getFullName();
-        if (d2dPeeringInit_.find(destName) == d2dPeeringInit_.end() || !d2dPeeringInit_.at(destName))
-        {
-            MacNodeId d2dPeerId = binder_->getMacNodeId(destAddr);
-            binder_->addD2DCapability(nodeId_, d2dPeerId);
-            d2dPeeringInit_[destName] = true;
-        }
+    setTrafficInformation(pkt, lteInfo);
 
-        // set direction based on the destination Id. If the destination can be reached
-        // using D2D, set D2D direction. Otherwise, set UL direction
-        destId = binder_->getMacNodeId(destAddr);
-        lteInfo->setDirection(getDirection(destId));
+    if (ipBased_)
+    {
+        FlowControlInfo* ipInfo = check_and_cast<FlowControlInfo*>(lteInfo);
+        headerCompress(pkt, ipInfo->getHeaderSize()); // header compression
 
-        if (binder_->checkD2DCapability(nodeId_, destId))
+        IPv4Address destAddr = IPv4Address(ipInfo->getDstAddr());
+
+        // the direction of the incoming connection is a D2D_MULTI one if the application is of the same type,
+        // else the direction will be selected according to the current status of the UE, i.e. D2D or UL
+        if (destAddr.isMulticast())
         {
-            // this way, we record the ID of the endpoint even if the connection is in IM
-            // this is useful for mode switching
-            lteInfo->setD2dTxPeerId(nodeId_);
-            lteInfo->setD2dRxPeerId(destId);
+            lteInfo->setDirection(D2D_MULTI);
+
+            // assign a multicast group id
+            // multicast IP addresses are 224.0.0.0/4.
+            // We consider the host part of the IP address (the remaining 28 bits) as identifier of the group,
+            // so as it is univocally determined for the whole network
+            uint32 address = IPv4Address(ipInfo->getDstAddr()).getInt();
+            uint32 mask = ~((uint32)255 << 28);      // 0000 1111 1111 1111
+            uint32 groupId = address & mask;
+            ipInfo->setMulticastGroupId((int32)groupId);
         }
         else
         {
-            lteInfo->setD2dTxPeerId(0);
-            lteInfo->setD2dRxPeerId(0);
+            if (binder_->getMacNodeId(destAddr) == 0)
+            {
+                EV << NOW << " LtePdcpRrcUeD2D::fromDataIn - Destination " << destAddr << " has left the simulation. Delete packet." << endl;
+                delete pkt;
+                return;
+            }
+
+            // This part is required for supporting D2D unicast with dynamic-created modules
+            // the first time we see a new destination address, we need to check whether the endpoint
+            // is a D2D peer and, eventually, add it to the binder
+            const char* destName = (L3AddressResolver().findHostWithAddress(destAddr))->getFullName();
+            if (d2dPeeringInit_.find(destName) == d2dPeeringInit_.end() || !d2dPeeringInit_.at(destName))
+            {
+                MacNodeId d2dPeerId = binder_->getMacNodeId(destAddr);
+                binder_->addD2DCapability(nodeId_, d2dPeerId);
+                d2dPeeringInit_[destName] = true;
+            }
+
+            // set direction based on the destination Id. If the destination can be reached
+            // using D2D, set D2D direction. Otherwise, set UL direction
+            destId = binder_->getMacNodeId(destAddr);
+            lteInfo->setDirection(getDirection(destId));
+
+            if (binder_->checkD2DCapability(nodeId_, destId))
+            {
+                // this way, we record the ID of the endpoint even if the connection is in IM
+                // this is useful for mode switching
+                ipInfo->setD2dTxPeerId(nodeId_);
+                ipInfo->setD2dRxPeerId(destId);
+            }
+            else
+            {
+                ipInfo->setD2dTxPeerId(0);
+                ipInfo->setD2dRxPeerId(0);
+            }
         }
+
+        // Cid Request
+        EV << NOW << " LtePdcpRrcUeD2D : Received CID request for Traffic [ " << "Source: "
+           << IPv4Address(ipInfo->getSrcAddr()) << "@" << ipInfo->getSrcPort()
+           << " Destination: " << destAddr << "@" << ipInfo->getDstPort()
+           << " , Direction: " << dirToA((Direction)ipInfo->getDirection()) << " ]\n";
+
+        /*
+         * Different lcid for different directions of the same flow are assigned.
+         * RLC layer will create different RLC entities for different LCIDs
+         */
+
+        LogicalCid mylcid;
+        if ((mylcid = ht_->find_entry(ipInfo->getSrcAddr(), ipInfo->getDstAddr(),
+                                      ipInfo->getSrcPort(), ipInfo->getDstPort(), ipInfo->getDirection())) == 0xFFFF)
+        {
+            // LCID not found
+
+            // assign a new LCID to the connection
+            mylcid = lcid_++;
+
+            EV << "LtePdcpRrcUeD2D : Connection not found, new CID created with LCID " << mylcid << "\n";
+
+            ht_->create_entry(ipInfo->getSrcAddr(), ipInfo->getDstAddr(),
+                              ipInfo->getSrcPort(), ipInfo->getDstPort(), ipInfo->getDirection(), mylcid);
+        }
+
+        entity= getEntity(mylcid);
+
+        // get the sequence number for this PDCP SDU.
+        // Note that the numbering depends on the entity the packet is associated to.
+        unsigned int sno = entity->nextSequenceNumber();
+
+        ipInfo->setSequenceNumber(sno);
+
+        // set some flow-related info
+        ipInfo->setLcid(mylcid);
+        ipInfo->setSourceId(nodeId_);
+        if (ipInfo->getDirection() == D2D)
+            ipInfo->setDestId(destId);
+        else if (ipInfo->getDirection() == D2D_MULTI)
+            ipInfo->setDestId(nodeId_);             // destId is meaningless for multicast D2D (we use the id of the source for statistic purposes at lower levels)
+        else // UL
+            ipInfo->setDestId(getDestId(ipInfo));
     }
-
-    // Cid Request
-    EV << NOW << " LtePdcpRrcUeD2D : Received CID request for Traffic [ " << "Source: "
-       << IPv4Address(lteInfo->getSrcAddr()) << "@" << lteInfo->getSrcPort()
-       << " Destination: " << destAddr << "@" << lteInfo->getDstPort()
-       << " , Direction: " << dirToA((Direction)lteInfo->getDirection()) << " ]\n";
-
-    /*
-     * Different lcid for different directions of the same flow are assigned.
-     * RLC layer will create different RLC entities for different LCIDs
-     */
-
-    LogicalCid mylcid;
-    if ((mylcid = ht_->find_entry(lteInfo->getSrcAddr(), lteInfo->getDstAddr(),
-        lteInfo->getSrcPort(), lteInfo->getDstPort(), lteInfo->getDirection())) == 0xFFFF)
+    else
     {
-        // LCID not found
+        // NonIp flow
+        FlowControlInfoNonIp* nonIpInfo = check_and_cast<FlowControlInfoNonIp*>(lteInfo);
+        long dstAddr = nonIpInfo->getDstAddr();
+        destId = binder_->getMacNodeId(dstAddr);
 
-        // assign a new LCID to the connection
-        mylcid = lcid_++;
+        // Cid Request
+        EV << "LteRrc : Received CID request for Traffic [ " << "Source: "
+           << nonIpInfo->getSrcAddr() << " Destination: " << nonIpInfo->getDstAddr() << " ]\n";
 
-        EV << "LtePdcpRrcUeD2D : Connection not found, new CID created with LCID " << mylcid << "\n";
+        if ((mylcid = nonIpHt_->find_entry(nonIpInfo->getSrcAddr(), nonIpInfo->getDstAddr())) == 0xFFFF)
+        {
+            // LCID not found
+            mylcid = lcid_++;
 
-        ht_->create_entry(lteInfo->getSrcAddr(), lteInfo->getDstAddr(),
-            lteInfo->getSrcPort(), lteInfo->getDstPort(), lteInfo->getDirection(), mylcid);
+            EV << "LteRrc : Connection not found, new CID created with LCID " << mylcid << "\n";
+
+            nonIpHt_->create_entry(nonIpInfo->getSrcAddr(), nonIpInfo->getDstAddr(), mylcid);
+        }
+
+        entity= getEntity(mylcid);
+
+        // get the sequence number for this PDCP SDU.
+        // Note that the numbering depends on the entity the packet is associated to.
+        unsigned int sno = entity->nextSequenceNumber();
+
+        // set sequence number
+        nonIpInfo->setSequenceNumber(sno);
+
+        // set some flow-related info
+        nonIpInfo->setLcid(mylcid);
+        nonIpInfo->setSourceId(nodeId_);
+        if (nonIpInfo->getDirection() == D2D)
+            nonIpInfo->setDestId(destId);
+        else if (nonIpInfo->getDirection() == D2D_MULTI)
+            nonIpInfo->setDestId(nodeId_);             // destId is meaningless for multicast D2D (we use the id of the source for statistic purposes at lower levels)
+        else // UL
+            nonIpInfo->setDestId(getDestId(nonIpInfo));
     }
 
     EV << "LtePdcpRrcUeD2D : Assigned Lcid: " << mylcid << "\n";
     EV << "LtePdcpRrcUeD2D : Assigned Node ID: " << nodeId_ << "\n";
-
-    // get the PDCP entity for this LCID
-    LtePdcpEntity* entity = getEntity(mylcid);
-
-    // get the sequence number for this PDCP SDU.
-    // Note that the numbering depends on the entity the packet is associated to.
-    unsigned int sno = entity->nextSequenceNumber();
-
-    // set sequence number
-    lteInfo->setSequenceNumber(sno);
-    // set some flow-related info
-    lteInfo->setLcid(mylcid);
-    lteInfo->setSourceId(nodeId_);
-    if (lteInfo->getDirection() == D2D)
-        lteInfo->setDestId(destId);
-    else if (lteInfo->getDirection() == D2D_MULTI)
-        lteInfo->setDestId(nodeId_);             // destId is meaningless for multicast D2D (we use the id of the source for statistic purposes at lower levels)
-    else // UL
-        lteInfo->setDestId(getDestId(lteInfo));
 
     // PDCP Packet creation
     LtePdcpPdu* pdcpPkt = new LtePdcpPdu("LtePdcpPdu");

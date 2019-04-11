@@ -113,9 +113,9 @@ class LteMacPdu : public LteMacPdu_Base
             cPacket *p1 = (cPacket *) *iter;
             cPacket *p2 = (cPacket *) *iterOther;
             if(p1->getControlInfo() == NULL && p2->getControlInfo() != NULL){
-                FlowControlInfo * fci = dynamic_cast<FlowControlInfo *> (p2->getControlInfo());
-                if(fci){
-                    p1->setControlInfo(new FlowControlInfo(*fci));
+                LteControlInfo * ci = dynamic_cast<LteControlInfo *> (p2->getControlInfo());
+                if(ci){
+                    p1->setControlInfo(new LteControlInfo(*ci));
                 } else {
                     throw cRuntimeError("LteMacPdu.h::Unknown type of control info in SDU list!");
                 }

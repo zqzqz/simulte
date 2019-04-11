@@ -30,7 +30,8 @@ void IP2lte::initialize(int stage)
 {
     if (stage == inet::INITSTAGE_LOCAL)
     {
-        stackGateOut_ = gate("stackLte$o");
+        toStackGateOut_ = gate("toStackLte");
+        fromStackGateIn_ = gate("fromStackLte");
         ipGateOut_ = gate("upperLayerOut");
 
         setNodeType(par("nodeType").stdstringValue());
@@ -95,7 +96,7 @@ void IP2lte::handleMessage(cMessage *msg)
             fromIpEnb(ipDatagram);
         }
         // message from stack: send to peer
-        else if(msg->getArrivalGate()->isName("stackLte$i"))
+        else if(msg->getArrivalGate()->isName("fromStackLte"))
             toIpEnb(msg);
         else
         {
@@ -114,7 +115,7 @@ void IP2lte::handleMessage(cMessage *msg)
             EV << "LteIp: message from transport: send to stack" << endl;
             fromIpUe(ipDatagram);
         }
-        else if(msg->getArrivalGate()->isName("stackLte$i"))
+        else if(msg->getArrivalGate()->isName("fromStackLte"))
         {
             // message from stack: send to transport
             EV << "LteIp: message from stack: send to transport" << endl;
@@ -196,7 +197,7 @@ void IP2lte::fromIpUe(IPv4Datagram * datagram)
     datagram->setControlInfo(controlInfo);
 
     //** Send datagram to lte stack or LteIp peer **
-    send(datagram,stackGateOut_);
+    send(datagram,toStackGateOut_);
 }
 
 void IP2lte::toIpUe(IPv4Datagram *datagram)
@@ -304,7 +305,7 @@ void IP2lte::toStackEnb(IPv4Datagram* datagram)
     printControlInfo(controlInfo);
     datagram->setControlInfo(controlInfo);
 
-    send(datagram,stackGateOut_);
+    send(datagram,toStackGateOut_);
 }
 
 

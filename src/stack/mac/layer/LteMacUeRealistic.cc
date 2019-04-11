@@ -296,7 +296,7 @@ bool LteMacUeRealistic::bufferizePacket(cPacket* pkt)
 
     pkt->setTimestamp();        // Add timestamp with current time to packet
 
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pkt->getControlInfo());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pkt->getControlInfo());
 
     // obtain the cid from the packet informations
     MacCid cid = ctrlInfoToMacCid(lteInfo);
@@ -317,7 +317,7 @@ bool LteMacUeRealistic::bufferizePacket(cPacket* pkt)
             macBuffers_[cid] = vqueue;
 
             // make a copy of lte control info and store it to traffic descriptors map
-            FlowControlInfo toStore(*lteInfo);
+            LteControlInfo toStore(*lteInfo);
             connDesc_[cid] = toStore;
             // register connection to lcg map.
             LteTrafficClass tClass = (LteTrafficClass) lteInfo->getTraffic();
@@ -389,7 +389,7 @@ bool LteMacUeRealistic::bufferizePacket(cPacket* pkt)
 
 void LteMacUeRealistic::handleUpperMessage(cPacket* pkt)
 {
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pkt->getControlInfo());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pkt->getControlInfo());
     MacCid cid = idToMacCid(lteInfo->getDestId(), lteInfo->getLcid());
 
     // bufferize packet

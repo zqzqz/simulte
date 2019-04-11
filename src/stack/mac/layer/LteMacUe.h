@@ -24,6 +24,8 @@ class LteMacUe : public LteMacBase
     // false if currentHarq_ counter needs to be initialized
     bool firstTx;
 
+    bool isIpBased_;
+
     LteSchedulerUeUl* lcgScheduler_;
 
     // configured grant - one each codeword
@@ -32,7 +34,7 @@ class LteMacUe : public LteMacBase
     // current H-ARQ process counter
     unsigned char currentHarq_;
 
-    // perodic grant handling
+    // periodic grant handling
     unsigned int periodCounter_;
     unsigned int expirationCounter_;
 

@@ -7,6 +7,8 @@
 // and cannot be removed from it.
 //
 
+#include "corenetwork/deployer/LteDeployer.h"
+#include "corenetwork/binder/LteBinder.h"
 #include "stack/pdcp_rrc/layer/LtePdcpRrc.h"
 
 Define_Module(LtePdcpRrcUe);
@@ -17,12 +19,14 @@ Define_Module(LtePdcpRrcRelayEnb);
 LtePdcpRrcBase::LtePdcpRrcBase()
 {
     ht_ = new ConnectionsTable();
+    nonIpHt_ = new NonIpConnectionsTable();
     lcid_ = 1;
 }
 
 LtePdcpRrcBase::~LtePdcpRrcBase()
 {
     delete ht_;
+    delete nonIpHt_;
 
     PdcpEntities::iterator it = entities_.begin();
     for (; it != entities_.end(); ++it)
@@ -61,7 +65,7 @@ void LtePdcpRrcBase::headerDecompress(cPacket* pkt, int headerSize)
          * lteInfo->setRlcType();
          */
 void LtePdcpRrcBase::setTrafficInformation(cPacket* pkt,
-    FlowControlInfo* lteInfo)
+    LteControlInfo* lteInfo)
 {
     if ((strcmp(pkt->getName(), "VoIP")) == 0)
     {
@@ -96,53 +100,87 @@ void LtePdcpRrcBase::setTrafficInformation(cPacket* pkt,
  * Upper Layer handlers
  */
 
-void LtePdcpRrcBase::fromDataPort(cPacket *pkt)
+void LtePdcpRrcBase::fromDataIn(cPacket *pkt)
 {
     emit(receivedPacketFromUpperLayer, pkt);
 
     // Control Informations
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pkt->removeControlInfo());
+    LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pkt->removeControlInfo());
+    LogicalCid mylcid;
+    // get the PDCP entity for this LCID
+    LtePdcpEntity* entity;
 
     setTrafficInformation(pkt, lteInfo);
-    lteInfo->setDestId(getDestId(lteInfo));
-    headerCompress(pkt, lteInfo->getHeaderSize()); // header compression
 
-    // Cid Request
-    EV << "LteRrc : Received CID request for Traffic [ " << "Source: "
-       << IPv4Address(lteInfo->getSrcAddr()) << "@" << lteInfo->getSrcPort()
-       << " Destination: " << IPv4Address(lteInfo->getDstAddr()) << "@"
-       << lteInfo->getDstPort() << " ]\n";
-
-    // TODO: Since IP addresses can change when we add and remove nodes, maybe node IDs should be used instead of them
-    LogicalCid mylcid;
-    if ((mylcid = ht_->find_entry(lteInfo->getSrcAddr(), lteInfo->getDstAddr(),
-        lteInfo->getSrcPort(), lteInfo->getDstPort())) == 0xFFFF)
+    if (ipBased_)
     {
-        // LCID not found
-        mylcid = lcid_++;
+        FlowControlInfo* ipInfo = check_and_cast<FlowControlInfo*>(lteInfo);
+        ipInfo->setDestId(getDestId(ipInfo));
+        headerCompress(pkt, ipInfo->getHeaderSize()); // header compression
 
-        EV << "LteRrc : Connection not found, new CID created with LCID " << mylcid << "\n";
+        // Cid Request
+        EV << "LteRrc : Received CID request for Traffic [ " << "Source: "
+           << IPv4Address(ipInfo->getSrcAddr()) << "@" << ipInfo->getSrcPort()
+           << " Destination: " << IPv4Address(ipInfo->getDstAddr()) << "@"
+           << ipInfo->getDstPort() << " ]\n";
 
-        ht_->create_entry(lteInfo->getSrcAddr(), lteInfo->getDstAddr(),
-            lteInfo->getSrcPort(), lteInfo->getDstPort(), mylcid);
+        // TODO: Since IP addresses can change when we add and remove nodes, maybe node IDs should be used instead of them
+        if ((mylcid = ht_->find_entry(ipInfo->getSrcAddr(), ipInfo->getDstAddr(),
+            ipInfo->getSrcPort(), ipInfo->getDstPort())) == 0xFFFF)
+        {
+            // LCID not found
+            mylcid = lcid_++;
+
+            EV << "LteRrc : Connection not found, new CID created with LCID " << mylcid << "\n";
+
+            ht_->create_entry(ipInfo->getSrcAddr(), ipInfo->getDstAddr(),
+                ipInfo->getSrcPort(), ipInfo->getDstPort(), mylcid);
+        }
+        entity= getEntity(mylcid);
+
+        // get the sequence number for this PDCP SDU.
+        // Note that the numbering depends on the entity the packet is associated to.
+        unsigned int sno = entity->nextSequenceNumber();
+
+        // set sequence number
+        ipInfo->setSequenceNumber(sno);
+    }
+    else
+    {
+        // NonIp flow
+        FlowControlInfoNonIp* nonIpInfo = check_and_cast<FlowControlInfoNonIp*>(lteInfo);
+        nonIpInfo->setDestId(getDestId(nonIpInfo));
+
+        // Cid Request
+        EV << "LteRrc : Received CID request for Traffic [ " << "Source: "
+           << nonIpInfo->getSrcAddr() << " Destination: " << nonIpInfo->getDstAddr() << " ]\n";
+
+        if ((mylcid = nonIpHt_->find_entry(nonIpInfo->getSrcAddr(), nonIpInfo->getDstAddr())) == 0xFFFF)
+        {
+            // LCID not found
+            mylcid = lcid_++;
+
+            EV << "LteRrc : Connection not found, new CID created with LCID " << mylcid << "\n";
+
+            nonIpHt_->create_entry(nonIpInfo->getSrcAddr(), nonIpInfo->getDstAddr(), mylcid);
+        }
+
+        entity= getEntity(mylcid);
+
+        // get the sequence number for this PDCP SDU.
+        // Note that the numbering depends on the entity the packet is associated to.
+        unsigned int sno = entity->nextSequenceNumber();
+
+        // set sequence number
+        nonIpInfo->setSequenceNumber(sno);
     }
 
     EV << "LteRrc : Assigned Lcid: " << mylcid << "\n";
     EV << "LteRrc : Assigned Node ID: " << nodeId_ << "\n";
 
-    // get the PDCP entity for this LCID
-    LtePdcpEntity* entity = getEntity(mylcid);
-
-    // get the sequence number for this PDCP SDU.
-    // Note that the numbering depends on the entity the packet is associated to.
-    unsigned int sno = entity->nextSequenceNumber();
-
-    // set sequence number
-    lteInfo->setSequenceNumber(sno);
     // NOTE setLcid and setSourceId have been anticipated for using in "ctrlInfoToMacCid" function
     lteInfo->setLcid(mylcid);
     lteInfo->setSourceId(nodeId_);
-    lteInfo->setDestId(getDestId(lteInfo));
 
     // PDCP Packet creation
     LtePdcpPdu* pdcpPkt = new LtePdcpPdu("LtePdcpPdu");
@@ -183,26 +221,43 @@ void LtePdcpRrcBase::fromEutranRrcSap(cPacket *pkt)
  * Lower layer handlers
  */
 
-void LtePdcpRrcBase::toDataPort(cPacket *pkt)
+void LtePdcpRrcBase::toDataOut(cPacket *pkt)
 {
     emit(receivedPacketFromLowerLayer, pkt);
+
     LtePdcpPdu* pdcpPkt = check_and_cast<LtePdcpPdu*>(pkt);
-    FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(
-        pdcpPkt->removeControlInfo());
+    cPacket* upPkt;
 
-    EV << "LtePdcp : Received packet with CID " << lteInfo->getLcid() << "\n";
-    EV << "LtePdcp : Packet size " << pdcpPkt->getByteLength() << " Bytes\n";
+    if (ipBased_)
+    {
+        FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(
+            pdcpPkt->removeControlInfo());
 
-    cPacket* upPkt = pdcpPkt->decapsulate(); // Decapsulate packet
-    delete pdcpPkt;
+        EV << "LtePdcp : Received packet with CID " << lteInfo->getLcid() << "\n";
+        EV << "LtePdcp : Packet size " << pdcpPkt->getByteLength() << " Bytes\n";
 
-    headerDecompress(upPkt, lteInfo->getHeaderSize()); // Decompress packet header
-    handleControlInfo(upPkt, lteInfo);
+        upPkt = pdcpPkt->decapsulate(); // Decapsulate packet
+        delete pdcpPkt;
+
+        headerDecompress(upPkt, lteInfo->getHeaderSize()); // Decompress packet header
+        handleControlInfo(upPkt, lteInfo);
+    }
+    else
+    {
+        FlowControlInfoNonIp* lteInfo = check_and_cast<FlowControlInfoNonIp*>(
+                pdcpPkt->removeControlInfo());
+        EV << "LtePdcp : Received packet with CID " << lteInfo->getLcid() << "\n";
+        EV << "LtePdcp : Packet size " << pdcpPkt->getByteLength() << " Bytes\n";
+
+        upPkt = pdcpPkt->decapsulate(); // Decapsulate packet
+        delete pdcpPkt;
+        upPkt->setControlInfo(lteInfo);
+    }
 
     EV << "LtePdcp : Sending packet " << upPkt->getName()
-       << " on port DataPort$o\n";
+       << " on port DataOut\n";
     // Send message
-    send(upPkt, dataPort_[OUT]);
+    send(upPkt, dataOut_);
     emit(sentPacketToUpperLayer, upPkt);
 }
 
@@ -224,8 +279,8 @@ void LtePdcpRrcBase::initialize(int stage)
 {
     if (stage == inet::INITSTAGE_LOCAL)
     {
-        dataPort_[IN] = gate("DataPort$i");
-        dataPort_[OUT] = gate("DataPort$o");
+        dataIn_ = gate("DataIn");
+        dataOut_ = gate("DataOut");
         eutranRrcSap_[IN] = gate("EUTRAN_RRC_Sap$i");
         eutranRrcSap_[OUT] = gate("EUTRAN_RRC_Sap$o");
         tmSap_[IN] = gate("TM_Sap$i");
@@ -237,6 +292,7 @@ void LtePdcpRrcBase::initialize(int stage)
 
         binder_ = getBinder();
         headerCompressedSize_ = par("headerCompressedSize"); // Compressed size
+        ipBased_ = par("ipBased");
         nodeId_ = getAncestorPar("macNodeId");
 
         // statistics
@@ -250,11 +306,32 @@ void LtePdcpRrcBase::initialize(int stage)
         sentPacketToUpperLayer = registerSignal("sentPacketToUpperLayer");
         sentPacketToLowerLayer = registerSignal("sentPacketToLowerLayer");
 
+        three_hundred = 0;
+
         // TODO WATCH_MAP(gatemap_);
         WATCH(headerCompressedSize_);
         WATCH(nodeId_);
         WATCH(lcid_);
+
+        setNodeType(par("nodeType").stdstringValue());
+
+        // Moved here from IP2Lte to remove dependency on IP2Lte for simulations that are not IP based.
+        if (nodeType_ == ENODEB)
+        {
+            // TODO not so elegant
+            cModule *enodeb = getParentModule()->getParentModule();
+            MacNodeId cellId = getBinder()->registerNode(enodeb, nodeType_);
+            LteDeployer * deployer = check_and_cast<LteDeployer*>(enodeb->getSubmodule("deployer"));
+            binder_->registerDeployer(deployer, cellId);
+            nodeId_ = cellId;
+        }
     }
+}
+
+void LtePdcpRrcBase::setNodeType(std::string s)
+{
+    nodeType_ = aToNodeType(s);
+    EV << "Node type: " << s << " -> " << nodeType_ << endl;
 }
 
 void LtePdcpRrcBase::handleMessage(cMessage* msg)
@@ -264,9 +341,9 @@ void LtePdcpRrcBase::handleMessage(cMessage* msg)
        << pkt->getArrivalGate()->getName() << endl;
 
     cGate* incoming = pkt->getArrivalGate();
-    if (incoming == dataPort_[IN])
+    if (incoming == dataIn_)
     {
-        fromDataPort(pkt);
+        fromDataIn(pkt);
     }
     else if (incoming == eutranRrcSap_[IN])
     {
@@ -278,7 +355,7 @@ void LtePdcpRrcBase::handleMessage(cMessage* msg)
     }
     else
     {
-        toDataPort(pkt);
+        toDataOut(pkt);
     }
     return;
 }

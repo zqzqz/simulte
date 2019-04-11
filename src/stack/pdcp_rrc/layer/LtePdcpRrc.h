@@ -14,6 +14,7 @@
 #include "corenetwork/binder/LteBinder.h"
 #include "common/LteCommon.h"
 #include "stack/pdcp_rrc/ConnectionsTable.h"
+#include "stack/pdcp_rrc/NonIpConnectionsTable.h"
 #include "inet/networklayer/ipv4/IPv4Datagram.h"
 #include "corenetwork/lteip/LteIp.h"
 #include "common/LteControlInfo.h"
@@ -70,6 +71,13 @@ class LtePdcpRrcBase : public cSimpleModule
     virtual int numInitStages() const { return inet::NUM_INIT_STAGES; }
 
     /**
+     * utility: set nodeType_ field
+     *
+     * @param s string containing the node type ("enodeb", "ue")
+     */
+    void setNodeType(std::string s);
+
+    /**
      * Analyze gate of incoming packet
      * and call proper handler
      */
@@ -117,6 +125,15 @@ class LtePdcpRrcBase : public cSimpleModule
     virtual void handleControlInfo(cPacket* pkt, FlowControlInfo* lteInfo) = 0;
 
     /**
+     * handleControlInfo() determines whether the controlInfo must
+     * be detached from packet (ENODEB or RELAY) or left unchanged (RELAY)
+     *
+     * @param pkt packet
+     * @param lteInfo Control Info
+     */
+    virtual void handleControlInfo(cPacket* pkt, FlowControlInfoNonIp* lteInfo) = 0;
+
+    /**
      * getDestId() retrieves the id of destination node according
      * to the following rules:
      * - On UE use masterId
@@ -132,6 +149,21 @@ class LtePdcpRrcBase : public cSimpleModule
     virtual MacNodeId getDestId(FlowControlInfo* lteInfo) = 0;
 
     /**
+     * getDestId() retrieves the id of destination node according
+     * to the following rules:
+     * - On UE use masterId
+     * - On ENODEB:
+     *   - Use source Ip for directly attached UEs
+     *   - Use relay Id for UEs attahce to relays
+     * - On RELAY:
+     *   - Use masterId for packets destined to ENODEB
+     *   - Use source Ip for packets destined to UEs
+     *
+     * @param lteInfo Control Info
+     */
+    virtual MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)=0;
+
+    /**
      * getDirection() is used only on UEs and ENODEBs:
      * - direction is downlink for ENODEB
      * - direction is uplink for UE
@@ -139,7 +171,7 @@ class LtePdcpRrcBase : public cSimpleModule
      * @return Direction of traffic
      */
     virtual Direction getDirection() = 0;
-    void setTrafficInformation(cPacket* pkt, FlowControlInfo* lteInfo);
+    void setTrafficInformation(cPacket* pkt, LteControlInfo* lteInfo);
 
     /*
      * Upper Layer Handlers
@@ -148,7 +180,7 @@ class LtePdcpRrcBase : public cSimpleModule
     /**
      * handler for data port
      *
-     * fromDataPort() receives data packets from applications
+     * fromDataIn() receives data packets from applications
      * and performs the following steps:
      * - If compression is enabled, header is compressed
      * - Reads the source port to determine if a
@@ -160,7 +192,7 @@ class LtePdcpRrcBase : public cSimpleModule
      *
      * @param pkt incoming packet
      */
-    virtual void fromDataPort(cPacket *pkt);
+    virtual void fromDataIn(cPacket *pkt);
 
     /**
      * handler for eutran port
@@ -179,14 +211,14 @@ class LtePdcpRrcBase : public cSimpleModule
     /**
      * handler for um/am sap
      *
-     * toDataPort() performs the following steps:
+     * toDataOut() performs the following steps:
      * - decompresses the header, restoring original packet
      * - decapsulates the packet
      * - sends the packet to the application layer
      *
      * @param pkt incoming packet
      */
-    void toDataPort(cPacket *pkt);
+    void toDataOut(cPacket *pkt);
 
     /**
      * handler for tm sap
@@ -213,15 +245,24 @@ class LtePdcpRrcBase : public cSimpleModule
 
     /// Hash Table used for CID <-> Connection mapping
     ConnectionsTable* ht_;
+    NonIpConnectionsTable* nonIpHt_;
+
+    // Indicates if simulation is ipBased or not;
+    bool ipBased_;
 
     /// Identifier for this node
     MacNodeId nodeId_;
 
-    cGate* dataPort_[2];
+    LteNodeType nodeType_;      // node type: can be ENODEB, UE
+
+    cGate* dataIn_;
+    cGate* dataOut_;
     cGate* eutranRrcSap_[2];
     cGate* tmSap_[2];
     cGate* umSap_[2];
     cGate* amSap_[2];
+
+    int three_hundred;
 
     // FIXME D2 support
 
@@ -290,15 +331,25 @@ class LtePdcpRrcUe : public LtePdcpRrcBase
         delete lteInfo;
     }
 
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        delete lteInfo;
+    }
+
     MacNodeId getDestId(FlowControlInfo* lteInfo)
     {
         // UE is subject to handovers: master may change
         return binder_->getNextHop(nodeId_);
     }
 
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
+    {
+        return binder_->getNextHop(nodeId_);
+    }
+
     Direction getDirection()
     {
-        // Data coming from Dataport on UE are always Uplink
+        // Data coming from DataIn on UE are always Uplink
         return UL;
     }
   public:
@@ -309,6 +360,10 @@ class LtePdcpRrcEnb : public LtePdcpRrcBase
 {
   protected:
     void handleControlInfo(cPacket* upPkt, FlowControlInfo* lteInfo)
+    {
+        delete lteInfo;
+    }
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
     {
         delete lteInfo;
     }
@@ -326,9 +381,15 @@ class LtePdcpRrcEnb : public LtePdcpRrcBase
         return destId;
     }
 
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
+    {
+        // TODO: Not necessary for my current experiments, so not going to implement, but in essence need a means of getting macNodeId from dstAddr
+        return 0;
+    }
+
     Direction getDirection()
     {
-        // Data coming from Dataport on ENB are always Downlink
+        // Data coming from DataIn on ENB are always Downlink
         return DL;
     }
   public:
@@ -342,6 +403,10 @@ class LtePdcpRrcRelayEnb : public LtePdcpRrcBase
     {
         upPkt->setControlInfo(lteInfo);
     }
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        upPkt->setControlInfo(lteInfo);
+    }
 
     MacNodeId getDestId(FlowControlInfo* lteInfo)
     {
@@ -349,8 +414,14 @@ class LtePdcpRrcRelayEnb : public LtePdcpRrcBase
         return getBinder()->getMacNodeId(IPv4Address(lteInfo->getDstAddr()));
     }
 
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
+    {
+        // TODO: Impement this if we need a means of getting macNodeId from nonIp packet dstAddr, realistically we will need this, but currently not an issue.
+        return 0;
+    }
+
     // Relay doesn't set Traffic Information
-    void setTrafficInformation(FlowControlInfo* lteInfo)
+    void setTrafficInformation(LteControlInfo* lteInfo)
     {
     }
 
@@ -379,14 +450,25 @@ class LtePdcpRrcRelayUe : public LtePdcpRrcBase
         upPkt->setControlInfo(lteInfo);
     }
 
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        upPkt->setControlInfo(lteInfo);
+    }
+
     MacNodeId getDestId(FlowControlInfo* lteInfo)
     {
         // packet arriving from UE, send to master
         return destId_;
     }
 
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
+    {
+        // packet arriving from UE, send to master
+        return destId_;
+    }
+
     // Relay doesn't set Traffic Information
-    void setTrafficInformation(FlowControlInfo* lteInfo)
+    void setTrafficInformation(LteControlInfo* lteInfo)
     {
     }
 

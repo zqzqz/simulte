@@ -158,7 +158,7 @@ void LteMacUeRealisticD2D::macPduMake()
             Codeword cw = it->first.second;
 
             // get the direction (UL/D2D/D2D_MULTI) and the corresponding destination ID
-            FlowControlInfo* lteInfo = &(connDesc_.at(destCid));
+            LteControlInfo* lteInfo = &(connDesc_.at(destCid));
             MacNodeId destId = lteInfo->getDestId();
             Direction dir = (Direction)lteInfo->getDirection();
 
@@ -809,12 +809,12 @@ void LteMacUeRealisticD2D::macHandleD2DModeSwitch(cPacket* pkt)
 
         // find the correct connection involved in the mode switch
         MacCid cid;
-        FlowControlInfo* lteInfo = NULL;
-        std::map<MacCid, FlowControlInfo>::iterator it = connDesc_.begin();
+        LteControlInfo* lteInfo = NULL;
+        std::map<MacCid, LteControlInfo>::iterator it = connDesc_.begin();
         for (; it != connDesc_.end(); ++it)
         {
             cid = it->first;
-            lteInfo = check_and_cast<FlowControlInfo*>(&(it->second));
+            lteInfo = check_and_cast<LteControlInfo*>(&(it->second));
 
             if (lteInfo->getD2dRxPeerId() == peerId && (Direction)lteInfo->getDirection() == oldDirection)
             {
@@ -913,12 +913,12 @@ void LteMacUeRealisticD2D::macHandleD2DModeSwitch(cPacket* pkt)
 
         // find the correct connection involved in the mode switch
         MacCid cid;
-        FlowControlInfo* lteInfo = NULL;
-        std::map<MacCid, FlowControlInfo>::iterator it = connDescIn_.begin();
+        LteControlInfo* lteInfo = NULL;
+        std::map<MacCid, LteControlInfo>::iterator it = connDescIn_.begin();
         for (; it != connDescIn_.end(); ++it)
         {
             cid = it->first;
-            lteInfo = check_and_cast<FlowControlInfo*>(&(it->second));
+            lteInfo = check_and_cast<LteControlInfo*>(&(it->second));
             if (lteInfo->getD2dTxPeerId() == peerId && (Direction)lteInfo->getDirection() == oldDirection)
             {
                 EV << NOW << " LteMacUeRealisticD2D::macHandleD2DModeSwitch - found old connection with cid " << cid << ", send signal to the RLC RX entity" << endl;

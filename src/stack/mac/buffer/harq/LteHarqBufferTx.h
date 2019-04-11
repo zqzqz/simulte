@@ -171,6 +171,11 @@ class LteHarqBufferTx
      */
     void forceDropUnit(unsigned char acid, Codeword cw);
 
+    /**
+     * Simple function that returns true if the buffer has a selected process or false if it doesn't.
+     */
+    bool isSelected();
+
     BufferStatus getBufferStatus();
 
     virtual ~LteHarqBufferTx();

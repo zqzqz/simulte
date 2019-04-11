@@ -36,7 +36,18 @@ class LtePdcpRrcUeD2D : public LtePdcpRrcUe
         delete lteInfo;
     }
 
+    void handleControlInfo(cPacket* upPkt, FlowControlInfoNonIp* lteInfo)
+    {
+        delete lteInfo;
+    }
+
     MacNodeId getDestId(FlowControlInfo* lteInfo)
+    {
+        // UE is subject to handovers: master may change
+        return binder_->getNextHop(nodeId_);
+    }
+
+    MacNodeId getDestId(FlowControlInfoNonIp* lteInfo)
     {
         // UE is subject to handovers: master may change
         return binder_->getNextHop(nodeId_);
@@ -49,11 +60,16 @@ class LtePdcpRrcUeD2D : public LtePdcpRrcUe
         return UL;
     }
 
+    Direction getDirection()
+    {
+        return D2D_MULTI;
+    }
+
     /**
      * handler for data port
      * @param pkt incoming packet
      */
-    virtual void fromDataPort(cPacket *pkt);
+    virtual void fromDataIn(cPacket *pkt);
 
     // handler for mode switch signal
     void pdcpHandleD2DModeSwitch(MacNodeId peerId, LteD2DMode newMode);

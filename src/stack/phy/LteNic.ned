@@ -41,8 +41,6 @@ module LteNicBase like ILteNic
 {
     parameters:
         @display("i=block/ifcard;bgb=250,444;bgl=3");
-        string interfaceTableModule;
-        string routingTableModule;
         string LtePdcpRrcType;      // One of: "LtePdcpRrcUe", "LtePdcpRrcEnb", "LtePdcpRrcRelayUe", "LtePdcpRrcRelayEnb"
         string LteMacType;          // One of: "LteMacUe", "LteMacEnb", "LteMacEnbExperimental", "LteMacRelayUe", "LteMacRelayEnb"
         string LtePhyType;
@@ -61,27 +59,19 @@ module LteNicBase like ILteNic
         inout x2[] @loose;     // optional x2 manager
 
     submodules:
-        // bridge between lte stack and network layer
-        ip2lte: IP2lte {
-            nodeType = nodeType;
-            interfaceTableModule = interfaceTableModule;
-            routingTableModule = routingTableModule;
-            @display("p=150,68");
-        }
         // PDCP-RRC Layer
         pdcpRrc: <LtePdcpRrcType> like LtePdcpRrc {
             @display("p=150,142");
+            nodeType = nodeType;
         }
         // RLC Layer
         rlc: LteRlc {
             @display("p=150,227");
             d2dCapable = d2dCapable;
         }
-        // MAC Layer
-        mac: <LteMacType> like LteMac {
-            interfaceTableModule = interfaceTableModule;
-            @display("p=151,315");
-        }
+
+        // MAC removed to lower layers as both types no longer require interface table
+
         // LtePhy submodule
         phy: <LtePhyType> like LtePhy {
             @display("p=151,390");
@@ -89,8 +79,6 @@ module LteNicBase like ILteNic
         }
 
     connections:
-        ip2lte.stackLte <--> pdcpRrc.DataPort;
-
         //#
         //# Internal LTE Stack Connections 
         //# 
@@ -102,6 +90,41 @@ module LteNicBase like ILteNic
         pdcpRrc.AM_Sap <--> rlc.AM_Sap;
         pdcpRrc.TM_Sap <--> rlc.TM_Sap;
 
+        //# external: lower connection
+        radioIn --> phy.radioIn;
+}
+
+// Module for IP Based NICs
+module LteNicIpBase extends LteNicBase
+{
+	   parameters:
+        @display("i=block/ifcard;bgb=250,444;bgl=3");
+        string interfaceTableModule;
+        string routingTableModule;
+
+    submodules:
+        // bridge between lte stack and network layer
+        ip2lte: IP2lte {
+            nodeType = nodeType;
+            interfaceTableModule = interfaceTableModule;
+            routingTableModule = routingTableModule;
+            @display("p=150,68");
+        }
+
+        // MAC Layer
+        mac: <LteMacType> like LteMac {
+            interfaceTableModule = interfaceTableModule;
+            @display("p=151,315");
+        }
+
+    connections:
+        ip2lte.toStackLte --> pdcpRrc.DataIn;
+        ip2lte.fromStackLte <-- pdcpRrc.DataOut;
+
+        //# external: lower connection
+        ip2lte.upperLayerOut --> upperLayerOut;
+        upperLayerIn --> ip2lte.upperLayerIn;
+
         //# RLC <-> MAC
         rlc.RLC_to_MAC --> mac.RLC_to_MAC;
         rlc.MAC_to_RLC <-- mac.MAC_to_RLC;
@@ -111,17 +134,41 @@ module LteNicBase like ILteNic
         //#
         mac.MAC_to_PHY --> phy.upperGateIn;
         mac.PHY_to_MAC <-- phy.upperGateOut;
+}
 
+// Module for Non-IP Based NICs
+module LteNicNonIpBase extends LteNicBase
+{
+    parameters:
+        @display("i=block/ifcard;bgb=250,444;bgl=3");
+
+    submodules:
+        // MAC Layer
+        mac: <LteMacType> like LteMac {
+            @display("p=151,315");
+        }
+
+
+    connections:
         //# external: lower connection
-        radioIn --> phy.radioIn;
-        ip2lte.upperLayerOut --> upperLayerOut;
-        upperLayerIn --> ip2lte.upperLayerIn;
+        pdcpRrc.DataOut --> upperLayerOut;
+        upperLayerIn --> pdcpRrc.DataIn;
+
+        //# RLC <-> MAC
+        rlc.RLC_to_MAC --> mac.RLC_to_MAC;
+        rlc.MAC_to_RLC <-- mac.MAC_to_RLC;
+
+        //#
+        //# Connections from LTE Stack to radio interface
+        //#
+        mac.MAC_to_PHY --> phy.upperGateIn;
+        mac.PHY_to_MAC <-- phy.upperGateOut;
 }
 
 //
 // User Equipment of LTE stack
 //
-module LteNicUe extends LteNicBase
+module LteNicUe extends LteNicIpBase
 {
     parameters:
         LtePdcpRrcType = "LtePdcpRrcUe";
@@ -138,7 +185,7 @@ module LteNicUe extends LteNicBase
 //
 // D2D-capable User Equipment of LTE stack
 //
-module LteNicUeD2D extends LteNicBase
+module LteNicUeD2D extends LteNicIpBase
 {
     parameters:
         LtePdcpRrcType = "LtePdcpRrcUeD2D";
@@ -155,9 +202,22 @@ module LteNicUeD2D extends LteNicBase
 }
 
 //
+// Mode 4 D2D User Equipment of LTE stack
+//
+module LteNicUeMode4D2D extends LteNicNonIpBase
+{
+    parameters:
+        LtePdcpRrcType = "LtePdcpRrcUeD2D";
+        LteMacType = default("LteMacUeMode4D2D");
+        LtePhyType = "LtePhyUeMode4D2D";
+        
+        string d2dPeerAddresses = default(""); // list of D2D peer UEs, separated by blank spaces
+}
+
+//
 // eNodeB of LTE stack
 //
-module LteNicEnb extends LteNicBase
+module LteNicEnb extends LteNicIpBase
 {
     parameters:
         LtePdcpRrcType = "LtePdcpRrcEnb";
@@ -205,7 +265,7 @@ module LteNicEnb extends LteNicBase
 //
 // eNodeB of LTE stack with support for D2D-capable UEs
 //
-module LteNicEnbD2D extends LteNicBase
+module LteNicEnbD2D extends LteNicIpBase
 {
     parameters:
         LtePdcpRrcType = "LtePdcpRrcEnbD2D";
@@ -257,7 +317,7 @@ module LteNicEnbD2D extends LteNicBase
 //
 // Relay of LTE stack
 //
-module LteNicRelay extends LteNicBase
+module LteNicRelay extends LteNicIpBase
 {
     parameters:
         LtePhyType = "LtePhyRelay";

@@ -25,7 +25,7 @@ void LteRlcUmRealisticD2D::handleLowerMessage(cPacket *pkt)
 
         // add here specific behavior for handling mode switch at the RLC layer
         D2DModeSwitchNotification* switchPkt = check_and_cast<D2DModeSwitchNotification*>(pkt);
-        FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(switchPkt->getControlInfo());
+        LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(switchPkt->getControlInfo());
 
         if (switchPkt->getTxSide())
         {
@@ -70,7 +70,7 @@ void LteRlcUmRealisticD2D::initialize(int stage)
         else if (nodeType.compare("UE") == 0)
         {
             nodeType_ = UE;
-            if (macType.compare("LteMacUeRealisticD2D") != 0)
+            if (macType.compare("LteMacUeRealisticD2D") != 0 && macType.compare("LteMacUeMode4D2D") != 0)
                 throw cRuntimeError("LteRlcUmRealisticD2D::initialize - %s module found, must be LteMacUeRealisticD2D. Aborting", macType.c_str());
             if (pdcpType.compare("LtePdcpRrcUeD2D") != 0)
                 throw cRuntimeError("LteRlcUmRealisticD2D::initialize - %s module found, must be LtePdcpRrcUeD2D. Aborting", pdcpType.c_str());

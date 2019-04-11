@@ -11,7 +11,7 @@
 #include "stack/mac/layer/LteMacEnb.h"
 #include "stack/mac/conflict_graph_utilities/meshMaster.h"
 
-LteAllocationModuleFrequencyReuse::LteAllocationModuleFrequencyReuse(LteMacEnb* mac,Direction direction)
+LteAllocationModuleFrequencyReuse::LteAllocationModuleFrequencyReuse(LteMacBase* mac,Direction direction)
         : LteAllocationModule(mac,direction)
 {
 }
@@ -103,7 +103,8 @@ void LteAllocationModuleFrequencyReuse::checkAllocation(std::set<Band>* untoucha
 {
     Plane plane = MAIN_PLANE;
     const Remote antenna = MACRO;
-    const std::map<MacNodeId,std::set<MacNodeId> >* conflictMap = mac_->getMeshMaster()->getConflictMap();
+    LteMacEnb* mac = check_and_cast<LteMacEnb*>(mac_);
+    const std::map<MacNodeId,std::set<MacNodeId> >* conflictMap = mac->getMeshMaster()->getConflictMap();
     // Create an empty vector
     if(untouchableBands==NULL)
     {
