@@ -1,4 +1,4 @@
-    //
+//
 //                           SimuLTE
 //
 // This file is part of a software released under the license included in file
@@ -6,29 +6,32 @@
 // The above file and the present reference are part of the software itself,
 // and cannot be removed from it.
 //
+// This file is an extension of SimuLTE
+// Author: Brian McCarthy
+// email : b.mccarthy@cs.ucc.ie
 
 
 #include <math.h>
 #include <assert.h>
-#include "stack/phy/layer/LtePhyUeMode4D2D.h"
+#include "stack/phy/layer/LtePhyVUeMode4.h"
 #include "stack/phy/packet/LteFeedbackPkt.h"
 #include "stack/d2dModeSelection/D2DModeSelectionBase.h"
 #include "stack/phy/packet/SpsCandidateResources.h"
 #include "stack/phy/packet/cbr_m.h"
 
-Define_Module(LtePhyUeMode4D2D);
+Define_Module(LtePhyVUeMode4);
 
-LtePhyUeMode4D2D::LtePhyUeMode4D2D()
+LtePhyVUeMode4::LtePhyVUeMode4()
 {
     handoverStarter_ = NULL;
     handoverTrigger_ = NULL;
 }
 
-LtePhyUeMode4D2D::~LtePhyUeMode4D2D()
+LtePhyVUeMode4::~LtePhyVUeMode4()
 {
 }
 
-void LtePhyUeMode4D2D::initialize(int stage)
+void LtePhyVUeMode4::initialize(int stage)
 {
     if (stage != inet::INITSTAGE_NETWORK_LAYER_2)
         LtePhyUeD2D::initialize(stage);
@@ -103,7 +106,7 @@ void LtePhyUeMode4D2D::initialize(int stage)
     }
 }
 
-void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
+void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
 {
     if (msg->isName("d2dDecodingTimer"))
     {
@@ -206,13 +209,13 @@ void LtePhyUeMode4D2D::handleSelfMessage(cMessage *msg)
 }
 
 // TODO: ***reorganize*** method
-void LtePhyUeMode4D2D::handleAirFrame(cMessage* msg)
+void LtePhyVUeMode4::handleAirFrame(cMessage* msg)
 {
     UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(msg->removeControlInfo());
 
     connectedNodeId_ = masterId_;
     LteAirFrame* frame = check_and_cast<LteAirFrame*>(msg);
-    EV << "LtePhyUeMode4D2D: received new LteAirFrame with ID " << frame->getId() << " from channel" << endl;
+    EV << "LtePhyVUeMode4: received new LteAirFrame with ID " << frame->getId() << " from channel" << endl;
     //Update coordinates of this user
     if (lteInfo->getFrameType() == HANDOVERPKT)
     {
@@ -256,7 +259,7 @@ void LtePhyUeMode4D2D::handleAirFrame(cMessage* msg)
     storeAirFrame(frame);
 }
 
-void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
+void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
 {
 
     UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(msg->removeControlInfo());
@@ -292,7 +295,7 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
     // if this is a multicast/broadcast connection, send the frame to all neighbors in the hearing range
     // otherwise, send unicast to the destination
 
-    EV << "LtePhyUeMode4D2D::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
+    EV << "LtePhyVUeMode4::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
            << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
 
     // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
@@ -310,7 +313,7 @@ void LtePhyUeMode4D2D::handleUpperMessage(cMessage* msg)
         sendUnicast(frame);
 }
 
-RbMap LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
+RbMap LtePhyVUeMode4::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
 {
     // Store the RBs used for transmission. For interference computation
     RbMap rbMap = lteInfo->getGrantedBlocks();
@@ -404,7 +407,7 @@ RbMap LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
      * Ensure that it will fit into it's grant
      * if not don't send anything except a break reservation message
      */
-    EV << NOW << " LtePhyUeMode4D2D::handleUpperMessage - message from stack" << endl;
+    EV << NOW << " LtePhyVUeMode4::handleUpperMessage - message from stack" << endl;
 
     // create LteAirFrame and encapsulate the received packet
     SidelinkControlInformation* SCI = createSCIMessage();
@@ -419,9 +422,9 @@ RbMap LtePhyUeMode4D2D::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
     return (rbMap);
 }
 
-void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
+void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant)
 {
-    EV << NOW << " LtePhyUeMode4D2D::computeCSRs - going through sensing window to compute CSRS..." << endl;
+    EV << NOW << " LtePhyVUeMode4::computeCSRs - going through sensing window to compute CSRS..." << endl;
     // Determine the total number of possible CSRs
     if (grant->getMaximumLatency() > 100)
     {
@@ -503,9 +506,9 @@ void LtePhyUeMode4D2D::computeCSRs(LteMode4SchedulingGrant* &grant)
     scheduleAt(NOW + TTI, deleteSelectionWindow);
 }
 
-void LtePhyUeMode4D2D::checkSensed(LteMode4SchedulingGrant* &grant)
+void LtePhyVUeMode4::checkSensed(LteMode4SchedulingGrant* &grant)
 {
-    EV << NOW << " LtePhyUeMode4D2D::checkSensed - eliminating CSRS which were not sensed in sensing window selectionWindow..." << endl;
+    EV << NOW << " LtePhyVUeMode4::checkSensed - eliminating CSRS which were not sensed in sensing window selectionWindow..." << endl;
     int pRsvpTx = grant->getPeriod();
     unsigned int grantLength = grant->getNumSubchannels();
     int cResel = grant->getResourceReselectionCounter();
@@ -565,9 +568,9 @@ void LtePhyUeMode4D2D::checkSensed(LteMode4SchedulingGrant* &grant)
     }
 }
 
-void LtePhyUeMode4D2D::checkRSRP(LteMode4SchedulingGrant* &grant, int thresholdIncreaseFactor)
+void LtePhyVUeMode4::checkRSRP(LteMode4SchedulingGrant* &grant, int thresholdIncreaseFactor)
 {
-    EV << NOW << " LtePhyUeMode4D2D::checkRSRP - checking selectionWindow and filtering CSRs based on RSRP..." << endl;
+    EV << NOW << " LtePhyVUeMode4::checkRSRP - checking selectionWindow and filtering CSRs based on RSRP..." << endl;
     std::vector<double> averageRSRPs;
     std::vector<int> priorities;
     std::map<int, std::vector<int>> dissallowedCSRs;
@@ -671,10 +674,10 @@ void LtePhyUeMode4D2D::checkRSRP(LteMode4SchedulingGrant* &grant, int thresholdI
     }
 }
 
-std::vector<std::vector<Subchannel*>> LtePhyUeMode4D2D::getPossibleCSRs(LteMode4SchedulingGrant* &grant)
+std::vector<std::vector<Subchannel*>> LtePhyVUeMode4::getPossibleCSRs(LteMode4SchedulingGrant* &grant)
 {
     // Go through the selection window and determine the number of possible CSRs available
-    EV << NOW << " LtePhyUeMode4D2D::getPossibleCSRs - Getting possible CSRs from from selectionWindow..." << endl;
+    EV << NOW << " LtePhyVUeMode4::getPossibleCSRs - Getting possible CSRs from from selectionWindow..." << endl;
     int grantLength = grant->getNumSubchannels();
     std::vector<std::vector<Subchannel*>> possibleCSRs;
     for (int i=0; i < selectionWindow_.size(); i++)
@@ -708,9 +711,9 @@ std::vector<std::vector<Subchannel*>> LtePhyUeMode4D2D::getPossibleCSRs(LteMode4
     return possibleCSRs;
 }
 
-std::vector<std::vector<Subchannel*>> LtePhyUeMode4D2D::selectBestRSSIs(std::vector<std::vector<Subchannel*>> &possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs)
+std::vector<std::vector<Subchannel*>> LtePhyVUeMode4::selectBestRSSIs(std::vector<std::vector<Subchannel*>> &possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs)
 {
-    EV << NOW << " LtePhyUeMode4D2D::selectBestRSSIs - Selecting best CSRs from possible CSRs..." << endl;
+    EV << NOW << " LtePhyVUeMode4::selectBestRSSIs - Selecting best CSRs from possible CSRs..." << endl;
     int decrease = pStep_;
     if (grant->getPeriod() < 100)
     {
@@ -775,9 +778,9 @@ std::vector<std::vector<Subchannel*>> LtePhyUeMode4D2D::selectBestRSSIs(std::vec
     return optimalCSRs;
 }
 
-SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage()
+SidelinkControlInformation* LtePhyVUeMode4::createSCIMessage()
 {
-    EV << NOW << " LtePhyUeMode4D2D::createSCIMessage - Start creating SCI..." << endl;
+    EV << NOW << " LtePhyVUeMode4::createSCIMessage - Start creating SCI..." << endl;
 
     SidelinkControlInformation* sci = new SidelinkControlInformation("SCI Message");
 
@@ -875,7 +878,7 @@ SidelinkControlInformation* LtePhyUeMode4D2D::createSCIMessage()
     return sci;
 }
 
-LteAirFrame* LtePhyUeMode4D2D::prepareAirFrame(cMessage* msg, UserControlInfo* lteInfo){
+LteAirFrame* LtePhyVUeMode4::prepareAirFrame(cMessage* msg, UserControlInfo* lteInfo){
     // Helper function to prepare airframe for sending.
     LteAirFrame* frame = new LteAirFrame("airframe");
 
@@ -892,7 +895,7 @@ LteAirFrame* LtePhyUeMode4D2D::prepareAirFrame(cMessage* msg, UserControlInfo* l
     return frame;
 }
 
-void LtePhyUeMode4D2D::storeAirFrame(LteAirFrame* newFrame)
+void LtePhyVUeMode4::storeAirFrame(LteAirFrame* newFrame)
 {
     // implements the capture effect
     // store the frame received from the nearest transmitter
@@ -916,9 +919,9 @@ void LtePhyUeMode4D2D::storeAirFrame(LteAirFrame* newFrame)
     }
 }
 
-void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo, std::vector<double> &rsrpVector, std::vector<double> &rssiVector)
+void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo, std::vector<double> &rsrpVector, std::vector<double> &rssiVector)
 {
-    EV << NOW << " LtePhyUeMode4D2D::decodeAirFrame - Start decoding..." << endl;
+    EV << NOW << " LtePhyVUeMode4::decodeAirFrame - Start decoding..." << endl;
 
     // apply decider to received packet
     bool result = false;
@@ -929,7 +932,7 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
         // DAS
         for (RemoteSet::iterator it = r.begin(); it != r.end(); it++)
         {
-            EV << "LtePhyUeMode4D2D::decodeAirFrame: Receiving Packet from antenna " << (*it) << "\n";
+            EV << "LtePhyVUeMode4::decodeAirFrame: Receiving Packet from antenna " << (*it) << "\n";
 
             /*
              * On UE set the sender position
@@ -1092,9 +1095,9 @@ void LtePhyUeMode4D2D::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteIn
        << (result ? "RECEIVED" : "NOT RECEIVED") << endl;
 }
 
-std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo)
+std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo)
 {
-    EV << NOW << " LtePhyUeMode4D2D::decodeRivValue - Decoding RIV value of SCI allows correct placement in sensing window..." << endl;
+    EV << NOW << " LtePhyVUeMode4::decodeRivValue - Decoding RIV value of SCI allows correct placement in sensing window..." << endl;
     //UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(pkt->removeControlInfo());
     RbMap rbMap = sciInfo->getGrantedBlocks();
     RbMap::iterator it;
@@ -1158,7 +1161,7 @@ std::tuple<int,int> LtePhyUeMode4D2D::decodeRivValue(SidelinkControlInformation*
     return std::make_tuple(subchannelIndex, lengthInSubchannels);
 }
 
-void LtePhyUeMode4D2D::updateCBR()
+void LtePhyVUeMode4::updateCBR()
 {
     double cbr = 0;
     for (int i=0; i < cbrHistory_.size();i++)
@@ -1175,9 +1178,9 @@ void LtePhyUeMode4D2D::updateCBR()
     send(cbrPkt, upperGateOut_);
 }
 
-void LtePhyUeMode4D2D::updateSubframe()
+void LtePhyVUeMode4::updateSubframe()
 {
-    EV << NOW << " LtePhyUeMode4D2D::updateSubframe - updating subframe in the sensingWindow..." << endl;
+    EV << NOW << " LtePhyVUeMode4::updateSubframe - updating subframe in the sensingWindow..." << endl;
 
     // First find the subframe that we want to look at i.e. the front one I imagine
     // If the front isn't occupied then skip on
@@ -1202,9 +1205,9 @@ void LtePhyUeMode4D2D::updateSubframe()
     scheduleAt(NOW + TTI, updateSubframe);
 }
 
-void LtePhyUeMode4D2D::initialiseSensingWindow()
+void LtePhyVUeMode4::initialiseSensingWindow()
 {
-    EV << NOW << " LtePhyUeMode4D2D::initialiseSensingWindow - creating subframes to be added to sensingWindow..." << endl;
+    EV << NOW << " LtePhyVUeMode4::initialiseSensingWindow - creating subframes to be added to sensingWindow..." << endl;
 
     Band band = 0;
 
@@ -1247,7 +1250,7 @@ void LtePhyUeMode4D2D::initialiseSensingWindow()
     scheduleAt(NOW + TTI, updateSubframe);
 }
 
-void LtePhyUeMode4D2D::finish()
+void LtePhyVUeMode4::finish()
 {
     if (getSimulation()->getSimulationStage() != CTX_FINISH)
     {

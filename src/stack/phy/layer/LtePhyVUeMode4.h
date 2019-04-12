@@ -6,6 +6,9 @@
 // The above file and the present reference are part of the software itself,
 // and cannot be removed from it.
 //
+// This file is an extension of SimuLTE
+// Author: Brian McCarthy
+// email : b.mccarthy@cs.ucc.ie
 
 #include "stack/phy/layer/LtePhyUeD2D.h"
 #include "stack/phy/packet/SidelinkControlInformation_m.h"
@@ -13,7 +16,7 @@
 #include "stack/mac/allocator/LteAllocationModule.h"
 #include "stack/phy/layer/Subchannel.h"
 
-class LtePhyUeMode4D2D : public LtePhyUeD2D
+class LtePhyVUeMode4 : public LtePhyUeD2D
 {
   protected:
 
@@ -119,8 +122,8 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     virtual void initialiseSensingWindow();
 
   public:
-    LtePhyUeMode4D2D();
-    virtual ~LtePhyUeMode4D2D();
+    LtePhyVUeMode4();
+    virtual ~LtePhyVUeMode4();
 
     virtual double getTxPwr(Direction dir = UNKNOWN_DIRECTION)
     {

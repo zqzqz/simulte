@@ -14,7 +14,7 @@
 // 
 
 /**
- * LteMacUeMode4D2D is a new model which implements the functionality of LTE Mode 4 as per 3GPP release 14
+ * LteMacVUeMode4 is a new model which implements the functionality of LTE Mode 4 as per 3GPP release 14
  * Author: Brian McCarthy
  * Email: b.mccarthy@cs.ucc.ie
  */
@@ -22,7 +22,7 @@
 #include "stack/mac/buffer/harq/LteHarqBufferRx.h"
 #include "stack/mac/buffer/LteMacQueue.h"
 #include "stack/mac/buffer/harq_d2d/LteHarqBufferRxD2DMirror.h"
-#include "stack/mac/layer/LteMacUeMode4D2D.h"
+#include "stack/mac/layer/LteMacVUeMode4.h"
 #include "stack/mac/scheduler/LteSchedulerUeUl.h"
 #include "stack/phy/packet/SpsCandidateResources.h"
 #include "stack/phy/packet/cbr_m.h"
@@ -36,18 +36,18 @@
 #include "stack/mac/amc/LteMcs.h"
 #include <random>
 
-Define_Module(LteMacUeMode4D2D);
+Define_Module(LteMacVUeMode4);
 
-LteMacUeMode4D2D::LteMacUeMode4D2D() :
+LteMacVUeMode4::LteMacVUeMode4() :
     LteMacUeRealisticD2D()
 {
 }
 
-LteMacUeMode4D2D::~LteMacUeMode4D2D()
+LteMacVUeMode4::~LteMacVUeMode4()
 {
 }
 
-void LteMacUeMode4D2D::initialize(int stage)
+void LteMacVUeMode4::initialize(int stage)
 {
     if (stage !=inet::INITSTAGE_NETWORK_LAYER_3)
     LteMacUeRealisticD2D::initialize(stage);
@@ -114,7 +114,7 @@ void LteMacUeMode4D2D::initialize(int stage)
     }
 }
 
-void LteMacUeMode4D2D::parseUeTxConfig(cXMLElement* xmlConfig)
+void LteMacVUeMode4::parseUeTxConfig(cXMLElement* xmlConfig)
 {
     if (xmlConfig == 0)
     throw cRuntimeError("No sidelink configuration file specified");
@@ -171,7 +171,7 @@ void LteMacUeMode4D2D::parseUeTxConfig(cXMLElement* xmlConfig)
         allowedRetxNumberPSSCH_ = par("allowedRetxNumberPSSCH");
 }
 
-void LteMacUeMode4D2D::parseCbrTxConfig(cXMLElement* xmlConfig)
+void LteMacVUeMode4::parseCbrTxConfig(cXMLElement* xmlConfig)
 {
     if (xmlConfig == 0)
     throw cRuntimeError("No cbr configuration specified");
@@ -278,7 +278,7 @@ void LteMacUeMode4D2D::parseCbrTxConfig(cXMLElement* xmlConfig)
     }
 }
 
-void LteMacUeMode4D2D::parseRriConfig(cXMLElement* xmlConfig)
+void LteMacVUeMode4::parseRriConfig(cXMLElement* xmlConfig)
 {
     if (xmlConfig == 0)
     throw cRuntimeError("No cbr configuration specified");
@@ -307,13 +307,13 @@ void LteMacUeMode4D2D::parseRriConfig(cXMLElement* xmlConfig)
     }
 }
 
-int LteMacUeMode4D2D::getNumAntennas()
+int LteMacVUeMode4::getNumAntennas()
 {
     /* Get number of antennas: +1 is for MACRO */
     return deployer_->getNumRus() + 1;
 }
 
-void LteMacUeMode4D2D::macPduMake()
+void LteMacVUeMode4::macPduMake()
 {
     int64 size = 0;
 
@@ -471,7 +471,7 @@ void LteMacUeMode4D2D::macPduMake()
     }
 }
 
-UserTxParams* LteMacUeMode4D2D::getPreconfiguredTxParams()
+UserTxParams* LteMacVUeMode4::getPreconfiguredTxParams()
 {
     UserTxParams* txParams = new UserTxParams();
 
@@ -493,7 +493,7 @@ UserTxParams* LteMacUeMode4D2D::getPreconfiguredTxParams()
     return txParams;
 }
 
-void LteMacUeMode4D2D::handleMessage(cMessage *msg)
+void LteMacVUeMode4::handleMessage(cMessage *msg)
 {
     if (msg->isSelfMessage())
     {
@@ -508,7 +508,7 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
     {
         if (strcmp(pkt->getName(), "CSRs") == 0)
         {
-            EV << "LteMacUeMode4D2D::handleMessage - Received packet " << pkt->getName() <<
+            EV << "LteMacVUeMode4::handleMessage - Received packet " << pkt->getName() <<
             " from port " << pkt->getArrivalGate()->getName() << endl;
 
             // message from PHY_to_MAC gate (from lower layer)
@@ -574,7 +574,7 @@ void LteMacUeMode4D2D::handleMessage(cMessage *msg)
 
 
 
-void LteMacUeMode4D2D::handleSelfMessage()
+void LteMacVUeMode4::handleSelfMessage()
 {
     EV << "----- UE MAIN LOOP -----" << endl;
 
@@ -595,7 +595,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
         }
     }
 
-    EV << NOW << "LteMacUeMode4D2D::handleSelfMessage " << nodeId_ << " - HARQ process " << (unsigned int)currentHarq_ << endl;
+    EV << NOW << "LteMacVUeMode4::handleSelfMessage " << nodeId_ << " - HARQ process " << (unsigned int)currentHarq_ << endl;
     // updating current HARQ process for next TTI
 
     //unsigned char currentHarq = currentHarq_;
@@ -607,7 +607,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
 
     if (mode4Grant == NULL)
     {
-        EV << NOW << " LteMacUeMode4D2D::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
+        EV << NOW << " LteMacVUeMode4::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
 
         // No configured Grant simply continue
     }
@@ -668,7 +668,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
         }
         EV << "\t " << schedulingGrant_ << endl;
 
-        EV << NOW << " LteMacUeMode4D2D::handleSelfMessage " << nodeId_ << " entered scheduling" << endl;
+        EV << NOW << " LteMacVUeMode4::handleSelfMessage " << nodeId_ << " entered scheduling" << endl;
 
         bool retx = false;
         bool availablePdu = false;
@@ -765,7 +765,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
         if (hit->first == cellId_)
             purged += hit->second->purgeCorruptedPdus();
     }
-    EV << NOW << " LteMacUeMode4D2D::handleSelfMessage Purged " << purged << " PDUS" << endl;
+    EV << NOW << " LteMacVUeMode4::handleSelfMessage Purged " << purged << " PDUS" << endl;
 
     if (!requestSdu)
     {
@@ -776,7 +776,7 @@ void LteMacUeMode4D2D::handleSelfMessage()
     EV << "--- END UE MAIN LOOP ---" << endl;
 }
 
-void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
+void LteMacVUeMode4::macHandleSps(cPacket* pkt)
 {
     /**   This is where we add the subchannels to the actual scheduling grant, so a few things
      * 1. Need to ensure in the self message part that if at any point we have a scheduling grant without assigned subchannels, we have to wait
@@ -852,7 +852,7 @@ void LteMacUeMode4D2D::macHandleSps(cPacket* pkt)
     delete pkt;
 }
 
-void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int priority)
+void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int priority)
 {
     /**
      * 1. Packet priority
@@ -932,7 +932,7 @@ void LteMacUeMode4D2D::macGenerateSchedulingGrant(double maximumLatency, int pri
     emit(grantRequests, 1);
 }
 
-void LteMacUeMode4D2D::flushHarqBuffers()
+void LteMacVUeMode4::flushHarqBuffers()
 {
     // send the selected units to lower layers
     // First make sure packets are sent down
@@ -1103,7 +1103,7 @@ void LteMacUeMode4D2D::flushHarqBuffers()
     }
 }
 
-void LteMacUeMode4D2D::finish()
+void LteMacVUeMode4::finish()
 {
     binder_->removeUeInfo(ueInfo_);
 
