@@ -64,7 +64,25 @@ std::vector<double> LteDummyChannelModel::getSINR_D2D(LteAirFrame *frame, UserCo
     return tmp;
 }
 
+std::vector<double> LteDummyChannelModel::getRSSI(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId)
+{
+    std::vector<double> tmp;
+    tmp.push_back(10000);
+    // fake SINR is needed by das (to decide which antenna set are used by the terminal)
+    // and handhover function to decide if the terminal should trigger the hanhover
+    return tmp;
+}
+
 std::vector<double> LteDummyChannelModel::getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector)
+{
+    std::vector<double> tmp;
+    tmp.push_back(10000);
+    // fake SINR is needed by das (to decide which antenna set are used by the terminal)
+    // and handhover function to decide if the terminal should trigger the hanhover
+    return tmp;
+}
+
+std::vector<double> LteDummyChannelModel::getRSSI(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector)
 {
     std::vector<double> tmp;
     tmp.push_back(10000);

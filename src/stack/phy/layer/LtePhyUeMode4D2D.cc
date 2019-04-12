@@ -901,7 +901,7 @@ void LtePhyUeMode4D2D::storeAirFrame(LteAirFrame* newFrame)
 
     std::vector<double> rsrpVector = channelModel_->getRSRP_D2D(newFrame, newInfo, nodeId_, myCoord);
     // Seems we don't really actually need the enbId, I have set it to 0 as it is referenced but never used for calc
-    std::vector<double> rssiVector = channelModel_->getSINR_D2D(newFrame, newInfo, nodeId_, myCoord, 0, rsrpVector);
+    std::vector<double> rssiVector = channelModel_->getRSSI(newFrame, newInfo, nodeId_, myCoord, 0, rsrpVector);
 
     // Need to be able to figure out which subchannel is associated to the Rbs in this case
     if (newInfo->getFrameType() == SCIPKT){

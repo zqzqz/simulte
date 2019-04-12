@@ -72,13 +72,22 @@ class LteDummyChannelModel : public LteChannelModel
      */
     virtual std::vector<double> getRSRP_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord);
     /*
-     * Compute FAKE sinr (D2D) for each band for user nodeId according to pathloss, shadowing (optional) and multipath fading
+     * Compute FAKE SINR (D2D) for each band for user nodeId according to pathloss, shadowing (optional) and multipath fading
      *
      * @param frame pointer to the packet
      * @param lteinfo pointer to the user control info
      */
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId);
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector);
+    /*
+     * Compute FAKE RSSI (D2D) for each band for user nodeId according to pathloss, shadowing (optional) and multipath fading
+     *
+     * @param frame pointer to the packet
+     * @param lteinfo pointer to the user control info
+     */
+    virtual std::vector<double> getRSSI(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId);
+    virtual std::vector<double> getRSSI(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector);
+
     //TODO
     virtual bool errorDas(LteAirFrame *frame, UserControlInfo* lteI)
     {
