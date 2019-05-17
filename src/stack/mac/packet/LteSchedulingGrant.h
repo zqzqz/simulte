@@ -186,6 +186,7 @@ public:
         mcs = other.mcs;
         retransSubchannel = other.retransSubchannel;
         resourceReselectionCounter = other.resourceReselectionCounter;
+        possibleRRIs = other.possibleRRIs;
         LteSchedulingGrant::operator=(other);
         return *this;
     }
@@ -275,7 +276,7 @@ public:
     {
         return retransmission;
     }
-    std::vector<double> getPossibleRRIs() const
+    std::vector<double> getPossibleRRIs()
     {
         return possibleRRIs;
     }
