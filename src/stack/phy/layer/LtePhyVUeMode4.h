@@ -41,7 +41,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     std::vector<std::vector<double>> tbRssiVectors_;
 
     std::vector<std::vector<Subchannel*>> sensingWindow_;
-    std::vector<std::vector<Subchannel*>> selectionWindow_;
+    int sensingWindowFront_;
     LteMode4SchedulingGrant* sciGrant_;
     std::vector<std::vector<double>> sciRsrpVectors_;
     std::vector<std::vector<double>> sciRssiVectors_;
@@ -115,6 +115,8 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     virtual RbMap sendSciMessage(cMessage* sci, UserControlInfo* lteInfo);
 
     virtual void initialiseSensingWindow();
+
+    virtual int translateIndex(int index);
 
   public:
     LtePhyVUeMode4();
