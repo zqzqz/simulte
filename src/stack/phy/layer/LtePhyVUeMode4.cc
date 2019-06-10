@@ -1212,8 +1212,6 @@ void LtePhyVUeMode4::updateCBR()
 
 void LtePhyVUeMode4::updateSubframe()
 {
-    EV << NOW << " LtePhyVUeMode4::updateSubframe - updating subframe in the sensingWindow..." << endl;
-
     // Increment the pointer to the next element in the sensingWindow
     if (sensingWindowFront_ < (10*pStep_)-1) {
         ++sensingWindowFront_;
