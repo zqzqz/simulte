@@ -112,17 +112,21 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
     {
         std::vector<int> missingTbs;
         for (int i=0; i<sciFrames_.size(); i++){
+            bool foundTB=false;
             LteAirFrame* sciFrame = sciFrames_[i];
             UserControlInfo* sciInfo = check_and_cast<UserControlInfo*>(sciFrame->removeControlInfo());
             for (int j=0; j<tbFrames_.size();j++){
                 LteAirFrame* tbFrame = tbFrames_[j];
                 UserControlInfo* tbInfo = check_and_cast<UserControlInfo*>(tbFrame->removeControlInfo());
                 if (sciInfo->getSourceId() == tbInfo->getSourceId()){
-                    missingTbs.push_back(i);
+                    foundTB = true;
                     tbFrame->setControlInfo(tbInfo);
                     break;
                 }
                 tbFrame->setControlInfo(tbInfo);
+            }
+            if (!foundTB){
+                missingTbs.push_back(i);
             }
             sciFrame->setControlInfo(sciInfo);
         }
@@ -159,6 +163,16 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             updateCBR();
         }
         int countTbs = 0;
+        if (tbFrames_.empty()){
+            for(countTbs; countTbs<missingTbs.size(); countTbs++){
+                emit(txRxDistanceTB, -1);
+                emit(tbsReceived, -1);
+                emit(tbsDecoded, -1);
+                emit(tbsFailedDueToNoSCI, -1);
+                emit(tbFailedButSCIReceived, -1);
+                emit(tbFailedHalfDuplex, -1);
+            }
+        }
         while (!tbFrames_.empty())
         {
             if(std::find(missingTbs.begin(), missingTbs.end(), countTbs) != missingTbs.end()) {
