@@ -110,6 +110,23 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
 {
     if (msg->isName("d2dDecodingTimer"))
     {
+        std::vector<int> missingTbs;
+        for (int i=0; i<sciFrames_.size(); i++){
+            LteAirFrame* sciFrame = sciFrames_[i];
+            UserControlInfo* sciInfo = check_and_cast<UserControlInfo*>(sciFrame->removeControlInfo());
+            for (int j=0; j<tbFrames_.size();j++){
+                LteAirFrame* tbFrame = tbFrames_[j];
+                UserControlInfo* tbInfo = check_and_cast<UserControlInfo*>(tbFrame->removeControlInfo());
+                if (sciInfo->getSourceId() == tbInfo->getSourceId()){
+                    missingTbs.push_back(i);
+                    tbFrame->setControlInfo(tbInfo);
+                    break;
+                }
+                tbFrame->setControlInfo(tbInfo);
+            }
+            sciFrame->setControlInfo(sciInfo);
+        }
+
         while (!sciFrames_.empty()){
             // Get received SCI and it's corresponding RsrpVector
             LteAirFrame* frame = sciFrames_.back();
@@ -141,32 +158,44 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             currentCBR_=0;
             updateCBR();
         }
+        int countTbs = 0;
         while (!tbFrames_.empty())
         {
-            LteAirFrame* frame = tbFrames_.back();
-            std::vector<double> rsrpVector = tbRsrpVectors_.back();
-            std::vector<double> rssiVector = tbRssiVectors_.back();
+            if(std::find(missingTbs.begin(), missingTbs.end(), countTbs) != missingTbs.end()) {
+                // This corresponds to where we are missing a TB, record results as being negative to identify this.
+                emit(txRxDistanceTB, -1);
+                emit(tbsReceived, -1);
+                emit(tbsDecoded, -1);
+                emit(tbsFailedDueToNoSCI, -1);
+                emit(tbFailedButSCIReceived, -1);
+                emit(tbFailedHalfDuplex, -1);
+            } else {
+                LteAirFrame *frame = tbFrames_.back();
+                std::vector<double> rsrpVector = tbRsrpVectors_.back();
+                std::vector<double> rssiVector = tbRssiVectors_.back();
 
-            tbFrames_.pop_back();
-            tbRsrpVectors_.pop_back();
-            tbRssiVectors_.pop_back();
+                tbFrames_.pop_back();
+                tbRsrpVectors_.pop_back();
+                tbRssiVectors_.pop_back();
 
-            UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(frame->removeControlInfo());
+                UserControlInfo *lteInfo = check_and_cast<UserControlInfo *>(frame->removeControlInfo());
 
-            // decode the selected frame
-            decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector);
+                // decode the selected frame
+                decodeAirFrame(frame, lteInfo, rsrpVector, rssiVector);
 
-            emit(tbsReceived, tbsReceived_);
-            emit(tbsDecoded, tbsDecoded_);
-            emit(tbsFailedDueToNoSCI, tbsFailedDueToNoSCI_);
-            emit(tbFailedButSCIReceived, tbFailedButSCIReceived_);
-            emit(tbFailedHalfDuplex, tbFailedHalfDuplex_);
+                emit(tbsReceived, tbsReceived_);
+                emit(tbsDecoded, tbsDecoded_);
+                emit(tbsFailedDueToNoSCI, tbsFailedDueToNoSCI_);
+                emit(tbFailedButSCIReceived, tbFailedButSCIReceived_);
+                emit(tbFailedHalfDuplex, tbFailedHalfDuplex_);
 
-            tbsReceived_ = 0;
-            tbsDecoded_ = 0;
-            tbsFailedDueToNoSCI_ = 0;
-            tbFailedButSCIReceived_ = 0;
-            tbFailedHalfDuplex_ = 0;
+                tbsReceived_ = 0;
+                tbsDecoded_ = 0;
+                tbsFailedDueToNoSCI_ = 0;
+                tbFailedButSCIReceived_ = 0;
+                tbFailedHalfDuplex_ = 0;
+            }
+            countTbs++;
         }
         std::vector<cPacket*>::iterator it;
         for(it=decodedScis_.begin();it!=decodedScis_.end();it++)
