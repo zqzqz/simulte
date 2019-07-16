@@ -527,7 +527,7 @@ void LteMacVUeMode4::handleMessage(cMessage *msg)
             // message from PHY_to_MAC gate (from lower layer)
             emit(receivedPacketFromLowerLayer, pkt);
 
-            delete pkt;
+            LteMacBase::sendUpperPackets(cbrPkt);
 
             return;
         }
