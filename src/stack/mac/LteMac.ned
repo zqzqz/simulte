@@ -359,11 +359,11 @@ simple LteMacUeRealisticD2D extends LteMacUeRealistic
     int d2dCqi = default(7);
 }
 
-simple LteMacUeMode4D2D extends LteMacNonIPBase
+simple LteMacVUeMode4 extends LteMacNonIPBase
 {
 	parameters:
 	    
-	    @class("LteMacUeMode4D2D");
+	    @class("LteMacVUeMode4");
 	    
 	    //# TODO: Change this to use xmldoc to fill in these params as it's more complex than this.
 	    xml txConfig;

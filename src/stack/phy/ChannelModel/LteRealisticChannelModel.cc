@@ -1312,6 +1312,204 @@ std::vector<double> LteRealisticChannelModel::getSINR_D2D(LteAirFrame *frame, Us
     return snrVector;
 }
 
+std::vector<double> LteRealisticChannelModel::getRSSI(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, Coord destCoord,MacNodeId enbId)
+{
+    AttenuationVector::iterator it;
+    // Get Tx power
+    double recvPower = lteInfo_1->getD2dTxPower(); // dBm
+
+    // Coordinate of the Sender of the Feedback packet
+    Coord sourceCoord =  lteInfo_1->getCoord();
+
+    double antennaGainTx = 0.0;
+    double antennaGainRx = 0.0;
+    double noiseFigure = 0.0;
+    double speed = 0.0;
+    double extCellInterference = 0;
+    // Get MacId for Ue and his peer
+    MacNodeId sourceId = lteInfo_1->getSourceId();
+    std::vector<double> rssiVector;
+
+    // True if we use the jakes map in the UE side (D2D is like DL for the receivers)
+    bool cqiDl = false;
+    // Get the direction
+    Direction dir = (Direction) lteInfo_1->getDirection();
+    dir = D2D;
+
+    EV << "------------ GET RSSI----------------" << endl;
+
+    //===================== PARAMETERS SETUP ============================
+
+    // D2D CQI or D2D error computation
+
+    if( dir == UL || dir==DL)
+    {
+        //consistency check
+        throw cRuntimeError("Direction should neither be UL or DL");
+    }
+    else
+    {
+        antennaGainTx = antennaGainRx = antennaGainUe_;
+        //In D2D case the noise figure is the ueNoiseFigure_
+        noiseFigure = ueNoiseFigure_;
+        // use the jakes map in the UE side
+        cqiDl = true;
+    }
+    // Compute speed
+    speed = computeSpeed(sourceId, sourceCoord);
+
+
+    EV << "LteRealisticChannelModel::getRSSI - srcId=" << sourceId
+       << " - destId=" << destId
+       << " - DIR=" << dirToA(dir)
+       << " - frameType=" << ((lteInfo_1->getFrameType()==FEEDBACKPKT)?"feedback":"other")
+       << endl
+       << " - txPwr " << recvPower
+       << " - ue1_Coord[" << sourceCoord << "] - ue2_Coord[" << destCoord << "] - ue1_Id[" << sourceId << "] - ue2_Id[" << destId << "]" <<
+       endl;
+    //=================== END PARAMETERS SETUP =======================
+
+    //=============== PATH LOSS + SHADOWING + FADING =================
+    EV << "\t using parameters - noiseFigure=" << noiseFigure << " - antennaGainTx=" << antennaGainTx << " - antennaGainRx=" << antennaGainRx <<
+       " - txPwr=" << recvPower << " - for ueId=" << sourceId << endl;
+
+    // attenuation for the desired signal
+    double attenuation = getAttenuation_D2D(sourceId, dir, sourceCoord, destId, destCoord); // dB
+
+    //compute attenuation (PATHLOSS + SHADOWING)
+    recvPower -= attenuation; // (dBm-dB)=dBm
+
+    //add antenna gain
+    recvPower += antennaGainTx; // (dBm+dB)=dBm
+    recvPower += antennaGainRx; // (dBm+dB)=dBm
+
+    //sub cable loss
+    recvPower -= cableLoss_; // (dBm-dB)=dBm
+
+    // compute and add interference due to fading
+    // Apply fading for each band
+    // if the phy layer is localized we can assume that for each logical band we have different fading attenuation
+    // if the phy layer is distributed the number of logical band should be set to 1
+    double fadingAttenuation = 0;
+    //for each logical band
+    for (unsigned int i = 0; i < band_; i++)
+    {
+        fadingAttenuation = 0;
+        //if fading is enabled
+        if (fading_)
+        {
+            //Appling fading
+            if (fadingType_ == RAYLEIGH)
+                fadingAttenuation = rayleighFading(sourceId, i);
+
+            else if (fadingType_ == JAKES)
+            {
+                fadingAttenuation = jakesFading(sourceId, speed, i, cqiDl);
+            }
+            else if (fadingType_ == NAKAGAMI)
+            {
+                inet::units::values::mps speed = inet::units::values::mps(SPEED_OF_LIGHT);
+                inet::units::values::Hz freq = inet::units::values::Hz(carrierFrequency_ * 1000000000);
+                inet::units::values::m dist = inet::units::values::m(sourceCoord.distance(destCoord));
+                fadingAttenuation = nkgmf->computePathLoss(speed, freq, dist);
+            }
+        }
+        // add fading contribution to the received pwr
+        double finalRecvPower = recvPower + fadingAttenuation; // (dBm+dB)=dBm
+
+        //if txmode is multi user the tx power is dived by the number of paired user
+        // in db divede by 2 means -3db
+        if (lteInfo_1->getTxMode() == MULTI_USER)
+        {
+            finalRecvPower -= 3;
+        }
+
+        EV << " LteRealisticChannelModel::getSINR_d2d node " << sourceId
+           << ((lteInfo_1->getFrameType() == FEEDBACKPKT) ?
+               " FEEDBACK PACKET " : " NORMAL PACKET ")
+           << " band " << i << " recvPower " << recvPower
+           << " direction " << dirToA(dir) << " antenna gain tx "
+           << antennaGainTx << " antenna gain rx " << antennaGainRx
+           << " noise figure " << noiseFigure
+           << " cable loss   " << cableLoss_
+           << " attenuation (pathloss + shadowing) " << attenuation
+           << " speed " << speed << " thermal noise " << thermalNoise_
+           << " fading attenuation " << fadingAttenuation << endl;
+
+        // Store the calculated receive power
+        rssiVector.push_back(finalRecvPower);
+    }
+
+    /*
+     * The RSSI will be calculated as follows
+     *
+     * RSSI = 2 (Pwr + N + I)
+     *
+     * N = thermalNoise_ + noiseFigure (measured in dBm)
+     * I = extCellInterference + inCellInterference (measured in mW)
+     */
+    //============ IN CELL D2D INTERFERENCE COMPUTATION =================
+    /*
+     * In calculating a D2D CQI the Interference from others D2D UEs discriminates between calculating a CQI
+     * following direction D2D_Tx--->D2D_Rx or D2D_Tx<---D2D_Rx (This happens due to the different positions of the
+     * interfering UEs relative to the position of the UE for whom we are calculating the CQI). We need that the CQI
+     * for the D2D_Tx is the same of the D2D_Rx(This is an help for the simulator because when the eNodeB allocates
+     * resources to a D2D_Tx it must refer to quality channel of the D2D_Rx).
+     * To do so here we must check if the ueId is the ID of the D2D_Tx:if it
+     * is so we swap the ueId with the one of his Peer(D2D_Rx). We do the same for the coord.
+     */
+    //vector containing the sum of inCell interference for each band
+    std::vector<double> inCellInterference; // Linear value (mW)
+    // prepare data structure
+    inCellInterference.resize(band_, 0);
+    if (enableD2DInCellInterference_ && dir == D2D)
+    {
+        computeInCellD2DInterference(enbId, sourceId, sourceCoord, destId, destCoord, (lteInfo_1->getFrameType() == FEEDBACKPKT), &inCellInterference,dir);
+    }
+
+    //===================== SINR COMPUTATION ========================
+    if( enableD2DInCellInterference_ && dir==D2D  )
+    {
+        // compute and linearize total noise
+        double totN = dBmToLinear(thermalNoise_ + noiseFigure);
+
+        // denominator expressed in dBm as (N+extCell+inCell)
+        double den;
+        EV << "LteRealisticChannelModel::getSINR - distance from my Peer = " << destCoord.distance(sourceCoord) << " - DIR=" << dirToA(dir)  << endl;
+
+        // Add interference for each band
+        for (unsigned int i = 0; i < band_; i++)
+        {
+            //               (      mW            +  mW  +        mW            )
+            den = linearToDBm(extCellInterference + totN + inCellInterference[i]);
+
+            EV << "\t ext[" << extCellInterference << "] - in[" << inCellInterference[i] << "] - recvPwr["
+               << dBmToLinear(rssiVector[i]) << "] - sinr[" << rssiVector[i]-den << "]\n";
+
+            // compute final RSSI.
+            rssiVector[i] += den;
+            rssiVector[i] = rssiVector[i] * 2;
+        }
+    }
+        // compute rssi with no incellD2D interference
+    else
+    {
+        for (unsigned int i = 0; i < band_; i++)
+        {
+            // compute final RSSI
+            rssiVector[i] +=  (noiseFigure + thermalNoise_);
+            rssiVector[i] = rssiVector[i] * 2;
+
+            EV << "LteRealisticChannelModel::getRSSI - distance from my Peer = " << destCoord.distance(sourceCoord) << " - DIR=" << dirToA(dir) << " - rssi[" << rssiVector[i] << "]\n";
+        }
+    }
+
+    //sender is a UE
+    updatePositionHistory(sourceId, sourceCoord);
+
+    return rssiVector;
+}
+
 std::vector<double> LteRealisticChannelModel::getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector)
 {
     std::vector<double> snrVector = rsrpVector;
@@ -1507,6 +1705,101 @@ std::vector<double> LteRealisticChannelModel::getSINR_D2D(LteAirFrame *frame, Us
     return snrVector;
 }
 
+std::vector<double> LteRealisticChannelModel::getRSSI(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector)
+{
+    std::vector<double> rssiVector = rsrpVector;
+
+    MacNodeId sourceId = lteInfo_1->getSourceId();
+    Coord sourceCoord = lteInfo_1->getCoord();
+
+    // Get the direction
+    Direction dir = (Direction) lteInfo_1->getDirection();
+    dir = D2D;
+
+    double noiseFigure = 0.0;
+    double extCellInterference = 0.0;
+    if( dir == UL || dir==DL)
+    {
+        //consistency check
+        throw cRuntimeError("Direction should neither be UL or DL");
+    }
+    else
+    {
+        //In D2D case the noise figure is the ueNoiseFigure_
+        noiseFigure = ueNoiseFigure_;
+    }
+
+    EV << "------------ GET SINR D2D----------------" << endl;
+
+    /*
+     * The RSSI will be calculated as follows
+     *
+     * RSSI = 2 (Pwr + N + I)
+     *
+     * N = thermalNoise_ + noiseFigure (measured in dBm)
+     * I = extCellInterference + inCellInterference (measured in mW)
+     */
+    //============ IN CELL D2D INTERFERENCE COMPUTATION =================
+    /*
+     * In calculating a D2D CQI the Interference from others D2D UEs discriminates between calculating a CQI
+     * following direction D2D_Tx--->D2D_Rx or D2D_Tx<---D2D_Rx (This happens due to the different positions of the
+     * interfering UEs relative to the position of the UE for whom we are calculating the CQI). We need that the CQI
+     * for the D2D_Tx is the same of the D2D_Rx(This is an help for the simulator because when the eNodeB allocates
+     * resources to a D2D_Tx it must refer to quality channel of the D2D_Rx).
+     * To do so here we must check if the ueId is the ID of the D2D_Tx:if it
+     * is so we swap the ueId with the one of his Peer(D2D_Rx). We do the same for the coord.
+     */
+    //vector containing the sum of inCell interference for each band
+    std::vector<double> inCellInterference; // Linear value (mW)
+    // prepare data structure
+    inCellInterference.resize(band_, 0);
+    if (enableD2DInCellInterference_ && dir == D2D)
+    {
+        computeInCellD2DInterference(enbId, sourceId, sourceCoord, destId, destCoord, (lteInfo_1->getFrameType() == FEEDBACKPKT), &inCellInterference,dir);
+    }
+
+    //===================== SINR COMPUTATION ========================
+    if( enableD2DInCellInterference_ && dir==D2D  )
+    {
+        // compute and linearize total noise
+        double totN = dBmToLinear(thermalNoise_ + noiseFigure);
+
+        // denominator expressed in dBm as (N+extCell+inCell)
+        double den;
+        EV << "LteRealisticChannelModel::getSINR - distance from my Peer = " << destCoord.distance(sourceCoord) << " - DIR=" << dirToA(dir)  << endl;
+
+        // Add interference for each band
+        for (unsigned int i = 0; i < band_; i++)
+        {
+            //               (      mW            +  mW  +        mW            )
+            den = linearToDBm(extCellInterference + totN + inCellInterference[i]);
+
+            EV << "\t ext[" << extCellInterference << "] - in[" << inCellInterference[i] << "] - recvPwr["
+               << dBmToLinear(rssiVector[i]) << "] - sinr[" << rssiVector[i]-den << "]\n";
+
+            // compute final RSSI.
+            rssiVector[i] += den;
+            rssiVector[i] = rssiVector[i] * 2;
+        }
+    }
+        // compute rssi with no incellD2D interference
+    else
+    {
+        for (unsigned int i = 0; i < band_; i++)
+        {
+            // compute final RSSI
+            rssiVector[i] +=  (noiseFigure + thermalNoise_);
+            rssiVector[i] = rssiVector[i] * 2;
+
+            EV << "LteRealisticChannelModel::getRSSI - distance from my Peer = " << destCoord.distance(sourceCoord) << " - DIR=" << dirToA(dir) << " - rssi[" << rssiVector[i] << "]\n";
+        }
+    }
+
+    //sender is a UE
+    updatePositionHistory(sourceId, sourceCoord);
+
+    return rssiVector;
+}
 
 std::vector<double> LteRealisticChannelModel::getSIR(LteAirFrame *frame,
         UserControlInfo* lteInfo)

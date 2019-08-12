@@ -9,6 +9,7 @@ src/Makefile.vc
 *.sca
 *.vec
 *.anf
+*.qtenvrc
 .settings/
 
 # ignore binary files
@@ -49,3 +50,6 @@ ui/com.simulte.configeditor/bin/
 /simulations/*/scenario*/
 /simulations/*/eval*/
 /simulations/*/.cmdenv-log
+
+# ignore cLion editor
+.idea/

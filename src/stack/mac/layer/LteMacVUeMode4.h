@@ -11,7 +11,10 @@
 // 
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see http://www.gnu.org/licenses/.
-// 
+//
+// This file is an extension of SimuLTE
+// Author: Brian McCarthy
+// email : b.mccarthy@cs.ucc.ie
 
 #ifndef _LTE_MACUEMODE4D2D_H_
 #define _LTE_MACUEMODE4D2D_H_
@@ -22,7 +25,7 @@
 
 //class LteMode4SchedulingGrant;
 
-class LteMacUeMode4D2D: public LteMacUeRealisticD2D {
+class LteMacVUeMode4: public LteMacUeRealisticD2D {
 
 protected:
 
@@ -66,7 +69,7 @@ protected:
 
    std::vector<std::map<std::string, int>> cbrPSSCHTxConfigList_;
    std::vector<std::map<std::string, int>> cbrLevels_;
-   std::vector<int> validResourceReservationIntervals_;
+   std::vector<double> validResourceReservationIntervals_;
 
    std::random_device rand_device_;
    std::mt19937 generator_;
@@ -172,8 +175,8 @@ protected:
     void finish();
 
 public:
-    LteMacUeMode4D2D();
-    virtual ~LteMacUeMode4D2D();
+    LteMacVUeMode4();
+    virtual ~LteMacVUeMode4();
 
     virtual bool isD2DCapable()
     {

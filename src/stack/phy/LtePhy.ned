@@ -84,9 +84,9 @@ simple LtePhyUeD2D extends LtePhyUe {
          @statistic[averageCqiD2D](title="Average Cqi reported in D2D"; unit="cqi"; source="averageCqiD2D"; record=mean,vector);
 }
 
-simple LtePhyUeMode4D2D extends LtePhyUeD2D {
+simple LtePhyVUeMode4 extends LtePhyUeD2D {
 	parameters:   
-	    @class("LtePhyUeMode4D2D");
+	    @class("LtePhyVUeMode4");
 	    
 	    bool adjacencyPSCCHPSSCH = default(true);
 	    int pStep = default(100); 
@@ -97,20 +97,20 @@ simple LtePhyUeMode4D2D extends LtePhyUeD2D {
 	    
 	    @signal[cbr];
  		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
- 		@signal[scisReceived];
-		@statistic[scisReceived](title="Number of received SCIs"; source="scisReceived"; record=sum,vector);
-		@signal[scisDecoded];
-		@statistic[scisDecoded](title="Number of SCIs successfully decoded"; source="scisDecoded"; record=sum,vector);
-		@signal[scisNotDecoded];
-        @statistic[scisNotDecoded](title="Number of SCIs successfully decoded"; source="scisNotDecoded"; record=sum,vector);
-		@signal[scisSent];
-		@statistic[scisSent](title="Number of SCIs sent"; source="scisSent"; record=sum,vector);
-		@signal[tbsSent];
-		@statistic[tbsSent](title="Number of TBs sent"; source="tbsSent"; record=sum,vector);
-		@signal[tbsReceived];
-		@statistic[tbsReceived](title="Number of TBs received"; source="tbsReceived"; record=sum,vector);
-		@signal[tbsDecoded];
-		@statistic[tbsDecoded](title="Number of TBs Decoded"; source="tbsDecoded"; record=sum,vector);
+ 		@signal[sciReceived];
+		@statistic[sciReceived](title="Number of received SCIs"; source="sciReceived"; record=sum,vector);
+		@signal[sciDecoded];
+		@statistic[sciDecoded](title="Number of SCIs successfully decoded"; source="sciDecoded"; record=sum,vector);
+		@signal[sciNotDecoded];
+        @statistic[sciNotDecoded](title="Number of SCIs successfully decoded"; source="sciNotDecoded"; record=sum,vector);
+		@signal[sciSent];
+		@statistic[sciSent](title="Number of SCIs sent"; source="sciSent"; record=sum,vector);
+		@signal[tbSent];
+		@statistic[tbSent](title="Number of TBs sent"; source="tbSent"; record=sum,vector);
+		@signal[tbReceived];
+		@statistic[tbReceived](title="Number of TBs received"; source="tbReceived"; record=sum,vector);
+		@signal[tbDecoded];
+		@statistic[tbDecoded](title="Number of tb Decoded"; source="tbDecoded"; record=sum,vector);
 		@signal[tbFailedDueToNoSCI];
 		@statistic[tbFailedDueToNoSCI](title="Number of Tbs not decoded due to no SCI"; source="tbFailedDueToNoSCI"; record=sum,vector);
 		@signal[tbFailedButSCIReceived];

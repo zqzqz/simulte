@@ -193,6 +193,19 @@ class LteRealisticChannelModel : public LteChannelModel
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId);
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector, bool interference);
     virtual std::vector<double> getSINR_D2D(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector);
+
+    /**
+     *
+     * @param frame pointer to the packet
+     * @param lteInfo_1 pointer to the user control info
+     * @param destId id of destination
+     * @param destCoord coordinates of destination
+     * @param enbId associated enb ID (Not used)
+     * @param rsrpVector previously recorded RSRP vector
+     * @return
+     */
+    virtual std::vector<double> getRSSI(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId );
+    virtual std::vector<double> getRSSI(LteAirFrame *frame, UserControlInfo* lteInfo_1, MacNodeId destId, inet::Coord destCoord,MacNodeId enbId,std::vector<double> rsrpVector);
     /*
      * Compute the error probability of the transmitted packet according to cqi used, txmode, and the received power
      * after that it throws a random number in order to check if this packet will be corrupted or not

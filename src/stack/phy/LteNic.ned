@@ -204,12 +204,12 @@ module LteNicUeD2D extends LteNicIpBase
 //
 // Mode 4 D2D User Equipment of LTE stack
 //
-module LteNicUeMode4D2D extends LteNicNonIpBase
+module LteNicVUeMode4 extends LteNicNonIpBase
 {
     parameters:
         LtePdcpRrcType = "LtePdcpRrcUeD2D";
-        LteMacType = default("LteMacUeMode4D2D");
-        LtePhyType = "LtePhyUeMode4D2D";
+        LteMacType = default("LteMacVUeMode4");
+        LtePhyType = "LtePhyVUeMode4";
         
         string d2dPeerAddresses = default(""); // list of D2D peer UEs, separated by blank spaces
 }

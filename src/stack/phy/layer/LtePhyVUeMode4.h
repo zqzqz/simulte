@@ -6,14 +6,18 @@
 // The above file and the present reference are part of the software itself,
 // and cannot be removed from it.
 //
+// This file is an extension of SimuLTE
+// Author: Brian McCarthy
+// email : b.mccarthy@cs.ucc.ie
 
 #include "stack/phy/layer/LtePhyUeD2D.h"
 #include "stack/phy/packet/SidelinkControlInformation_m.h"
 #include "stack/mac/packet/LteSchedulingGrant.h"
 #include "stack/mac/allocator/LteAllocationModule.h"
 #include "stack/phy/layer/Subchannel.h"
+#include <unordered_map>
 
-class LtePhyUeMode4D2D : public LtePhyUeD2D
+class LtePhyVUeMode4 : public LtePhyUeD2D
 {
   protected:
 
@@ -37,7 +41,7 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     std::vector<std::vector<double>> tbRssiVectors_;
 
     std::vector<std::vector<Subchannel*>> sensingWindow_;
-    std::vector<std::vector<Subchannel*>> selectionWindow_;
+    int sensingWindowFront_;
     LteMode4SchedulingGrant* sciGrant_;
     std::vector<std::vector<double>> sciRsrpVectors_;
     std::vector<std::vector<double>> sciRssiVectors_;
@@ -46,13 +50,13 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     std::vector<int> cbrHistory_;
 
     simsignal_t cbr;
-    simsignal_t scisReceived;
-    simsignal_t scisDecoded;
-    simsignal_t scisNotDecoded;
-    simsignal_t scisSent;
-    simsignal_t tbsSent;
-    simsignal_t tbsReceived;
-    simsignal_t tbsDecoded;
+    simsignal_t sciReceived;
+    simsignal_t sciDecoded;
+    simsignal_t sciNotDecoded;
+    simsignal_t sciSent;
+    simsignal_t tbSent;
+    simsignal_t tbReceived;
+    simsignal_t tbDecoded;
     simsignal_t tbFailedDueToNoSCI;
     simsignal_t tbFailedButSCIReceived;
     simsignal_t tbAndSCINotReceived;
@@ -67,11 +71,11 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
     simsignal_t sciFailedDueToProp;
     simsignal_t sciFailedDueToInterference;
 
-    int scisReceived_;
-    int scisDecoded_;
-    int scisNotDecoded_;
-    int tbsReceived_;
-    int tbsDecoded_;
+    int sciReceived_;
+    int sciDecoded_;
+    int sciNotDecoded_;
+    int tbReceived_;
+    int tbDecoded_;
     int tbFailedDueToNoSCI_;
     int tbFailedButSCIReceived_;
     int tbAndSCINotReceived_;
@@ -112,13 +116,7 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
 
     virtual void updateSubframe();
 
-    virtual void checkSensed(LteMode4SchedulingGrant* &grant);
-
-    virtual void checkRSRP(LteMode4SchedulingGrant* &grant, int thresholdIncreaseFactor);
-
-    virtual std::vector<std::vector<Subchannel*>> getPossibleCSRs(LteMode4SchedulingGrant* &grant);
-
-    virtual std::vector<std::vector<Subchannel*>> selectBestRSSIs(std::vector<std::vector<Subchannel*>> &possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
+    virtual std::vector<std::tuple<int, int, int>> selectBestRSSIs(std::unordered_map<int, std::set<int>> possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
 
     virtual std::tuple<int,int> decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo);
 
@@ -128,9 +126,11 @@ class LtePhyUeMode4D2D : public LtePhyUeD2D
 
     virtual void initialiseSensingWindow();
 
+    virtual int translateIndex(int index);
+
   public:
-    LtePhyUeMode4D2D();
-    virtual ~LtePhyUeMode4D2D();
+    LtePhyVUeMode4();
+    virtual ~LtePhyVUeMode4();
 
     virtual double getTxPwr(Direction dir = UNKNOWN_DIRECTION)
     {
