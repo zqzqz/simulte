@@ -45,9 +45,14 @@ void LtePhyVUeMode4::initialize(int stage)
         subchannelSize_ = par("subchannelSize");
         d2dDecodingTimer_ = NULL;
         transmitting_ = false;
+        cbrFilled_ = false;
         currentCBR_= 0;
         cbrIndex_= -1; // Start at -1 simply to ensure that on first call to create subframe we start at index 0
-        cbrHistory_.reserve(100);
+        cbrHistory_.reserve(99);
+
+        int thresholdRSSI = par("thresholdRSSI");
+
+        thresholdRSSI_ = (-112 + 2 * thresholdRSSI);
 
         d2dTxPower_ = par("d2dTxPower");
         if (d2dTxPower_ <= 0){
@@ -157,7 +162,6 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             scisNotDecoded_ = 0;
             sciFailedHalfDuplex_ = 0;
 
-            currentCBR_ = currentCBR_/numSubchannels_;
             cbrHistory_[cbrIndex_]=currentCBR_;
             currentCBR_=0;
             updateCBR();
@@ -224,8 +228,11 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
     {
         transmitting_ = false;
         cbrIndex_++;
-        if (cbrIndex_ == 100)
+        if (cbrIndex_ == 99)
+        {
+            cbrFilled_ = true;
             cbrIndex_ = 0;
+        }
         cbrHistory_[cbrIndex_] = currentCBR_;
         updateSubframe();
         delete msg;
@@ -1014,8 +1021,6 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 int subchannelIndex = std::get<0>(indexAndLength);
                 int lengthInSubchannels = std::get<1>(indexAndLength);
 
-                currentCBR_ += lengthInSubchannels;
-
                 std::vector<Subchannel *>::iterator kt;
                 std::vector < Subchannel * > currentSubframe = sensingWindow_.back();
                 for (kt = currentSubframe.begin() + subchannelIndex;
@@ -1091,6 +1096,7 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 std::tuple<int, int> indexAndLength = decodeRivValue(correspondingSCI, sciInfo);
                 int subchannelIndex = std::get<0>(indexAndLength);
                 int lengthInSubchannels = std::get<1>(indexAndLength);
+                double averageRSSI = 0;
 
                 std::vector<Subchannel *>::iterator kt;
                 std::vector < Subchannel * > currentSubframe = sensingWindow_.back();
@@ -1103,7 +1109,14 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                         (*kt)->addRsrpValue(rsrpVector[(*lt)], (*lt));
                         (*kt)->addRssiValue(rssiVector[(*lt)], (*lt));
                     }
+                    averageRSSI += (*kt)->getAverageRSSI();
                 }
+                averageRSSI = averageRSSI / lengthInSubchannels;
+
+                if (averageRSSI > thresholdRSSI_){
+                  currentCBR_ += lengthInSubchannels;
+                }
+
                 // Need to delete the message now
                 delete correspondingSCI;
                 delete sciInfo;
@@ -1206,18 +1219,26 @@ std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* s
 
 void LtePhyVUeMode4::updateCBR()
 {
-    double cbr = 0;
+    double cbrValue = 0;
     for (int i=0; i < cbrHistory_.size();i++)
     {
-        cbr += cbrHistory_[i];
+        cbrValue += cbrHistory_[i];
     }
 
-    cbr = std::round(cbr);
+    int totalSubchannels = 0;
+    if (cbrFilled_){
+        totalSubchannels = numSubchannels_ * 99;
+    }
+    else {
+        totalSubchannels = numSubchannels_ * cbrIndex_;
+    }
 
-    emit(cbr, cbr);
+    cbrValue = cbrValue / totalSubchannels;
+
+    emit(cbr, cbrValue);
 
     Cbr* cbrPkt = new Cbr("CBR");
-    cbrPkt->setCbr(cbr);
+    cbrPkt->setCbr(cbrValue);
     send(cbrPkt, upperGateOut_);
 }
 

@@ -28,8 +28,10 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     int numSubchannels_;
     int subchannelSize_ ;
     int selectionWindowStartingSubframe_;
+    int thresholdRSSI_;
 
     bool transmitting_;
+    bool cbrFilled_;
 
     std::vector<int> ThresPSSCHRSRPvector_;
 

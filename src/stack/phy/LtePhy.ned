@@ -75,7 +75,7 @@ simple LtePhyUe extends LtePhyBase {
 simple LtePhyUeD2D extends LtePhyUe {
      parameters:
          @class("LtePhyUeD2D");
-         double d2dTxPower =default(26);
+         double d2dTxPower =default(23);
          bool d2dMulticastCaptureEffect = default(true);
          string d2dMulticastCaptureEffectFactor = default("RSRP");  // or distance
          
@@ -94,6 +94,7 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 	    int subchannelSize = default(5);
 	    int selectionWindowStartingSubframe = default(1);
 	    int shapeFactor = default(6);
+	    int thresholdRSSI = default(22);
 	    
 	    @signal[cbr];
  		@statistic[cbr](title="Channel Busy Ratio"; source="cbr"; record=mean,vector);
