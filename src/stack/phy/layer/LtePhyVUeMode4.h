@@ -15,6 +15,7 @@
 #include "stack/mac/packet/LteSchedulingGrant.h"
 #include "stack/mac/allocator/LteAllocationModule.h"
 #include "stack/phy/layer/Subchannel.h"
+#include <unordered_map>
 
 class LtePhyVUeMode4 : public LtePhyUeD2D
 {
@@ -42,7 +43,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     std::vector<std::vector<double>> tbRssiVectors_;
 
     std::vector<std::vector<Subchannel*>> sensingWindow_;
-    std::vector<std::vector<Subchannel*>> selectionWindow_;
+    int sensingWindowFront_;
     LteMode4SchedulingGrant* sciGrant_;
     std::vector<std::vector<double>> sciRsrpVectors_;
     std::vector<std::vector<double>> sciRssiVectors_;
@@ -107,13 +108,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
 
     virtual void updateSubframe();
 
-    virtual void checkSensed(LteMode4SchedulingGrant* &grant);
-
-    virtual void checkRSRP(LteMode4SchedulingGrant* &grant, int thresholdIncreaseFactor);
-
-    virtual std::vector<std::vector<Subchannel*>> getPossibleCSRs(LteMode4SchedulingGrant* &grant);
-
-    virtual std::vector<std::vector<Subchannel*>> selectBestRSSIs(std::vector<std::vector<Subchannel*>> &possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
+    virtual std::vector<std::tuple<int, int, int>> selectBestRSSIs(std::unordered_map<int, std::set<int>> possibleCSRs, LteMode4SchedulingGrant* &grant, int totalPossibleCSRs);
 
     virtual std::tuple<int,int> decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo);
 
@@ -122,6 +117,8 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     virtual RbMap sendSciMessage(cMessage* sci, UserControlInfo* lteInfo);
 
     virtual void initialiseSensingWindow();
+
+    virtual int translateIndex(int index);
 
   public:
     LtePhyVUeMode4();

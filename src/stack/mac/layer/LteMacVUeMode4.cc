@@ -35,6 +35,7 @@
 #include "inet/networklayer/ipv4/IPv4InterfaceData.h"
 #include "stack/mac/amc/LteMcs.h"
 #include <random>
+#include <map>
 
 Define_Module(LteMacVUeMode4);
 
@@ -784,35 +785,33 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
      * 4. return
      */
     SpsCandidateResources* candidatesPacket = check_and_cast<SpsCandidateResources *>(pkt);
-    std::vector<std::vector<Subchannel*>> CSRs = candidatesPacket->getCSRs();
+    std::vector<std::tuple<int, int, int>> CSRs = candidatesPacket->getCSRs();
+
+    LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
 
     // Select random element from vector
     std::uniform_int_distribution<int> distr(0, CSRs.size()-1);
     int index = distr(generator_);
 
-    std::vector<Subchannel*> selectedCR = CSRs[index];
+    std::tuple<int, int, int> selectedCR = CSRs[index];
     // Gives us the time at which we will send the subframe.
-    simtime_t selectedStartTime = NOW + TTI * selectedCR[0]->getSubframeIndex();
+    simtime_t selectedStartTime = NOW + TTI * std::get<1>(selectedCR);
 
-    std::vector<Subchannel*>::iterator it;
-    std::vector<Band> grantedBands;
-    for (it=selectedCR.begin(); it!=selectedCR.end();it++)
-    {
-        std::vector<Band> subchannelBands = (*it)->getOccupiedBands();
-        grantedBands.insert(grantedBands.end(), subchannelBands.begin(), subchannelBands.end());
-    }
+    int initiailSubchannel = std::get<2>(selectedCR);
+    int finalSubchannel = initiailSubchannel + mode4Grant->getNumSubchannels(); // Is this actually one additional subchannel?
 
+    // Determine the RBs on which we will send our message
     RbMap grantedBlocks;
-    std::vector<Band>::iterator jt;
     int totalGrantedBlocks = 0;
-    for (jt=grantedBands.begin(); jt!=grantedBands.end(); jt++)
+    for (int i=initiailSubchannel;i<finalSubchannel;i++)
     {
-        // For each band assign block on the MACRO antenna
-        grantedBlocks[MACRO][*jt] = 1;
-        ++totalGrantedBlocks;
+        std::vector<Band> allocatedBands;
+        for (Band b = i * subchannelSize_; b < (i * subchannelSize_) + subchannelSize_ ; b++)
+        {
+            grantedBlocks[MACRO][b] = 1;
+            ++totalGrantedBlocks;
+        }
     }
-
-    LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
 
     mode4Grant->setStartTime(selectedStartTime);
     mode4Grant->setPeriodic(true);
@@ -867,6 +866,7 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
     mode4Grant -> setSpsPriority(priority);
     mode4Grant -> setPeriod(resourceReservationInterval_ * 100);
     mode4Grant -> setMaximumLatency(maximumLatency);
+    mode4Grant -> setPossibleRRIs(validResourceReservationIntervals_);
 
     int cbrIndex = defaultCbrIndex_;
     if (useCBR_)

@@ -69,7 +69,7 @@ protected:
 
    std::vector<std::map<std::string, int>> cbrPSSCHTxConfigList_;
    std::vector<std::map<std::string, int>> cbrLevels_;
-   std::vector<int> validResourceReservationIntervals_;
+   std::vector<double> validResourceReservationIntervals_;
 
    std::random_device rand_device_;
    std::mt19937 generator_;
