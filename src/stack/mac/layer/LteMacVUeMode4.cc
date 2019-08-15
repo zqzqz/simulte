@@ -63,7 +63,6 @@ void LteMacVUeMode4::initialize(int stage)
         numSubchannels_ = par("numSubchannels");
         probResourceKeep_ = par("probResourceKeep");
         usePreconfiguredTxParams_ = par("usePreconfiguredTxParams");
-        resourceReservationInterval_ = par("resourceReservationInterval");
         reselectAfter_ = par("reselectAfter");
         useCBR_ = par("useCBR");
         maximumCapacity_ = 0;
