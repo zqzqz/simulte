@@ -162,10 +162,6 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             scisDecoded_ = 0;
             scisNotDecoded_ = 0;
             sciFailedHalfDuplex_ = 0;
-
-            cbrHistory_[cbrIndex_]=currentCBR_;
-            currentCBR_=0;
-            updateCBR();
         }
         int countTbs = 0;
         if (tbFrames_.empty()){
@@ -224,6 +220,16 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
         decodedScis_.clear();
         delete msg;
         d2dDecodingTimer_ = NULL;
+
+        if (cbrHistory_.size() < 99){
+            cbrHistory_.push_back(currentCBR_);
+        }
+        else{
+            cbrHistory_[cbrIndex_] = currentCBR_;
+        }
+        currentCBR_=0;
+        updateCBR();
+
     }
     else if (msg->isName("updateSubframe"))
     {
@@ -334,7 +340,7 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
     // otherwise, send unicast to the destination
 
     EV << "LtePhyVUeMode4::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
-           << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
+       << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
 
     // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
     transmitting_=true;
@@ -616,8 +622,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                         subchannelReserved = true;
 
                         // Get the SCI and all the necessary information
-                        SidelinkControlInformation *receivedSCI = check_and_cast<SidelinkControlInformation *>(
-                                sensingWindow_[translatedZ][k]->getSCIMessage());
+                        SidelinkControlInformation *receivedSCI = check_and_cast<SidelinkControlInformation *>(sensingWindow_[translatedZ][k]->getSCIMessage());
                         UserControlInfo *sciInfo = check_and_cast<UserControlInfo *>(receivedSCI->getControlInfo());
                         priorities.push_back(receivedSCI->getPriority());
                         scis.push_back(receivedSCI);
@@ -1142,7 +1147,7 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 averageRSSI = averageRSSI / lengthInSubchannels;
 
                 if (averageRSSI > thresholdRSSI_){
-                  currentCBR_ += lengthInSubchannels;
+                    currentCBR_ += lengthInSubchannels;
                 }
 
                 // Need to delete the message now
@@ -1194,15 +1199,15 @@ std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* s
     while (it != rbMap.end() && bandNotFound )
     {
         for (jt = it->second.begin(); jt != it->second.end(); ++jt)
-       {
-           Band band = jt->first;
-           if (jt->second == 1) // this Rb is not allocated
-           {
-               startingBand = band;
-               bandNotFound= false;
-               break;
-           }
-       }
+        {
+            Band band = jt->first;
+            if (jt->second == 1) // this Rb is not allocated
+            {
+                startingBand = band;
+                bandNotFound= false;
+                break;
+            }
+        }
     }
 
     // Get RIV first as this is common
@@ -1247,7 +1252,7 @@ std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* s
 
 void LtePhyVUeMode4::updateCBR()
 {
-    double cbrValue = 0;
+    double cbrValue = 0.0;
     for (int i=0; i < cbrHistory_.size();i++)
     {
         cbrValue += cbrHistory_[i];
@@ -1258,7 +1263,7 @@ void LtePhyVUeMode4::updateCBR()
         totalSubchannels = numSubchannels_ * 99;
     }
     else {
-        totalSubchannels = numSubchannels_ * cbrIndex_;
+        totalSubchannels = numSubchannels_ * cbrHistory_.size();
     }
 
     cbrValue = cbrValue / totalSubchannels;
@@ -1322,8 +1327,8 @@ void LtePhyVUeMode4::initialiseSensingWindow()
 
         if (!adjacencyPSCCHPSSCH_)
         {
-          // This assumes the bands only every have 1 Rb (which is fine as that appears to be the case)
-          band = numSubchannels_*2;
+            // This assumes the bands only every have 1 Rb (which is fine as that appears to be the case)
+            band = numSubchannels_*2;
         }
         for (int i = 0; i < numSubchannels_; i++) {
             Subchannel *currentSubchannel = new Subchannel(subchannelSize_, subframeTime);
