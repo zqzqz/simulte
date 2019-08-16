@@ -108,10 +108,6 @@ void LtePhyVUeMode4::initialize(int stage)
         deployer_->lambdaInit(nodeId_, index);
         deployer_->channelUpdate(nodeId_, intuniform(1, binder_->phyPisaData.maxChannel2()));
 
-//        LteMacBase* mac = binder_->getMacFromMacNodeId(nodeId_);
-        allocator_ = new LteAllocationModule(mac_, D2D);
-        allocator_->initAndReset(deployer_->getNumRbUl(), deployer_->getNumBands());
-
         initialiseSensingWindow();
     }
 }
@@ -306,7 +302,7 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
 
     if (lteInfo->getFrameType() == GRANTPKT)
     {
-        // Generate CSRs or save the grant for use when generating SCI information
+        // Generate CSRs or save the grant use when generating SCI information
         LteMode4SchedulingGrant* grant = check_and_cast<LteMode4SchedulingGrant*>(msg);
         if (grant->getTotalGrantedBlocks() == 0){
             // Generate a vector of CSRs and send it to the MAC layer
@@ -1311,13 +1307,7 @@ void LtePhyVUeMode4::initialiseSensingWindow()
 {
     EV << NOW << " LtePhyVUeMode4::initialiseSensingWindow - creating subframes to be added to sensingWindow..." << endl;
 
-    Band band = 0;
 
-    if (!adjacencyPSCCHPSSCH_)
-    {
-        // This assumes the bands only every have 1 Rb (which is fine as that appears to be the case)
-        band = numSubchannels_*2;
-    }
 
     simtime_t subframeTime = NOW;
 
@@ -1328,6 +1318,13 @@ void LtePhyVUeMode4::initialiseSensingWindow()
     {
         std::vector<Subchannel*> subframe;
         subframe.reserve(numSubchannels_);
+        Band band = 0;
+
+        if (!adjacencyPSCCHPSSCH_)
+        {
+          // This assumes the bands only every have 1 Rb (which is fine as that appears to be the case)
+          band = numSubchannels_*2;
+        }
         for (int i = 0; i < numSubchannels_; i++) {
             Subchannel *currentSubchannel = new Subchannel(subchannelSize_, subframeTime);
             // Need to determine the RSRP and RSSI that corresponds to background noise
@@ -1339,8 +1336,8 @@ void LtePhyVUeMode4::initialiseSensingWindow()
             // Ensure the subchannel is allocated the correct number of RBs
             while (overallCapacity < subchannelSize_ && band < getBinder()->getNumBands()) {
                 // This acts like there are multiple RBs per band which is not allowed.
-                overallCapacity += allocator_->getAllocatedBlocks(MAIN_PLANE, MACRO, band);
                 occupiedBands.push_back(band);
+                ++overallCapacity;
                 ++band;
             }
             currentSubchannel->setOccupiedBands(occupiedBands);
@@ -1348,7 +1345,6 @@ void LtePhyVUeMode4::initialiseSensingWindow()
         }
         sensingWindow_.push_back(subframe);
         subframeTime += TTI;
-
     }
     // Send self message to trigger another subframes creation and insertion. Need one for every TTI
     cMessage* updateSubframe = new cMessage("updateSubframe");
@@ -1398,6 +1394,4 @@ void LtePhyVUeMode4::finish()
         }
     }
     sensingWindow_.clear();
-
-    delete allocator_;
 }
