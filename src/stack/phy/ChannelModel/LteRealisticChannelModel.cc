@@ -1674,7 +1674,7 @@ std::vector<double> LteRealisticChannelModel::getRSSI(LteAirFrame *frame, UserCo
         // Add interference for each band
         for (unsigned int i = 0; i < band_; i++)
         {
-            //               (      mW            +  mW  +        mW            )
+            //   (      mW            +  mW  +        mW            )
             den = extCellInterference + totN + inCellInterference[i];
             double rsrpPerReLinear = dBmToLinear(rssiVector[i]);
             double linearRSSI = 2 * (den + rsrpPerReLinear);
