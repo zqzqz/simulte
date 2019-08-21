@@ -130,11 +130,26 @@ class Subchannel
         }
         void addRsrpValue(double rsrpValue, Band band)
         {
-            rsrpValues[band] = rsrpValue;
+            auto it = rsrpValues.find(band);
+            if (it != rsrpValues.end()) {
+                if (it->second > rsrpValue){
+                    it->second = rsrpValue;
+                }
+            } else {
+                rsrpValues[band] = rsrpValue;
+            }
         }
         void addRssiValue(double rssiValue, Band band)
         {
-            rssiValues[band] = rssiValue;
+            auto it = rssiValues.find(band);
+            if (it != rssiValues.end()) {
+                if (it->second > rssiValue){
+                    it->second = rssiValue;
+                }
+            } else {
+                rssiValues[band] = rssiValue;
+            }
+
         }
         std::vector<Band> getOccupiedBands() const
         {
