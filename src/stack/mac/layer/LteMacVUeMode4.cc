@@ -868,9 +868,12 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
     mode4Grant -> setMaximumLatency(maximumLatency);
     mode4Grant -> setPossibleRRIs(validResourceReservationIntervals_);
 
-    int cbrIndex = defaultCbrIndex_;
+    int minSubchannelNumberPSSCH = minSubchannelNumberPSSCH_;
+    int maxSubchannelNumberPSSCH = maxSubchannelNumberPSSCH_;
+
     if (useCBR_)
     {
+        int cbrIndex = defaultCbrIndex_;
         std::vector<std::map<string, int>>::iterator it;
         for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
         {
@@ -880,25 +883,23 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
                 break;
             }
         }
-    }
 
-    allowedRetxNumberPSSCH_ = min(cbrPSSCHTxConfigList_.at(cbrIndex).at("allowedRetxNumberPSSCH"), allowedRetxNumberPSSCH_);
+        allowedRetxNumberPSSCH_ = min(cbrPSSCHTxConfigList_.at(cbrIndex).at("allowedRetxNumberPSSCH"), allowedRetxNumberPSSCH_);
 
-    /**
-     * Need to pick the number of subchannels for this reservation
-     */
-    int minSubchannelNumberPSSCH;
-    int maxSubchannelNumberPSSCH;
-    if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
-    {
-        // No overlap therefore I will use the cbr values (this is left to the UE, the opposite approach is also entirely valid).
-        minSubchannelNumberPSSCH = cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannel-NumberPSSCH");
-        maxSubchannelNumberPSSCH = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannel-NumberPSSCH");
-    }
-    else
-    {
-        minSubchannelNumberPSSCH = max(minSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannelNumberPSSCH"));
-        maxSubchannelNumberPSSCH = min(maxSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannelNumberPSSCH"));
+        /**
+         * Need to pick the number of subchannels for this reservation
+         */
+        if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
+        {
+            // No overlap therefore I will use the cbr values (this is left to the UE, the opposite approach is also entirely valid).
+            minSubchannelNumberPSSCH = cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannel-NumberPSSCH");
+            maxSubchannelNumberPSSCH = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannel-NumberPSSCH");
+        }
+        else
+        {
+            minSubchannelNumberPSSCH = max(minSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannelNumberPSSCH"));
+            maxSubchannelNumberPSSCH = min(maxSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannelNumberPSSCH"));
+        }
     }
     // Selecting the number of subchannel at random as there is no explanation as to the logic behind selecting the resources in the range unlike when selecting MCS.
     std::uniform_int_distribution<> distr(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH);
@@ -952,9 +953,11 @@ void LteMacVUeMode4::flushHarqBuffers()
                 int pduLength = selectedProcess->getPduLength(cw);
                 if ( pduLength > 0)
                 {
-                    int cbrIndex = defaultCbrIndex_;
+                    int minMCS = minMCSPSSCH_;
+                    int maxMCS = maxMCSPSSCH_;
                     if (useCBR_)
                     {
+                        int cbrIndex = defaultCbrIndex_;
                         std::vector<std::map<string, int>>::iterator it;
                         for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
                         {
@@ -964,21 +967,19 @@ void LteMacVUeMode4::flushHarqBuffers()
                                 break;
                             }
                         }
+                        if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
+                        {
+                            // No overlap therefore I will use the cbr values (this is left to the UE, opposite is also valid).
+                            minMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH");
+                            maxMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH");
+                        }
+                        else
+                        {
+                            minMCS = max(minMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH"));
+                            maxMCS = min(maxMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH"));
+                        }
                     }
 
-                    int minMCS;
-                    int maxMCS;
-                    if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
-                    {
-                        // No overlap therefore I will use the cbr values (this is left to the UE).
-                        minMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH");
-                        maxMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH");
-                    }
-                    else
-                    {
-                        minMCS = max(minMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH"));
-                        maxMCS = min(maxMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH"));
-                    }
                     bool foundValidMCS = false;
                     int totalGrantedBlocks = mode4Grant->getTotalGrantedBlocks();
 
