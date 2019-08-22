@@ -48,9 +48,6 @@ void LtePhyVUeMode4::initialize(int stage)
         subchannelSize_ = par("subchannelSize");
         d2dDecodingTimer_ = NULL;
         transmitting_ = false;
-        cbrFilled_ = false;
-        cbrIndex_= -1; // Start at -1 simply to ensure that on first call to create subframe we start at index 0
-        cbrHistory_.reserve(99);
 
         int thresholdRSSI = par("thresholdRSSI");
 
@@ -220,35 +217,10 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
         delete msg;
         d2dDecodingTimer_ = NULL;
 
-        int busySubchannels = 0;
-
-        std::vector<Subchannel *>::iterator kt;
-        std::vector <Subchannel *> currentSubframe = sensingWindow_[sensingWindowFront_];
-        for (kt = currentSubframe.begin(); kt != currentSubframe.end(); kt++) {
-            if ((*kt)->getAverageRSSI() > thresholdRSSI_){
-                busySubchannels ++;
-            }
-        }
-        cbrHistory_[cbrIndex_] = busySubchannels;
         updateCBR();
     }
     else if (msg->isName("updateSubframe"))
     {
-
-        if (!transmitting_) {
-            cbrIndex_++;
-             if (!cbrFilled_ && cbrHistory_.size() != 99) {
-                cbrHistory_.push_back(0);
-            } else {
-                cbrFilled_ = true;
-            }
-
-            if (cbrIndex_ == 99) {
-                cbrIndex_ = 0;
-            }
-            cbrHistory_[cbrIndex_] = 0;
-        }
-
         transmitting_ = false;
         updateSubframe();
         delete msg;
@@ -510,7 +482,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
     std::unordered_map<int, std::set<int>> possibleCSRs;
     for (int i = minSelectionIndex; i < maxSelectionIndex; i++) {
         std::set<int> subframe;
-        for (int j = 0; j < (numSubchannels_ - grantLength); j += grantLength) {
+        for (int j = 0; j <= (numSubchannels_ - grantLength); j += grantLength) {
             subframe.insert(j);
         }
         possibleCSRs[i] = subframe;
@@ -628,27 +600,31 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                 int k = j;
                 while (k < j + grantLength) {
                     if (sensingWindow_[translatedZ][k]->getReserved()) {
-                        subchannelReserved = true;
-
                         // Get the SCI and all the necessary information
-                        SidelinkControlInformation *receivedSCI = check_and_cast<SidelinkControlInformation *>(sensingWindow_[translatedZ][k]->getSCIMessage());
-                        UserControlInfo *sciInfo = check_and_cast<UserControlInfo *>(receivedSCI->getControlInfo());
-                        priorities.push_back(receivedSCI->getPriority());
-                        receivedScis.push_back(receivedSCI);
+                        SidelinkControlInformation* receivedSCI = check_and_cast<SidelinkControlInformation*>(sensingWindow_[translatedZ][k]->getSCIMessage());
+                        UserControlInfo* sciInfo = check_and_cast<UserControlInfo*>(receivedSCI->getControlInfo());
 
                         std::tuple<int, int> indexAndLength = decodeRivValue(receivedSCI, sciInfo);
                         int lengthInSubchannels = std::get<1>(indexAndLength);
 
-                        int totalRSRP = 0;
-                        for (int l = k; l < k + lengthInSubchannels; l++) {
-                            totalRSRP += sensingWindow_[translatedZ][l]->getAverageRSRP();
+                        // If RRI = 0 then we know the next resource is not reserved.
+                        if (receivedSCI->getResourceReservationInterval() > 0) {
+                            subchannelReserved = true;
+
+                            priorities.push_back(receivedSCI->getPriority());
+                            receivedScis.push_back(receivedSCI);
+                            int totalRSRP = 0;
+                            for (int l = k; l < k + lengthInSubchannels; l++) {
+                                totalRSRP += sensingWindow_[translatedZ][l]->getAverageRSRP();
+                            }
+                            averageRSRPs.push_back(totalRSRP / lengthInSubchannels);
                         }
-                        averageRSRPs.push_back(totalRSRP / lengthInSubchannels);
 
                         k += lengthInSubchannels;
                         if (k > j + grantLength) {
                             overReachingGrant = true;
                         }
+
                     } else {
                         k++;
                     }
@@ -1058,17 +1034,20 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
             sciReceived_ += 1;
 
             if (result) {
-                SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation *>(pkt);
+                SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation*>(pkt);
                 std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
                 int subchannelIndex = std::get<0>(indexAndLength);
                 int lengthInSubchannels = std::get<1>(indexAndLength);
 
                 std::vector<Subchannel *>::iterator kt;
-                std::vector < Subchannel * > currentSubframe = sensingWindow_.back();
+                std::vector<Subchannel *> currentSubframe = sensingWindow_[sensingWindowFront_];
                 for (kt = currentSubframe.begin() + subchannelIndex;
                      kt != currentSubframe.begin() + subchannelIndex + lengthInSubchannels; kt++) {
                     // Record the SCI in the subchannel.
-                    (*kt)->setSCI(sci->dup());
+                    SidelinkControlInformation* sciForSensingWindow = sci->dup();
+                    sciForSensingWindow->setControlInfo(lteInfo->dup());
+                    (*kt)->setSCI(sciForSensingWindow);
+                    (*kt)->setReserved(true);
                 }
                 lteInfo->setDeciderResult(true);
                 pkt->setControlInfo(lteInfo);
@@ -1108,13 +1087,13 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
             UserControlInfo *sciInfo;
             std::vector<cPacket *>::iterator it;
             for (it = scis_.begin(); it != scis_.end(); it++) {
-                sciInfo = check_and_cast<UserControlInfo *>((*it)->removeControlInfo());
+                sciInfo = check_and_cast<UserControlInfo*>((*it)->removeControlInfo());
                 // if the SCI and TB have same source then we have the right SCI
                 if (sciInfo->getSourceId() == lteInfo->getSourceId()) {
                     //Successfully received the SCI
                     foundCorrespondingSci = true;
 
-                    correspondingSCI = check_and_cast<SidelinkControlInformation *>(*it);
+                    correspondingSCI = check_and_cast<SidelinkControlInformation*>(*it);
 
                     if (sciInfo->getDeciderResult()){
                         //RELAY and NORMAL
@@ -1260,17 +1239,31 @@ std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* s
 void LtePhyVUeMode4::updateCBR()
 {
     double cbrValue = 0.0;
-    for (int i=0; i < cbrHistory_.size();i++)
-    {
-        cbrValue += cbrHistory_[i];
+
+    int cbrIndex = sensingWindowFront_ - 1;
+    int cbrCount = 0;
+    int totalSubchannels = 0;
+
+    if (sensingWindow_.size() > 99){
+        cbrCount = 99;
+    }else{
+        cbrCount = sensingWindow_.size();
     }
 
-    int totalSubchannels = 0;
-    if (cbrFilled_){
-        totalSubchannels = numSubchannels_ * 99;
-    }
-    else {
-        totalSubchannels = numSubchannels_ * cbrHistory_.size();
+    while (cbrCount != 0){
+        if (cbrIndex == -1){
+            cbrIndex = sensingWindow_.size() - 1;
+        }
+        std::vector<Subchannel *>::iterator it;
+        std::vector <Subchannel *> currentSubframe = sensingWindow_[cbrIndex];
+        for (it = currentSubframe.begin(); it != currentSubframe.end(); it++) {
+            totalSubchannels ++;
+            if ((*it)->getAverageRSSI() > thresholdRSSI_) {
+                cbrValue ++;
+            }
+        }
+        cbrIndex --;
+        cbrCount --;
     }
 
     cbrValue = cbrValue / totalSubchannels;

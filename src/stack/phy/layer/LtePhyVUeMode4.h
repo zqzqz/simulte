@@ -32,7 +32,6 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     int thresholdRSSI_;
 
     bool transmitting_;
-    bool cbrFilled_;
 
     std::vector<int> ThresPSSCHRSRPvector_;
 
@@ -49,7 +48,6 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     std::vector<std::vector<double>> sciRssiVectors_;
     std::vector<LteAirFrame*> sciFrames_;
     std::vector<cPacket*> scis_;
-    std::vector<int> cbrHistory_;
 
     simsignal_t cbr;
     simsignal_t sciReceived;
@@ -78,8 +76,6 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     int tbAndSCINotReceived_;
     int sciFailedHalfDuplex_;
     int tbFailedHalfDuplex_;
-
-    int cbrIndex_;
 
     RbMap availableRBs_;
 
