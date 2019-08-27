@@ -81,6 +81,7 @@ void LteMacVUeMode4::initialize(int stage)
         grantBreakMissedTrans = registerSignal("grantBreakMissedTrans");
         missedTransmission = registerSignal("missedTransmission");
         selectedMCS = registerSignal("selectedMCS");
+        selectedSubchannelIndex = registerSignal("selectedSubchannelIndex");
         selectedNumSubchannels = registerSignal("selectedNumSubchannels");
         maximumCapacity = registerSignal("maximumCapacity");
         grantRequests = registerSignal("grantRequests");
@@ -636,13 +637,13 @@ void LteMacVUeMode4::handleSelfMessage()
         {
             return;
         }
-        else if (expirationCounter_ != 0)
+        else if (expirationCounter_ > 0)
         {
             // resetting grant period
             periodCounter_=mode4Grant->getPeriod();
             // this is periodic grant TTI - continue with frame sending
         }
-        else if (expirationCounter_ == 0)
+        else if (expirationCounter_ <= 0)
         {
             emit(grantBreak, 1);
             // Grant has expired, only generate new grant on receiving next message to be sent.
@@ -785,7 +786,7 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
      * 4. return
      */
     SpsCandidateResources* candidatesPacket = check_and_cast<SpsCandidateResources *>(pkt);
-    std::vector<std::tuple<int, int, int>> CSRs = candidatesPacket->getCSRs();
+    std::vector<std::tuple<double, int, int>> CSRs = candidatesPacket->getCSRs();
 
     LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
 
@@ -793,12 +794,16 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
     std::uniform_int_distribution<int> distr(0, CSRs.size()-1);
     int index = distr(generator_);
 
-    std::tuple<int, int, int> selectedCR = CSRs[index];
+    std::tuple<double, int, int> selectedCR = CSRs[index];
     // Gives us the time at which we will send the subframe.
-    simtime_t selectedStartTime = NOW + TTI * std::get<1>(selectedCR);
+    simtime_t selectedStartTime = NOW + (TTI * std::get<1>(selectedCR));
 
     int initiailSubchannel = std::get<2>(selectedCR);
     int finalSubchannel = initiailSubchannel + mode4Grant->getNumSubchannels(); // Is this actually one additional subchannel?
+
+    // Emit statistic about the use of resources, i.e. the initial subchannel and it's length.
+    emit(selectedSubchannelIndex, initiailSubchannel);
+    emit(selectedNumSubchannels, mode4Grant->getNumSubchannels());
 
     // Determine the RBs on which we will send our message
     RbMap grantedBlocks;
@@ -819,7 +824,7 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
     mode4Grant->setTotalGrantedBlocks(totalGrantedBlocks);
     mode4Grant->setDirection(D2D_MULTI);
     mode4Grant->setCodewords(1);
-
+    mode4Grant->setStartingSubchannel(initiailSubchannel);
     mode4Grant->setMcs(maxMCSPSSCH_);
 
     LteMod mod = _QPSK;
@@ -840,8 +845,8 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
     // Simply flips the codeword.
     currentCw_ = MAX_CODEWORDS - currentCw_;
 
-    periodCounter_=mode4Grant->getPeriod();
-    expirationCounter_=mode4Grant->getResourceReselectionCounter() * periodCounter_;
+    periodCounter_= mode4Grant->getPeriod();
+    expirationCounter_= (mode4Grant->getResourceReselectionCounter() * periodCounter_) + 1;
 
     // TODO: Setup for HARQ retransmission, if it can't be satisfied then selection must occur again.
 
@@ -906,8 +911,6 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
     int numSubchannels = distr(generator_);
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
-
-    emit(selectedNumSubchannels, numSubchannels);
 
     // Based on restrictResourceReservation interval But will be between 1 and 15
     // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
