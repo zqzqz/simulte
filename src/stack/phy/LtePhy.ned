@@ -130,6 +130,11 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 		@statistic[txRxDistanceSCI](title="Distance between transmitter and receiver"; source="txRxDistanceSCI"; record=mean,vector);
 		@signal[txRxDistanceTB];
         @statistic[txRxDistanceTB](title="Distance between transmitter and receiver"; source="txRxDistanceTB"; record=mean,vector);
+
+        @signal[subchannelReceived];
+        @statistic[subchannelReceived](title="Initial Subchannel on which packet is received"; source="subchannelReceived"; record=mean,vector);
+        @signal[subchannelsUsed];
+        @statistic[subchannelsUsed](title="Number of Subchannels used for the received packet"; source="subchannelsUsed"; record=mean, vector);
 }
 
 // 

@@ -82,6 +82,8 @@ void LtePhyVUeMode4::initialize(int stage)
         txRxDistanceSCI        = registerSignal("txRxDistanceSCI");
         sciFailedHalfDuplex    = registerSignal("sciFailedHalfDuplex");
         tbFailedHalfDuplex     = registerSignal("tbFailedHalfDuplex");
+        subchannelReceived     = registerSignal("subchannelReceived");
+        subchannelsUsed        = registerSignal("subchannelsUsed");
 
         sciReceived_ = 0;
         sciDecoded_ = 0;
@@ -93,6 +95,8 @@ void LtePhyVUeMode4::initialize(int stage)
         tbFailedButSCIReceived_ = 0;
         tbAndSCINotReceived_ = 0;
         tbFailedHalfDuplex_ = 0;
+        subchannelReceived_ = 0;
+        subchannelsUsed_ = 0;
 
         sensingWindowFront_ = 0; // Will ensure when we first update the sensing window we don't skip over the first element
     }
@@ -153,11 +157,15 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
             emit(sciDecoded, sciDecoded_);
             emit(sciNotDecoded, sciNotDecoded_);
             emit(sciFailedHalfDuplex, sciFailedHalfDuplex_);
+            emit(subchannelReceived, subchannelReceived_);
+            emit(subchannelsUsed, subchannelsUsed_);
 
             sciReceived_ = 0;
             sciDecoded_ = 0;
             sciNotDecoded_ = 0;
             sciFailedHalfDuplex_ = 0;
+            subchannelReceived_ = 0;
+            subchannelsUsed_ = 0;
         }
         int countTbs = 0;
         if (tbFrames_.empty()){
@@ -1049,6 +1057,9 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 int subchannelIndex = std::get<0>(indexAndLength);
                 int lengthInSubchannels = std::get<1>(indexAndLength);
 
+                subchannelReceived_ = subchannelIndex;
+                subchannelsUsed_ = lengthInSubchannels;
+
                 std::vector <Subchannel *> currentSubframe = sensingWindow_[sensingWindowFront_];
                 for (int i = subchannelIndex; i < subchannelIndex + lengthInSubchannels; i++) {
                     Subchannel* currentSubchannel = currentSubframe[i];
@@ -1070,7 +1081,6 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 scis_.push_back(pkt);
                 sciNotDecoded_ += 1;
             }
-
         }
         else
         {

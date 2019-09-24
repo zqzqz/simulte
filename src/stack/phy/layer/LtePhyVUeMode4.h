@@ -65,6 +65,8 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     simsignal_t threshold;
     simsignal_t txRxDistanceSCI;
     simsignal_t txRxDistanceTB;
+    simsignal_t subchannelReceived;
+    simsignal_t subchannelsUsed;
 
     int sciReceived_;
     int sciDecoded_;
@@ -76,6 +78,8 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     int tbAndSCINotReceived_;
     int sciFailedHalfDuplex_;
     int tbFailedHalfDuplex_;
+    int subchannelReceived_;
+    int subchannelsUsed_;
 
     RbMap availableRBs_;
 
