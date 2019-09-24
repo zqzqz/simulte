@@ -216,13 +216,12 @@ void LtePhyVUeMode4::handleSelfMessage(cMessage *msg)
         scis_.clear();
         delete msg;
         d2dDecodingTimer_ = NULL;
-
-        updateCBR();
     }
     else if (msg->isName("updateSubframe"))
     {
         transmitting_ = false;
         updateSubframe();
+        updateCBR();
         delete msg;
     }
     else
@@ -1266,13 +1265,15 @@ void LtePhyVUeMode4::updateCBR()
         std::vector<Subchannel *>::iterator it;
         std::vector <Subchannel *> currentSubframe = sensingWindow_[cbrIndex];
         for (it = currentSubframe.begin(); it != currentSubframe.end(); it++) {
-            totalSubchannels ++;
-            if ((*it)->getAverageRSSI() > thresholdRSSI_) {
-                cbrValue ++;
+            cbrCount --;
+            if ((*it)->getSensed()) {
+                totalSubchannels++;
+                if ((*it)->getAverageRSSI() > thresholdRSSI_) {
+                    cbrValue++;
+                }
             }
         }
         cbrIndex --;
-        cbrCount --;
     }
 
     cbrValue = cbrValue / totalSubchannels;
