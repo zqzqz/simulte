@@ -71,6 +71,8 @@ void LteMacVUeMode4::initialize(int stage)
         currentCw_=0;
         missedTransmissions_=0;
 
+        expiredGrant_ = false;
+
         // Register the necessary signals for this simulation
 
         generatedGrants = registerSignal("generatedGrants");
@@ -646,10 +648,7 @@ void LteMacVUeMode4::handleSelfMessage()
         else if (expirationCounter_ <= 0)
         {
             emit(grantBreak, 1);
-            // Grant has expired, only generate new grant on receiving next message to be sent.
-            delete schedulingGrant_;
-            schedulingGrant_ = NULL;
-            mode4Grant = NULL;
+            expiredGrant_ = true;
         }
     }
     bool requestSdu = false;
@@ -1103,6 +1102,12 @@ void LteMacVUeMode4::flushHarqBuffers()
             // Send Grant to PHY layer for sci creation
             sendLowerPackets(phyGrant);
         }
+    }
+    if (expiredGrant_) {
+        // Grant has expired, only generate new grant on receiving next message to be sent.
+        delete schedulingGrant_;
+        schedulingGrant_ = NULL;
+        expiredGrant_ = false;
     }
 }
 

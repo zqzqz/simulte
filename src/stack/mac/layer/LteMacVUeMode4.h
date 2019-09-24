@@ -81,6 +81,8 @@ protected:
    double mcsScaleUl_;
    double mcsScaleD2D_;
 
+   bool expiredGrant_;
+
    // if true, use the preconfigured TX params for transmission, else use that signaled by the eNB
    bool usePreconfiguredTxParams_;
    UserTxParams* preconfiguredTxParams_;
