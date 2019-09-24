@@ -857,7 +857,15 @@ std::vector<std::tuple<double, int, int>> LtePhyVUeMode4::selectBestRSSIs(std::u
             }
         }
     }
-    sort(orderedCSRs.begin(), orderedCSRs.end());
+
+    // Shuffle ensures that the subframes and subchannels appear in a random order, making the selections more balanced
+    // throughout the selection window.
+    std::random_shuffle (orderedCSRs.begin(), orderedCSRs.end());
+
+    std::sort(begin(orderedCSRs), end(orderedCSRs), [](const std::tuple<double, int, int> &t1, const std::tuple<double, int, int> &t2) {
+        return get<0>(t1) < get<0>(t2); // or use a custom compare function
+    });
+
     int minSize = std::round(totalPossibleCSRs * .2);
     orderedCSRs.resize(minSize);
 
