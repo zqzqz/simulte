@@ -392,8 +392,8 @@ simple LteMacVUeMode4 extends LteMacNonIPBase
 		// Packet size on break 
 		// Maximum capacity on grant break
 
-		@signal[generatedGrants];
-		@statistic[generatedGrants](title="Number of generated Grants"; source="generatedGrants"; record=sum,vector);
+		@signal[grantStartTime];
+		@statistic[grantStartTime](title="Grant StartTime"; source="grantStartTime"; record=sum,vector);
 		@signal[grantBreak];
         @statistic[grantBreak](title="Total Number of Grant breaks"; source="grantBreak"; record=sum,vector);
         @signal[grantBreakTiming];
@@ -416,6 +416,9 @@ simple LteMacVUeMode4 extends LteMacNonIPBase
         @statistic[maximumCapacity](title="Maximum capacity of grant"; source="maximumCapacity"; record=mean,vector);
         @signal[grantRequests];
         @statistic[grantRequests](title="Total number of requested grants"; source="grantRequests"; record=sum, vector);
+
+        @signal[macNodeID];
+        @statistic[macNodeID](title="Reports Mac NodeID to allow for trans to nodeID"; source="macNodeID"; record=vector);
 }
 
 //

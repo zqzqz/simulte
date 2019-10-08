@@ -67,6 +67,9 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     simsignal_t txRxDistanceTB;
     simsignal_t subchannelReceived;
     simsignal_t subchannelsUsed;
+    simsignal_t senderID;
+    simsignal_t subchannelSent;
+    simsignal_t subchannelsUsedToSend;
 
     int sciReceived_;
     int sciDecoded_;

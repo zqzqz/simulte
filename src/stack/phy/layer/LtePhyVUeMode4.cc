@@ -84,6 +84,9 @@ void LtePhyVUeMode4::initialize(int stage)
         tbFailedHalfDuplex     = registerSignal("tbFailedHalfDuplex");
         subchannelReceived     = registerSignal("subchannelReceived");
         subchannelsUsed        = registerSignal("subchannelsUsed");
+        senderID               = registerSignal("senderID");
+        subchannelSent         = registerSignal("subchannelSent");
+        subchannelsUsedToSend  = registerSignal("subchannelsUsedToSend");
 
         sciReceived_ = 0;
         sciDecoded_ = 0;
@@ -107,6 +110,8 @@ void LtePhyVUeMode4::initialize(int stage)
         int index = intuniform(0, binder_->phyPisaData.maxChannel() - 1);
         deployer_->lambdaInit(nodeId_, index);
         deployer_->channelUpdate(nodeId_, intuniform(1, binder_->phyPisaData.maxChannel2()));
+
+        nodeId_ = getAncestorPar("macNodeId");
 
         initialiseSensingWindow();
     }
@@ -262,6 +267,13 @@ void LtePhyVUeMode4::handleAirFrame(cMessage* msg)
     // HACK: if this is a multicast connection, change the destId of the airframe so that upper layers can handle it
     // All packets in mode 4 are multicast
     lteInfo->setDestId(nodeId_);
+
+    if (lteInfo->getFrameType() == SCIPKT){
+        cPacket* pkt = frame->decapsulate();
+        SidelinkControlInformation* receivedSCI = check_and_cast<SidelinkControlInformation*>(pkt);
+        std::tuple<int, int> indexAndLength = decodeRivValue(receivedSCI, lteInfo);
+        frame->encapsulate(pkt);
+    }
 
     // send H-ARQ feedback up
     if (lteInfo->getFrameType() == HARQPKT || lteInfo->getFrameType() == GRANTPKT || lteInfo->getFrameType() == RACPKT || lteInfo->getFrameType() == D2DMODESWITCHPKT)
@@ -446,6 +458,8 @@ RbMap LtePhyVUeMode4::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
     LteAirFrame* sciFrame = prepareAirFrame(SCI, SCIInfo);
 
     emit(sciSent, 1);
+    emit(subchannelSent, sciGrant_->getStartingSubchannel());
+    emit(subchannelsUsedToSend, sciGrant_->getNumSubchannels());
     sendBroadcast(sciFrame);
 
     delete sciGrant_;
@@ -516,7 +530,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
 
         // Check if frame is sensed or not.
 
-        int translatedZ = translateIndex(z);
+        int translatedZ = translateIndex((10 * pStep_) - z);
 
         if (!sensingWindow_[translatedZ][0]->getSensed()) {
             /**
@@ -553,7 +567,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                 for (int q = 1; q <= Q; q++) {
 
                     for (int j = 1; j < cResel; j++) {
-                        int disallowedSubframe = (z + pStep_ * (*k) * q) - (j * pRsvpTxPrime);
+                        int disallowedSubframe = (z + (j * pRsvpTxPrime)) - (pStep_ * q * (*k));
                         // Only mark as disallowed if it corresponds with a frame in the selection window
                         if (disallowedSubframe >= minSelectionIndex && disallowedSubframe <= maxSelectionIndex) {
                             notSensedSubframes.push_back(disallowedSubframe);
@@ -808,10 +822,10 @@ std::vector<std::tuple<double, int, int>> LtePhyVUeMode4::selectBestRSSIs(std::u
     for (it=possibleCSRs.begin(); it!=possibleCSRs.end(); it++)
     {
         int subframe = it->first;
-        int sensingSubframeIndex = subframe;
         std::set<int>::iterator jt;
         for (jt=it->second.begin(); jt!=it->second.end(); jt++)
         {
+            int sensingSubframeIndex = subframe;
             int initialSubchannelIndex = *jt;
             int finalSubchannelIndex = *jt + grantLength;
 
@@ -824,7 +838,7 @@ std::vector<std::tuple<double, int, int>> LtePhyVUeMode4::selectBestRSSIs(std::u
             int numSubchannels = 0;
             while (sensingSubframeIndex > 0)
             {
-                int translatedSubframeIndex = translateIndex(sensingSubframeIndex);
+                int translatedSubframeIndex = translateIndex((10 * pStep_) - sensingSubframeIndex);
                 for (int subchannelCounter = initialSubchannelIndex; subchannelCounter < finalSubchannelIndex; subchannelCounter++)
                 {
                     if (sensingWindow_[translatedSubframeIndex][subchannelCounter]->getSensed())
@@ -1059,14 +1073,16 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
 
             sciReceived_ += 1;
 
-            if (result) {
-                SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation*>(pkt);
-                std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
-                int subchannelIndex = std::get<0>(indexAndLength);
-                int lengthInSubchannels = std::get<1>(indexAndLength);
+            SidelinkControlInformation *sci = check_and_cast<SidelinkControlInformation*>(pkt);
+            std::tuple<int, int> indexAndLength = decodeRivValue(sci, lteInfo);
+            int subchannelIndex = std::get<0>(indexAndLength);
+            int lengthInSubchannels = std::get<1>(indexAndLength);
 
-                subchannelReceived_ = subchannelIndex;
-                subchannelsUsed_ = lengthInSubchannels;
+            subchannelReceived_ = subchannelIndex;
+            subchannelsUsed_ = lengthInSubchannels;
+            emit(senderID, lteInfo->getSourceId());
+
+            if (result) {
 
                 std::vector <Subchannel *> currentSubframe = sensingWindow_[sensingWindowFront_];
                 for (int i = subchannelIndex; i < subchannelIndex + lengthInSubchannels; i++) {
@@ -1272,7 +1288,7 @@ void LtePhyVUeMode4::updateCBR()
 
     if (sensingWindow_.size() > 99){
         cbrCount = 99;
-    }else{
+    } else{
         cbrCount = sensingWindow_.size();
     }
 
@@ -1383,15 +1399,14 @@ void LtePhyVUeMode4::initialiseSensingWindow()
     scheduleAt(NOW + TTI, updateSubframe);
 }
 
-int LtePhyVUeMode4::translateIndex(int index) {
-    int transIndex;
-    if (index > sensingWindowFront_) {
-        transIndex = ((10*pStep_) - index) + sensingWindowFront_;
+int LtePhyVUeMode4::translateIndex(int fallBack) {
+    if (fallBack > sensingWindowFront_){
+        int max = 10 * pStep_;
+        int fromMax = fallBack - sensingWindowFront_;
+        return max - fromMax;
+    } else{
+        return sensingWindowFront_ - fallBack;
     }
-    else{
-        transIndex = sensingWindowFront_ - index;
-    }
-    return transIndex;
 }
 
 void LtePhyVUeMode4::finish()

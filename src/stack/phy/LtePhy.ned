@@ -104,10 +104,16 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 		@statistic[sciDecoded](title="Number of sci successfully decoded"; source="sciDecoded"; record=sum,vector);
 		@signal[sciNotDecoded];
         @statistic[sciNotDecoded](title="Number of sci successfully decoded"; source="sciNotDecoded"; record=sum,vector);
+
 		@signal[sciSent];
 		@statistic[sciSent](title="Number of sci sent"; source="sciSent"; record=sum,vector);
 		@signal[tbSent];
 		@statistic[tbSent](title="Number of tb sent"; source="tbSent"; record=sum,vector);
+		@signal[subchannelSent];
+		@statistic[subchannelSent](title="starting Subchannel used for sent message"; source="subchannelSent"; record=sum,vector);
+		@signal[subchannelsUsedToSend];
+		@statistic[subchannelsUsedToSend](title="Number of subchannels used for message"; source="subchannelsUsedToSend"; record=sum,vector);
+
 		@signal[tbReceived];
 		@statistic[tbReceived](title="Number of tb received"; source="tbReceived"; record=sum,vector);
 		@signal[tbDecoded];
@@ -120,6 +126,9 @@ simple LtePhyVUeMode4 extends LtePhyUeD2D {
 		@statistic[tbAndSCINotReceived](title="Number of failed TBs with a failed SCI"; source="tbAndSCINotReceived"; record=sum,vector);
 		@signal[threshold];
 		@statistic[threshold](title="Increase in RSRP needed to find csr"; source="threshold"; record=mean,vector);
+
+		@signal[senderID];
+		@statistic[senderID](title="ID of node who sent message"; source="senderID"; record=vector);
 
         @signal[sciFailedHalfDuplex];
         @statistic[sciFailedHalfDuplex](title="Number of failed TBs with a decoded SCI"; source="sciFailedHalfDuplex"; record=sum,vector);

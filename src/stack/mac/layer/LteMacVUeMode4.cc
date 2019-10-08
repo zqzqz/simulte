@@ -34,7 +34,6 @@
 #include "inet/common/ModuleAccess.h"
 #include "inet/networklayer/ipv4/IPv4InterfaceData.h"
 #include "stack/mac/amc/LteMcs.h"
-#include <random>
 #include <map>
 
 Define_Module(LteMacVUeMode4);
@@ -55,7 +54,6 @@ void LteMacVUeMode4::initialize(int stage)
 
     if (stage == inet::INITSTAGE_LOCAL)
     {
-        generator_.seed(rand_device_());
         parseUeTxConfig(par("txConfig").xmlValue());
         parseCbrTxConfig(par("txConfig").xmlValue());
         parseRriConfig(par("txConfig").xmlValue());
@@ -75,18 +73,19 @@ void LteMacVUeMode4::initialize(int stage)
 
         // Register the necessary signals for this simulation
 
-        generatedGrants = registerSignal("generatedGrants");
-        grantBreak = registerSignal("grantBreak");
-        grantBreakTiming = registerSignal("grantBreakTiming");
-        grantBreakSize = registerSignal("grantBreakSize");
-        droppedTimeout = registerSignal("droppedTimeout");
-        grantBreakMissedTrans = registerSignal("grantBreakMissedTrans");
-        missedTransmission = registerSignal("missedTransmission");
-        selectedMCS = registerSignal("selectedMCS");
+        grantStartTime          = registerSignal("grantStartTime");
+        grantBreak              = registerSignal("grantBreak");
+        grantBreakTiming        = registerSignal("grantBreakTiming");
+        grantBreakSize          = registerSignal("grantBreakSize");
+        droppedTimeout          = registerSignal("droppedTimeout");
+        grantBreakMissedTrans   = registerSignal("grantBreakMissedTrans");
+        missedTransmission      = registerSignal("missedTransmission");
+        selectedMCS             = registerSignal("selectedMCS");
         selectedSubchannelIndex = registerSignal("selectedSubchannelIndex");
-        selectedNumSubchannels = registerSignal("selectedNumSubchannels");
-        maximumCapacity = registerSignal("maximumCapacity");
-        grantRequests = registerSignal("grantRequests");
+        selectedNumSubchannels  = registerSignal("selectedNumSubchannels");
+        maximumCapacity         = registerSignal("maximumCapacity");
+        grantRequests           = registerSignal("grantRequests");
+        macNodeID               = registerSignal("macNodeID");
     }
     else if (stage == inet::INITSTAGE_NETWORK_LAYER_3)
     {
@@ -102,6 +101,8 @@ void LteMacVUeMode4::initialize(int stage)
 
         // LTE UE Section
         nodeId_ = getAncestorPar("macNodeId");
+
+        emit(macNodeID, nodeId_);
 
         /* Insert UeInfo in the Binder */
         ueInfo_ = new UeInfo();
@@ -620,19 +621,13 @@ void LteMacVUeMode4::handleSelfMessage()
         if(--expirationCounter_ == mode4Grant->getPeriod())
         {
             // Gotten to the point of the final tranmission must determine if we reselect or not.
-            std::uniform_real_distribution<float> floatdist(0, 1);
-            float randomReReserve = floatdist(generator_);
+            double randomReReserve = dblrand(1);
             if (randomReReserve > probResourceKeep_)
             {
-                std::uniform_int_distribution<int> range(5, 15);
-                int expiration = range(generator_);
+                int expiration = intuniform(5, 15, 3);
                 mode4Grant -> setResourceReselectionCounter(expiration);
                 mode4Grant -> setFirstTransmission(true);
                 expirationCounter_ = expiration * mode4Grant->getPeriod();
-            }
-            else
-            {
-                mode4Grant->setExpiration(0);
             }
         }
         if (--periodCounter_>0 && !mode4Grant->getFirstTransmission())
@@ -648,6 +643,7 @@ void LteMacVUeMode4::handleSelfMessage()
         else if (expirationCounter_ <= 0)
         {
             emit(grantBreak, 1);
+            mode4Grant->setExpiration(0);
             expiredGrant_ = true;
         }
     }
@@ -790,12 +786,13 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
     LteMode4SchedulingGrant* mode4Grant = check_and_cast<LteMode4SchedulingGrant*>(schedulingGrant_);
 
     // Select random element from vector
-    std::uniform_int_distribution<int> distr(0, CSRs.size()-1);
-    int index = distr(generator_);
+    int index = intuniform(0, CSRs.size()-1, 1);
 
     std::tuple<double, int, int> selectedCR = CSRs[index];
     // Gives us the time at which we will send the subframe.
-    simtime_t selectedStartTime = NOW + (TTI * std::get<1>(selectedCR));
+    simtime_t selectedStartTime = (simTime() + SimTime(std::get<1>(selectedCR), SIMTIME_MS)).trunc(SIMTIME_MS);
+
+    emit(grantStartTime, selectedStartTime);
 
     int initiailSubchannel = std::get<2>(selectedCR);
     int finalSubchannel = initiailSubchannel + mode4Grant->getNumSubchannels(); // Is this actually one additional subchannel?
@@ -906,17 +903,16 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
         }
     }
     // Selecting the number of subchannel at random as there is no explanation as to the logic behind selecting the resources in the range unlike when selecting MCS.
-    std::uniform_int_distribution<> distr(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH);
-    int numSubchannels = distr(generator_);
+    int numSubchannels = intuniform(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH, 2);
 
     mode4Grant -> setNumberSubchannels(numSubchannels);
 
     // Based on restrictResourceReservation interval But will be between 1 and 15
     // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
-    std::uniform_int_distribution<int> range(5, 15);
-    int resourceReselectionCounter = range(generator_);
+    int resourceReselectionCounter = intuniform(5, 15, 3);
 
     mode4Grant -> setResourceReselectionCounter(resourceReselectionCounter);
+    mode4Grant -> setExpiration(resourceReselectionCounter * resourceReservationInterval_);
 
     LteMode4SchedulingGrant* phyGrant = mode4Grant->dup();
 
@@ -1091,6 +1087,7 @@ void LteMacVUeMode4::flushHarqBuffers()
             if (missedTransmissions_ >= reselectAfter_)
             {
                 phyGrant->setPeriod(0);
+                phyGrant->setExpiration(0);
 
                 delete schedulingGrant_;
                 schedulingGrant_ = NULL;
