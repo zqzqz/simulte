@@ -790,7 +790,7 @@ void LteMacVUeMode4::macHandleSps(cPacket* pkt)
 
     std::tuple<double, int, int> selectedCR = CSRs[index];
     // Gives us the time at which we will send the subframe.
-    simtime_t selectedStartTime = (simTime() + SimTime(std::get<1>(selectedCR), SIMTIME_MS)).trunc(SIMTIME_MS);
+    simtime_t selectedStartTime = (simTime() + SimTime(std::get<1>(selectedCR), SIMTIME_MS) - TTI).trunc(SIMTIME_MS);
 
     emit(grantStartTime, selectedStartTime);
 
@@ -1019,6 +1019,9 @@ void LteMacVUeMode4::flushHarqBuffers()
                             uinfo->setTxNumber(1);
                             uinfo->setDirection(D2D_MULTI);
                             uinfo->setUserTxParams(preconfiguredTxParams_->dup());
+                            uinfo->setSubchannelNumber(mode4Grant->getStartingSubchannel());
+                            uinfo->setSubchannelLength(mode4Grant->getNumSubchannels());
+                            uinfo->setGrantStartTime(mode4Grant->getStartTime());
 
                             phyGrant->setControlInfo(uinfo);
 

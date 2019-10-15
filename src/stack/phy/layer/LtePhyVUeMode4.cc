@@ -268,13 +268,6 @@ void LtePhyVUeMode4::handleAirFrame(cMessage* msg)
     // All packets in mode 4 are multicast
     lteInfo->setDestId(nodeId_);
 
-    if (lteInfo->getFrameType() == SCIPKT){
-        cPacket* pkt = frame->decapsulate();
-        SidelinkControlInformation* receivedSCI = check_and_cast<SidelinkControlInformation*>(pkt);
-        std::tuple<int, int> indexAndLength = decodeRivValue(receivedSCI, lteInfo);
-        frame->encapsulate(pkt);
-    }
-
     // send H-ARQ feedback up
     if (lteInfo->getFrameType() == HARQPKT || lteInfo->getFrameType() == GRANTPKT || lteInfo->getFrameType() == RACPKT || lteInfo->getFrameType() == D2DMODESWITCHPKT)
     {
@@ -445,6 +438,7 @@ RbMap LtePhyVUeMode4::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
 
     SCIInfo->setFrameType(SCIPKT);
     SCIInfo->setGrantedBlocks(sciRbs);
+    SCIInfo->setGrantStartTime(sciGrant_->getStartTime());
 
     /*
      * Need to prepare the airframe were sending
@@ -656,6 +650,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                     subchannelReserved = false;
 
                     int highestThreshold;
+                    bool thresholdBreach = false;
                     unsigned int pRsvpRx;
 
                     // Get the priorities of both messages
@@ -668,11 +663,12 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                         // Get the threshold for the corresponding priorities
                         int index = messagePriority * 8 + receivedPriority + 1;
                         int threshold = ThresPSSCHRSRPvector_[index];
-                        int thresholdDbm = (-128 * (threshold - 1) * 2);
+                        int thresholdDbm = (-128 + (threshold - 1) * 2);
 
                         if (averageRSRP > thresholdDbm) {
                             // Must determine the number of increases required to make this a CSR.
                             int thresholdIncreaseFactor = 1;
+                            thresholdBreach = true;
                             while (averageRSRP > thresholdDbm) {
                                 thresholdDbm = thresholdDbm + (3 * thresholdIncreaseFactor);
                                 ++thresholdIncreaseFactor;
@@ -684,24 +680,24 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                         }
                     }
 
-                    if (highestThreshold) {
+                    if (thresholdBreach) {
                         // This series of subchannels is to be excluded
                         int Q = 1;
                         if (pRsvpRx < 1 && z <= (pStep_ * 10) - pStep_ * pRsvpRx) {
                             Q = 1 / pRsvpRx;
                         }
-                    }
 
-                    for (int q = 1; q <= Q; q++) {
-                        // j replaced with c in this case as would disrupt above use of j
-                        for (int c = 0; c < cResel; c++) {
-                            // Based on above calc comment
-                            int disallowedIndex = (z + q * pStep_ * pRsvpRx) - (c * pRsvpTxPrime);
+                        for (int q = 1; q <= Q; q++) {
+                            // j replaced with c in this case as would disrupt above use of j
+                            for (int c = 0; c < cResel; c++) {
+                                // Based on above calc comment
+                                int disallowedIndex = (z + q * pStep_ * pRsvpRx) - (c * pRsvpTxPrime);
 
-                            // Only mark as disallowed if it corresponds with a frame in the selection window
-                            if (disallowedIndex >= minSelectionIndex && disallowedIndex <= maxSelectionIndex) {
-                                aboveThresholdDisallowedIndices[highestThreshold][disallowedIndex].push_back(j);
-                                ++disallowedCSRs;
+                                // Only mark as disallowed if it corresponds with a frame in the selection window
+                                if (disallowedIndex >= minSelectionIndex && disallowedIndex <= maxSelectionIndex) {
+                                    aboveThresholdDisallowedIndices[highestThreshold][disallowedIndex].push_back(j);
+                                    ++disallowedCSRs;
+                                }
                             }
                         }
                     }
@@ -1338,12 +1334,12 @@ void LtePhyVUeMode4::updateSubframe()
 
     std::vector<Subchannel*> subframe = sensingWindow_[sensingWindowFront_];
 
-    if (subframe.at(0)->getSubframeTime() <= NOW - SimTime(10*pStep_, SIMTIME_MS))
+    if (subframe.at(0)->getSubframeTime() <= NOW - SimTime(10*pStep_, SIMTIME_MS) - TTI)
     {
         std::vector<Subchannel*>::iterator it;
         for (it=subframe.begin(); it!=subframe.end(); it++)
         {
-            (*it)->reset(NOW);
+            (*it)->reset(NOW - TTI);
         }
     }
 
@@ -1356,7 +1352,7 @@ void LtePhyVUeMode4::initialiseSensingWindow()
 {
     EV << NOW << " LtePhyVUeMode4::initialiseSensingWindow - creating subframes to be added to sensingWindow..." << endl;
 
-    simtime_t subframeTime = NOW;
+    simtime_t subframeTime = NOW - TTI;
 
     // Reserve the full size of the sensing window (might improve efficiency).
     sensingWindow_.reserve(10*pStep_);
