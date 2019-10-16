@@ -598,7 +598,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                 // An SCI and record the information for each independently for the later calculation
                 std::vector<double> averageRSRPs;
                 std::vector<int> priorities;
-                std::vector <SidelinkControlInformation*> receivedScis;
+                std::vector<int> rris;
 
                 // If an SCI reserves subchannels spanning a selection then use this to avoid double counting it.
                 // i.e. SCI reserves subchannels 2 & 3, if we check 1 & 2 and it is above the threshold then we count it
@@ -617,18 +617,15 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                 while (k < j + grantLength) {
                     if (sensingWindow_[translatedZ][k]->getReserved()) {
                         // Get the SCI and all the necessary information
-                        SidelinkControlInformation* receivedSCI = check_and_cast<SidelinkControlInformation*>(sensingWindow_[translatedZ][k]->getSCIMessage());
-                        UserControlInfo* sciInfo = check_and_cast<UserControlInfo*>(receivedSCI->getControlInfo());
 
-                        std::tuple<int, int> indexAndLength = decodeRivValue(receivedSCI, sciInfo);
-                        int lengthInSubchannels = std::get<1>(indexAndLength);
+                        int lengthInSubchannels = sensingWindow_[translatedZ][k]->getSciLength();
 
                         // If RRI = 0 then we know the next resource is not reserved.
-                        if (receivedSCI->getResourceReservationInterval() > 0) {
+                        if (sensingWindow_[translatedZ][k]->getResourceReservationInterval() > 0) {
                             subchannelReserved = true;
 
-                            priorities.push_back(receivedSCI->getPriority());
-                            receivedScis.push_back(receivedSCI);
+                            priorities.push_back(sensingWindow_[translatedZ][k]->getPriority());
+                            rris.push_back(sensingWindow_[translatedZ][k]->getResourceReservationInterval());
                             int totalRSRP = 0;
                             for (int l = k; l < k + lengthInSubchannels; l++) {
                                 totalRSRP += sensingWindow_[translatedZ][l]->getAverageRSRP();
@@ -651,14 +648,14 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
 
                     int highestThreshold;
                     bool thresholdBreach = false;
-                    unsigned int pRsvpRx;
+                    int pRsvpRx;
 
                     // Get the priorities of both messages
                     int messagePriority = grant->getSpsPriority();
                     for (int l = 0; l < averageRSRPs.size(); l++) {
                         double averageRSRP = averageRSRPs[l];
                         int receivedPriority = priorities[l];
-                        SidelinkControlInformation *receivedSCI = receivedScis[l];
+                        int receivedRri = rris[l];
 
                         // Get the threshold for the corresponding priorities
                         int index = messagePriority * 8 + receivedPriority + 1;
@@ -675,7 +672,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
                             }
                             if (!highestThreshold || thresholdIncreaseFactor > highestThreshold) {
                                 highestThreshold = thresholdIncreaseFactor;
-                                pRsvpRx = receivedSCI->getResourceReservationInterval();
+                                pRsvpRx = receivedRri;
                             }
                         }
                     }
@@ -1083,10 +1080,15 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
                 std::vector <Subchannel *> currentSubframe = sensingWindow_[sensingWindowFront_];
                 for (int i = subchannelIndex; i < subchannelIndex + lengthInSubchannels; i++) {
                     Subchannel* currentSubchannel = currentSubframe[i];
-                    // Record the SCI in the subchannel.
-                    SidelinkControlInformation* sciForSensingWindow = sci->dup();
-                    sciForSensingWindow->setControlInfo(lteInfo->dup());
-                    currentSubchannel->setSCI(sciForSensingWindow);
+                    // Record the SCI info in the subchannel.
+                    currentSubchannel->setPriority(sci->getPriority());
+                    currentSubchannel->setResourceReservationInterval(sci->getResourceReservationInterval());
+                    currentSubchannel->setFrequencyResourceLocation(sci->getFrequencyResourceLocation());
+                    currentSubchannel->setTimeGapRetrans(sci->getTimeGapRetrans());
+                    currentSubchannel->setMcs(sci->getMcs());
+                    currentSubchannel->setRetransmissionIndex(sci->getRetransmissionIndex());
+                    currentSubchannel->setSciSubchannelIndex(subchannelIndex);
+                    currentSubchannel->setSciLength(lengthInSubchannels);
                     currentSubchannel->setReserved(true);
                 }
                 lteInfo->setDeciderResult(true);
