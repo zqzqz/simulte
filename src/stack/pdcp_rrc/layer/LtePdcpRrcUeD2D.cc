@@ -27,6 +27,17 @@ void LtePdcpRrcUeD2D::fromDataIn(cPacket *pkt)
     LtePdcpEntity* entity;
     MacNodeId destId;
 
+    if (three_hundred == 0)
+    {
+        pkt->setBitLength(2400);
+        three_hundred = 4;
+    }
+    else
+    {
+        pkt->setBitLength(1520);
+        three_hundred -= 1;
+    }
+
     setTrafficInformation(pkt, lteInfo);
 
     if (ipBased_)
@@ -190,17 +201,6 @@ void LtePdcpRrcUeD2D::fromDataIn(cPacket *pkt)
     EV << "LtePdcp : Packet size " << pdcpPkt->getByteLength() << " Bytes\n";
     EV << "LtePdcp : Sending packet " << pdcpPkt->getName() << " on port "
        << (lteInfo->getRlcType() == UM ? "UM_Sap$o\n" : "AM_Sap$o\n");
-
-    if (three_hundred == 0)
-    {
-        pkt->setBitLength(2400);
-        three_hundred = 4;
-    }
-    else
-    {
-        pkt->setBitLength(1520);
-        three_hundred -= 1;
-    }
 
     // Send message
     send(pdcpPkt, (lteInfo->getRlcType() == UM ? umSap_[OUT] : amSap_[OUT]));
