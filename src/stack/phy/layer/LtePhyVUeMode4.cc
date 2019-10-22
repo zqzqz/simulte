@@ -511,7 +511,12 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
     // of the selection process, thus we can skip a majority of the sensing window saving time.
     // Only in the case of RRIs of 1000ms will the whole sensing window need to be searched.
     int maxRRI = *std::max_element(allowedRRIs.begin(), allowedRRIs.end());
-    int fallBack = pStep_ * maxRRI;
+    int fallBack = 100 * maxRRI;
+
+    if (fallBack >= 10 * pStep_)
+    {
+        fallBack = 10 * pStep_;
+    }
 
     int minSubCh = (10 * pStep_) - fallBack;
 
