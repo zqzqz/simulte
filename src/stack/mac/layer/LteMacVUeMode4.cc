@@ -36,6 +36,7 @@
 #include "stack/mac/amc/LteMcs.h"
 #include <random>
 #include <map>
+#include <unordered_map>
 
 Define_Module(LteMacVUeMode4);
 
@@ -138,38 +139,38 @@ void LteMacVUeMode4::parseUeTxConfig(cXMLElement* xmlConfig)
     ParameterMap::iterator it = params.find("minMCS-PSSCH");
     if (it != params.end())
     {
-        minMCSPSSCH_ = it->second;
+        minMCSPSSCH_ = (int)it->second;
     }
     else
-        minMCSPSSCH_ = par("minMCSPSSCH");
+        minMCSPSSCH_ = (int)par("minMCSPSSCH");
     it = params.find("maxMCS-PSSCH");
     if (it != params.end())
     {
-        maxMCSPSSCH_ = it->second;
+        maxMCSPSSCH_ = (int)it->second;
     }
     else
-        maxMCSPSSCH_ = par("minMCSPSSCH");
+        maxMCSPSSCH_ = (int)par("minMCSPSSCH");
     it = params.find("minSubchannel-NumberPSSCH");
     if (it != params.end())
     {
-        minSubchannelNumberPSSCH_ = it->second;
+        minSubchannelNumberPSSCH_ = (int)it->second;
     }
     else
-        minSubchannelNumberPSSCH_ = par("minSubchannelNumberPSSCH");
+        minSubchannelNumberPSSCH_ = (int)par("minSubchannelNumberPSSCH");
     it = params.find("maxSubchannel-NumberPSSCH");
     if (it != params.end())
     {
-        maxSubchannelNumberPSSCH_ = it->second;
+        maxSubchannelNumberPSSCH_ = (int)it->second;
     }
     else
-        maxSubchannelNumberPSSCH_ = par("maxSubchannelNumberPSSCH");
+        maxSubchannelNumberPSSCH_ = (int)par("maxSubchannelNumberPSSCH");
     it = params.find("allowedRetxNumberPSSCH");
     if (it != params.end())
     {
-        allowedRetxNumberPSSCH_ = it->second;
+        allowedRetxNumberPSSCH_ = (int)it->second;
     }
     else
-        allowedRetxNumberPSSCH_ = par("allowedRetxNumberPSSCH");
+        allowedRetxNumberPSSCH_ = (int)par("allowedRetxNumberPSSCH");
 }
 
 void LteMacVUeMode4::parseCbrTxConfig(cXMLElement* xmlConfig)
@@ -195,7 +196,7 @@ void LteMacVUeMode4::parseCbrTxConfig(cXMLElement* xmlConfig)
         defaultCbrIndex_ = it->second;
     }
 
-    cXMLElementList cbrLevelConfigs = xmlConfig->getElementsByTagName("cbr-Levels-Config");
+    cXMLElementList cbrLevelConfigs = xmlConfig->getElementsByTagName("cbr-ConfigIndex");
 
     if (cbrLevelConfigs.empty())
         throw cRuntimeError("No cbr-Levels-Config found in configuration file");
@@ -203,24 +204,25 @@ void LteMacVUeMode4::parseCbrTxConfig(cXMLElement* xmlConfig)
     cXMLElementList::iterator xmlIt;
     for(xmlIt = cbrLevelConfigs.begin(); xmlIt != cbrLevelConfigs.end(); xmlIt++)
     {
-        std::map<std::string, int> cbrLevelsMap;
+        std::unordered_map<std::string, double> cbrLevelsMap;
         ParameterMap cbrLevelsParams;
         getParametersFromXML((*xmlIt), cbrLevelsParams);
         it = cbrLevelsParams.find("cbr-lower");
         if (it != cbrLevelsParams.end())
         {
-            cbrLevelsMap.insert(pair<string, int>("cbr-lower",  it->second));
+            cbrLevelsMap.insert(pair<std::string, double>("cbr-lower",  it->second));
         }
         it = cbrLevelsParams.find("cbr-upper");
         if (it != cbrLevelsParams.end())
         {
-            cbrLevelsMap.insert(pair<string, int>("cbr-upper",  it->second));
+            cbrLevelsMap.insert(pair<std::string, double>("cbr-upper",  it->second));
         }
-        it = cbrLevelsParams.find("cbr-lower");
+        it = cbrLevelsParams.find("cbr-PSSCH-TxConfig-Index");
         if (it != cbrLevelsParams.end())
         {
-            cbrLevelsMap.insert(pair<string, int>("cbr-PSSCH-TxConfig-Index",  it->second));
+            cbrLevelsMap.insert(pair<std::string, double>("cbr-PSSCH-TxConfig-Index",  it->second));
         }
+        cbrLevels_.push_back(cbrLevelsMap);
     }
 
     cXMLElementList cbrTxConfigs = xmlConfig->getElementsByTagName("cbr-PSSCH-TxConfig");
@@ -232,48 +234,48 @@ void LteMacVUeMode4::parseCbrTxConfig(cXMLElement* xmlConfig)
 
     for(xmlIt = cbrTxParams.begin(); xmlIt != cbrTxParams.end(); xmlIt++)
     {
-        std::map<std::string, int> cbrMap;
+        std::unordered_map<std::string, double> cbrMap;
         ParameterMap cbrParams;
         getParametersFromXML((*xmlIt), cbrParams);
         it = cbrParams.find("minMCS-PSSCH");
         if (it != cbrParams.end())
         {
-            cbrMap.insert(pair<string, int>("minMCSPSSCH",  it->second));
+            cbrMap.insert({"minMCS-PSSCH",  it->second});
         }
         else
-            cbrMap.insert(pair<string, int>("minMCSPSSCH",  par("minMCSPSSCH")));
+            cbrMap.insert({"minMCS-PSSCH",  par("minMCSPSSCH")});
         it = cbrParams.find("maxMCS-PSSCH");
         if (it != cbrParams.end())
         {
-            cbrMap.insert(pair<string, int>("maxMCSPSSCH",  it->second));
+            cbrMap.insert({"maxMCS-PSSCH",  it->second});
         }
         else
-            cbrMap.insert(pair<string, int>("maxMCSPSSCH",  par("maxMCSPSSCH")));
+            cbrMap.insert({"maxMCS-PSSCH",  par("maxMCSPSSCH")});
         it = cbrParams.find("minSubchannel-NumberPSSCH");
         if (it != cbrParams.end())
         {
-            cbrMap.insert(pair<string, int>("minSubchannelNumberPSSCH",  it->second));
+            cbrMap.insert({"minSubchannel-NumberPSSCH",  it->second});
         }
         else
-            cbrMap.insert(pair<string, int>("minSubchannelNumberPSSCH",  par("minSubchannelNumberPSSCH")));
+            cbrMap.insert({"minSubchannel-NumberPSSCH",  par("minSubchannelNumberPSSCH")});
         it = cbrParams.find("maxSubchannel-NumberPSSCH");
         if (it != cbrParams.end())
         {
-            cbrMap.insert(pair<string, int>("maxSubchannelNumberPSSCH",  it->second));
+            cbrMap.insert({"maxSubchannel-NumberPSSCH",  it->second});
         }
         else
-            cbrMap.insert(pair<string, int>("maxSubchannelNumberPSSCH",  par("maxSubchannelNumberPSSCH")));
+            cbrMap.insert({"maxSubchannel-NumberPSSCH",  par("maxSubchannelNumberPSSCH")});
         it = cbrParams.find("allowedRetxNumberPSSCH");
         if (it != cbrParams.end())
         {
-            cbrMap.insert(pair<string, int>("allowedRetxNumberPSSCH",  it->second));
+            cbrMap.insert({"allowedRetxNumberPSSCH",  it->second});
         }
         else
-            cbrMap.insert(pair<string, int>("allowedRetxNumberPSSCH",  par("allowedRetxNumberPSSCH")));
+            cbrMap.insert({"allowedRetxNumberPSSCH",  par("allowedRetxNumberPSSCH")});
         it = cbrParams.find("cr-Limit");
         if (it != cbrParams.end())
         {
-            cbrMap.insert(pair<string, int>("cr-Limit",  it->second));
+            cbrMap.insert({"cr-Limit",  it->second});
         }
         cbrPSSCHTxConfigList_.push_back(cbrMap);
     }
@@ -524,6 +526,15 @@ void LteMacVUeMode4::handleMessage(cMessage *msg)
         {
             Cbr* cbrPkt = check_and_cast<Cbr*>(pkt);
             cbr_ = cbrPkt->getCbr();
+
+            // CR limit calculation
+            // determine b
+            // determine a
+            // determine previous transmissions -> Need to account for if we have already done a drop. Must maintain a
+            // history of past transmissions i.e. subchannels used and subframe in which they occur. delete entries older
+            // than 1000.
+            // calculate cr
+
 
             // message from PHY_to_MAC gate (from lower layer)
             emit(receivedPacketFromLowerLayer, pkt);
@@ -872,34 +883,71 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
     int cbrIndex = defaultCbrIndex_;
     if (useCBR_)
     {
-        std::vector<std::map<string, int>>::iterator it;
+        std::vector<std::unordered_map<std::string, double>>::iterator it;
         for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
         {
-            if (cbr_<(*it).at("cbr-upper"))
-            {
-                cbrIndex = (*it).at("cbr-PSSCH-TxConfig-Index");
-                break;
+            double cbrUpper = (*it).at("cbr-upper");
+            double cbrLower = (*it).at("cbr-lower");
+            double index = (*it).at("cbr-PSSCH-TxConfig-Index");
+            if (cbrLower == 0){
+                if (cbr_< cbrUpper)
+                {
+                    cbrIndex = (int)index;
+                    break;
+                }
+            } else if (cbrUpper == 1){
+                if (cbr_ > cbrLower)
+                {
+                    cbrIndex = (int)index;
+                    break;
+                }
+            } else {
+                if (cbr_ > cbrLower && cbr_<= cbrUpper)
+                {
+                    cbrIndex = (int)index;
+                    break;
+                }
             }
         }
     }
 
-    allowedRetxNumberPSSCH_ = min(cbrPSSCHTxConfigList_.at(cbrIndex).at("allowedRetxNumberPSSCH"), allowedRetxNumberPSSCH_);
+    int cbrMinSubchannelNum;
+    int cbrMaxSubchannelNum;
+    std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(cbrIndex);
+
+    std::unordered_map<std::string,double>::const_iterator got = cbrMap.find("allowedRetxNumberPSSCH");
+    if ( got == cbrMap.end() )
+        allowedRetxNumberPSSCH_ = allowedRetxNumberPSSCH_;
+    else
+        allowedRetxNumberPSSCH_ = min((int)got->second, allowedRetxNumberPSSCH_);
+
+    got = cbrMap.find("minSubchannel-NumberPSSCH");
+    if ( got == cbrMap.end() )
+        cbrMinSubchannelNum = minSubchannelNumberPSSCH_;
+    else
+        cbrMinSubchannelNum = (int)got->second;
+
+    got = cbrMap.find("maxSubchannel-NumberPSSCH");
+    if ( got == cbrMap.end() )
+        cbrMaxSubchannelNum = maxSubchannelNumberPSSCH_;
+    else
+        cbrMaxSubchannelNum = (int)got->second;
 
     /**
      * Need to pick the number of subchannels for this reservation
      */
     int minSubchannelNumberPSSCH;
     int maxSubchannelNumberPSSCH;
-    if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
+    if (maxSubchannelNumberPSSCH_ < cbrMinSubchannelNum || cbrMaxSubchannelNum < minSubchannelNumberPSSCH_)
     {
         // No overlap therefore I will use the cbr values (this is left to the UE, the opposite approach is also entirely valid).
-        minSubchannelNumberPSSCH = cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannel-NumberPSSCH");
-        maxSubchannelNumberPSSCH = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannel-NumberPSSCH");
+        minSubchannelNumberPSSCH = cbrMinSubchannelNum;
+        maxSubchannelNumberPSSCH = cbrMaxSubchannelNum;
     }
     else
     {
-        minSubchannelNumberPSSCH = max(minSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minSubchannelNumberPSSCH"));
-        maxSubchannelNumberPSSCH = min(maxSubchannelNumberPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxSubchannelNumberPSSCH"));
+        minSubchannelNumberPSSCH = max(minSubchannelNumberPSSCH_, cbrMinSubchannelNum);
+        maxSubchannelNumberPSSCH = min(maxSubchannelNumberPSSCH_, cbrMaxSubchannelNum);
     }
     // Selecting the number of subchannel at random as there is no explanation as to the logic behind selecting the resources in the range unlike when selecting MCS.
     std::uniform_int_distribution<> distr(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH);
@@ -956,29 +1004,62 @@ void LteMacVUeMode4::flushHarqBuffers()
                     int cbrIndex = defaultCbrIndex_;
                     if (useCBR_)
                     {
-                        std::vector<std::map<string, int>>::iterator it;
+                        std::vector<std::unordered_map<std::string, double>>::iterator it;
                         for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
                         {
-                            if (cbr_<(*it).at("cbr-upper"))
-                            {
-                                cbrIndex = (*it).at("cbr-PSSCH-TxConfig-Index");
-                                break;
+                            double cbrUpper = (*it).at("cbr-upper");
+                            double cbrLower = (*it).at("cbr-lower");
+                            double index = (*it).at("cbr-PSSCH-TxConfig-Index");
+                            if (cbrLower == 0){
+                                if (cbr_< cbrUpper)
+                                {
+                                    cbrIndex = (int)index;
+                                    break;
+                                }
+                            } else if (cbrUpper == 1){
+                                if (cbr_ > cbrLower)
+                                {
+                                    cbrIndex = (int)index;
+                                    break;
+                                }
+                            } else {
+                                if (cbr_ > cbrLower && cbr_<= cbrUpper)
+                                {
+                                    cbrIndex = (int)index;
+                                    break;
+                                }
                             }
                         }
                     }
 
+                    int cbrMinMCS;
+                    int cbrMaxMCS;
+                    std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(cbrIndex);
+
+                    std::unordered_map<std::string,double>::const_iterator got = cbrMap.find("minMCS-PSSCH");
+                    if ( got == cbrMap.end() )
+                        cbrMinMCS = minMCSPSSCH_;
+                    else
+                        cbrMinMCS = (int)got->second;
+
+                    got = cbrMap.find("maxMCS-PSSCH");
+                    if ( got == cbrMap.end() )
+                        cbrMaxMCS = maxMCSPSSCH_;
+                    else
+                        cbrMaxMCS = (int)got->second;
+
                     int minMCS;
                     int maxMCS;
-                    if (maxMCSPSSCH_ < cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH") || cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH") < minMCSPSSCH_)
+                    if (maxMCSPSSCH_ < cbrMinMCS || cbrMaxMCS < minMCSPSSCH_)
                     {
                         // No overlap therefore I will use the cbr values (this is left to the UE).
-                        minMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH");
-                        maxMCS = cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH");
+                        minMCS = cbrMinMCS;
+                        maxMCS = cbrMaxMCS
                     }
                     else
                     {
-                        minMCS = max(minMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("minMCSPSSCH"));
-                        maxMCS = min(maxMCSPSSCH_, cbrPSSCHTxConfigList_.at(cbrIndex).at("maxMCSPSSCH"));
+                        minMCS = max(minMCSPSSCH_, cbrMinMCS);
+                        maxMCS = min(maxMCSPSSCH_, cbrMaxMCS);
                     }
                     bool foundValidMCS = false;
                     int totalGrantedBlocks = mode4Grant->getTotalGrantedBlocks();
@@ -1028,6 +1109,8 @@ void LteMacVUeMode4::flushHarqBuffers()
                             sendLowerPackets(phyGrant);
                             // Send pdu to PHY layer for sending.
                             it2->second->sendSelectedDown();
+
+                            // Log transmission to A calculation log
 
                             missedTransmissions_ = 0;
 

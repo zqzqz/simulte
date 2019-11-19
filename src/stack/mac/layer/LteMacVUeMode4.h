@@ -22,6 +22,7 @@
 #include "stack/mac/layer/LteMacUeRealisticD2D.h"
 #include "corenetwork/deployer/LteDeployer.h"
 #include <random>
+#include <unordered_map>
 
 //class LteMode4SchedulingGrant;
 
@@ -67,8 +68,8 @@ protected:
 
    std::map<UnitList, int> pduRecord_;
 
-   std::vector<std::map<std::string, int>> cbrPSSCHTxConfigList_;
-   std::vector<std::map<std::string, int>> cbrLevels_;
+   std::vector<std::unordered_map<std::string, double>> cbrPSSCHTxConfigList_;
+   std::vector<std::unordered_map<std::string, double>> cbrLevels_;
    std::vector<double> validResourceReservationIntervals_;
 
    std::random_device rand_device_;
