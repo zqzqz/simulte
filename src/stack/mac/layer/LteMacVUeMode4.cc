@@ -1054,7 +1054,7 @@ void LteMacVUeMode4::flushHarqBuffers()
                     {
                         // No overlap therefore I will use the cbr values (this is left to the UE).
                         minMCS = cbrMinMCS;
-                        maxMCS = cbrMaxMCS
+                        maxMCS = cbrMaxMCS;
                     }
                     else
                     {
@@ -1109,8 +1109,6 @@ void LteMacVUeMode4::flushHarqBuffers()
                             sendLowerPackets(phyGrant);
                             // Send pdu to PHY layer for sending.
                             it2->second->sendSelectedDown();
-
-                            // Log transmission to A calculation log
 
                             missedTransmissions_ = 0;
 
