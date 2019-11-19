@@ -47,7 +47,7 @@ class LtePhyVUeMode4 : public LtePhyUeD2D
     std::vector<std::vector<double>> sciRssiVectors_;
     std::vector<LteAirFrame*> sciFrames_;
     std::vector<cPacket*> decodedScis_;
-    std::vector<int> cbrHistory_;
+    std::vector<double> cbrHistory_;
 
     simsignal_t cbr;
     simsignal_t scisReceived;

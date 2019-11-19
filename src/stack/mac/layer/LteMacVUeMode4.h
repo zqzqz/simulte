@@ -57,6 +57,8 @@ protected:
    int allowedRetxNumberPSSCH_;
    int reselectAfter_;
    int defaultCbrIndex_;
+   int currentCbrIndex_;
+   double crLimit_;
    bool useCBR_;
    int cbr_;
    int missedTransmissions_;
@@ -70,6 +72,7 @@ protected:
 
    std::vector<std::unordered_map<std::string, double>> cbrPSSCHTxConfigList_;
    std::vector<std::unordered_map<std::string, double>> cbrLevels_;
+   std::unordered_map<double, int> previousTransmissions_;
    std::vector<double> validResourceReservationIntervals_;
 
    std::random_device rand_device_;

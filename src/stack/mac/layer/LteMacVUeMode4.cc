@@ -194,6 +194,7 @@ void LteMacVUeMode4::parseCbrTxConfig(cXMLElement* xmlConfig)
     if (it != params.end())
     {
         defaultCbrIndex_ = it->second;
+        currentCbrIndex_ = defaultCbrIndex_;
     }
 
     cXMLElementList cbrLevelConfigs = xmlConfig->getElementsByTagName("cbr-ConfigIndex");
@@ -527,14 +528,68 @@ void LteMacVUeMode4::handleMessage(cMessage *msg)
             Cbr* cbrPkt = check_and_cast<Cbr*>(pkt);
             cbr_ = cbrPkt->getCbr();
 
+            currentCbrIndex_ = defaultCbrIndex_;
+            if (useCBR_)
+            {
+                std::vector<std::unordered_map<std::string, double>>::iterator it;
+                for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
+                {
+                    double cbrUpper = (*it).at("cbr-upper");
+                    double cbrLower = (*it).at("cbr-lower");
+                    double index = (*it).at("cbr-PSSCH-TxConfig-Index");
+                    if (cbrLower == 0){
+                        if (cbr_< cbrUpper)
+                        {
+                            currentCbrIndex_ = (int)index;
+                            break;
+                        }
+                    } else if (cbrUpper == 1){
+                        if (cbr_ > cbrLower)
+                        {
+                            currentCbrIndex_ = (int)index;
+                            break;
+                        }
+                    } else {
+                        if (cbr_ > cbrLower && cbr_<= cbrUpper)
+                        {
+                            currentCbrIndex_ = (int)index;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            int b;
+            int a;
+            int subchannelsUsed = 0;
             // CR limit calculation
             // determine b
+            if (schedulingGrant_ != NULL){
+                if (expirationCounter_ > 499){
+                    b = 499;
+                } else {
+                    b = expirationCounter_;
+                }
+                subchannelsUsed += b / periodCounter_;
+            } else {
+                b = 0;
+            }
             // determine a
+            a = 999 - b;
+
             // determine previous transmissions -> Need to account for if we have already done a drop. Must maintain a
             // history of past transmissions i.e. subchannels used and subframe in which they occur. delete entries older
             // than 1000.
+            std::unordered_map<double, int>::const_iterator it;
+            for (it = previousTransmissions_.begin(); it!=previousTransmissions_.end(); it++){
+                if (it->first < NOW.dbl() - 1){
+                    previousTransmissions_.erase(it);
+                } else if (it->first > NOW.dbl() - (0.1 * a)) {
+                    subchannelsUsed += it->second;
+                }
+            }
             // calculate cr
-
+            crLimit_ = subchannelsUsed /(numSubchannels_ * 1000.0);
 
             // message from PHY_to_MAC gate (from lower layer)
             emit(receivedPacketFromLowerLayer, pkt);
@@ -880,40 +935,9 @@ void LteMacVUeMode4::macGenerateSchedulingGrant(double maximumLatency, int prior
     mode4Grant -> setMaximumLatency(maximumLatency);
     mode4Grant -> setPossibleRRIs(validResourceReservationIntervals_);
 
-    int cbrIndex = defaultCbrIndex_;
-    if (useCBR_)
-    {
-        std::vector<std::unordered_map<std::string, double>>::iterator it;
-        for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
-        {
-            double cbrUpper = (*it).at("cbr-upper");
-            double cbrLower = (*it).at("cbr-lower");
-            double index = (*it).at("cbr-PSSCH-TxConfig-Index");
-            if (cbrLower == 0){
-                if (cbr_< cbrUpper)
-                {
-                    cbrIndex = (int)index;
-                    break;
-                }
-            } else if (cbrUpper == 1){
-                if (cbr_ > cbrLower)
-                {
-                    cbrIndex = (int)index;
-                    break;
-                }
-            } else {
-                if (cbr_ > cbrLower && cbr_<= cbrUpper)
-                {
-                    cbrIndex = (int)index;
-                    break;
-                }
-            }
-        }
-    }
-
     int cbrMinSubchannelNum;
     int cbrMaxSubchannelNum;
-    std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(cbrIndex);
+    std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(currentCbrIndex_);
 
     std::unordered_map<std::string,double>::const_iterator got = cbrMap.find("allowedRetxNumberPSSCH");
     if ( got == cbrMap.end() )
@@ -1001,40 +1025,9 @@ void LteMacVUeMode4::flushHarqBuffers()
                 int pduLength = selectedProcess->getPduLength(cw);
                 if ( pduLength > 0)
                 {
-                    int cbrIndex = defaultCbrIndex_;
-                    if (useCBR_)
-                    {
-                        std::vector<std::unordered_map<std::string, double>>::iterator it;
-                        for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
-                        {
-                            double cbrUpper = (*it).at("cbr-upper");
-                            double cbrLower = (*it).at("cbr-lower");
-                            double index = (*it).at("cbr-PSSCH-TxConfig-Index");
-                            if (cbrLower == 0){
-                                if (cbr_< cbrUpper)
-                                {
-                                    cbrIndex = (int)index;
-                                    break;
-                                }
-                            } else if (cbrUpper == 1){
-                                if (cbr_ > cbrLower)
-                                {
-                                    cbrIndex = (int)index;
-                                    break;
-                                }
-                            } else {
-                                if (cbr_ > cbrLower && cbr_<= cbrUpper)
-                                {
-                                    cbrIndex = (int)index;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
                     int cbrMinMCS;
                     int cbrMaxMCS;
-                    std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(cbrIndex);
+                    std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(currentCbrIndex_);
 
                     std::unordered_map<std::string,double>::const_iterator got = cbrMap.find("minMCS-PSSCH");
                     if ( got == cbrMap.end() )
@@ -1109,6 +1102,9 @@ void LteMacVUeMode4::flushHarqBuffers()
                             sendLowerPackets(phyGrant);
                             // Send pdu to PHY layer for sending.
                             it2->second->sendSelectedDown();
+
+                            // Log transmission to A calculation log
+                            previousTransmissions_[NOW.dbl()] = mode4Grant->getNumSubchannels();
 
                             missedTransmissions_ = 0;
 
