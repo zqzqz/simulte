@@ -31,7 +31,7 @@ module Car
 {
     parameters:
         @networkNode();
-        @display("i=car.png;bgb=400,518");
+        @display("i=veins/node/car;bgb=400,518;is=vs");
 
         //# Mobility
         string mobilityType = default("VeinsInetMobility");
