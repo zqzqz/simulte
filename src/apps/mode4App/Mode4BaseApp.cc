@@ -77,6 +77,11 @@ void Mode4BaseApp::sendLowerPackets(cPacket* pkt)
     send(pkt, lowerGateOut_);
 }
 
+void Mode4BaseApp::sendDelayedDown(cPacket* pkt, simtime_t delay)
+{
+    sendDelayed(pkt, delay, lowerGateOut_);
+}
+
 void Mode4BaseApp::finish()
 {
 }

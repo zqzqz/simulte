@@ -33,7 +33,7 @@
 
 <!-- debug config -->
 <launch>
-	<basedir path="/home/veins/workspace.omnetpp2/simulte/simulations/Mode4/intersection"/>
+	<basedir path="/home/veins/workspace.omnetpp2/simulte/simulations/rcs/intersection"/>
     <copy file="intersection.net.xml" />
     <copy file="intersection.rou.xml" />
     <copy file="intersection.sumo.cfg" type="config" />

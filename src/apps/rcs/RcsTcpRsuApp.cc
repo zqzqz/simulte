@@ -26,3 +26,7 @@ RcsTcpRsuApp::~RcsTcpRsuApp() {
     // TODO Auto-generated destructor stub
 }
 
+void RcsTcpRsuApp::handleMessage(cMessage *msg) {
+
+}
+

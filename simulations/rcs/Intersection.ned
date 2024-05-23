@@ -35,26 +35,28 @@ network Intersection
         @display("bgb=732,483");
 
     submodules:
-
         //# Veins manager module
         veinsManager: VeinsInetManager {
-            @display("p=50,200;is=s");
+            @display("p=50,227;is=s");
         }
-
+        roadsCanvasVisualizer: RoadsCanvasVisualizer {
+            @display("p=300,0");
+        }
         //# LTE modules
         channelControl: LteChannelControl {
             @display("p=50,25;is=s");
         }
         binder: LteBinder {
-            @display("p=50,140;is=s");
+            @display("p=50,175;is=s");
         }
         deployer: LteDeployer {
-            @display("p=50,259;is=s");
+        	@display("p=50,270;is=s");
         }
-        roadCanvasVisualizer: RoadsCanvasVisualizer {
-        	@display("p=50,50;is=s");
-        }
+        //# Network instances
 		rsu[1]: CarNonIp {
-            @display("p=200,200;i=veins/sign/yellowdiamond;is=vs");
+            @display("p=220,220;i=veins/sign/yellowdiamond;is=vs");
+        }
+        car[0]: CarNonIp {
         }
 }
+

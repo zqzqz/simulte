@@ -51,7 +51,7 @@ module Car
         bool mode4D2D = default(false);
         
         // Check if the car is D2D, if it is further check if it's mode4, otherwise it's a simple Ue
-        string nicType = d2dCapable ? mode4D2D ? "LteNicUeMode4D2D" : "LteNicUeD2D" : "LteNicUe";
+        string nicType = d2dCapable ? mode4D2D ? "LteNicUeMode4" : "LteNicUeD2D" : "LteNicUe";
 
         //# Network Layer specs
         string networkLayerType = default("IPv4NetworkLayer");

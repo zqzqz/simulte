@@ -26,7 +26,10 @@
 
 #include "common/LteCommon.h"
 
-class Mode4BaseApp : public cSimpleModule {
+#include "veins/base/connectionManager/ChannelAccess.h"
+#include "veins/base/modules/BaseModule.h"
+
+class Mode4BaseApp : public veins::BaseModule {
 public:
 
 
@@ -92,6 +95,13 @@ protected:
      */
     void sendLowerPackets(cPacket* pkt);
 
+    /**
+     * sendDelayedDown() is used
+     * to send packets to lower layer, but with a delay
+     *
+     * @param pkt Packet to send
+     */
+    void sendDelayedDown(cPacket* pkt, simtime_t delay);
 };
 
 #endif

@@ -13,20 +13,10 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef APPS_RCS_RCSTCPRSUAPP_H_
-#define APPS_RCS_RCSTCPRSUAPP_H_
-
-#include "inet/common/INETDefs.h"
-#include "inet/applications/tcpapp/TCPSrvHostApp.h"
-
-class RcsTcpRsuApp : public inet::TCPSrvHostApp {
-protected:
-    // pass
-public:
-    RcsTcpRsuApp();
-    virtual ~RcsTcpRsuApp();
-
-    virtual void handleMessage(cMessage *msg) override;
-};
-
-#endif /* APPS_RCS_RCSTCPRSUAPP_H_ */
+//
+// TODO generated message class
+//
+packet CoinRequest {
+    int vid;
+    string cert;
+}
