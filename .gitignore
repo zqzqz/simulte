@@ -53,3 +53,4 @@ ui/com.simulte.configeditor/bin/
 
 # ignore cLion editor
 .idea/
+*.vscode/

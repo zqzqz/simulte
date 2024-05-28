@@ -20,7 +20,10 @@
 #include "corenetwork/binder/LteBinder.h"
 #include "common.h"
 #include "CpuModel.h"
+#include "package.h"
 #include <map>
+
+extern std::map<MacNodeId, MsgSegCnt> VehicleMsgSegCntMap;// msg sent by vehicle to RSU
 
 class RcsRsuApp : public Mode4BaseApp {
 
@@ -30,6 +33,7 @@ protected:
     CpuModel cpuModel;
     std::map<int, CoinAssignmentStage> coinAssignmentStages;
     std::map<int, CoinDepositStage> coinDepositStages;
+    std::map<MacNodeId, MsgSegCnt> recvMsgSegCnt;
 
     LteBinder* binder_;
     MacNodeId nodeId_;

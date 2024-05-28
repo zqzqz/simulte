@@ -20,6 +20,9 @@
 #include "corenetwork/binder/LteBinder.h"
 #include "common.h"
 #include "CpuModel.h"
+#include "package.h"
+
+extern std::map<MacNodeId, MsgSegCnt> RSUMsgSegCntMap; // msg sent by RSU to vehicle
 
 class RcsCarApp : public Mode4BaseApp {
 
@@ -33,6 +36,9 @@ protected:
     // timestamp of message traffic
     double CoinRequestTime;
     double CoinDepositTime;
+    // received segment number of each type of message
+    uint CoinAssignmentSegCnt;
+    uint CoinDepositSignatureRequestSegCnt;
 
     MacNodeId nodeId_;
     LteBinder* binder_;
