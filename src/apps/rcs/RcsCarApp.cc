@@ -24,6 +24,8 @@
 #include "CoinDepositSignatureResponse_m.h"
 #include "CoinSubmission_m.h"
 
+#include <iostream>
+
 Define_Module(RcsCarApp);
 
 RcsCarApp::~RcsCarApp() {
@@ -53,29 +55,37 @@ void RcsCarApp::initialize(int stage)
         cpuModel.init(1);
         coinAssignmentStage = CoinAssignmentStage::INIT;
         coinDepositStage = CoinDepositStage::INIT;
-        EV << "[Vehicle " << nodeId_ << "]: Initialized" << endl;
+//        EV << "[Vehicle " << nodeId_ << "]: Initialized" << endl;
+        std::cout << "[Vehicle " << nodeId_ << "]: Initialized at time " << simTime().dbl() << std::endl;
     }
 }
 
 void RcsCarApp::handleSelfMessage(cMessage *msg)
 {
     Mode4BaseApp::handleSelfMessage(msg);
-    EV << "[Vehicle " << nodeId_ << "]: handleSelfMessage" << endl;
 }
 
 void RcsCarApp::handleLowerMessage(cMessage* msg)
 {
     Mode4BaseApp::handleLowerMessage(msg);
+    double currentTime = simTime().dbl();
     if (CoinAssignment* req = dynamic_cast<CoinAssignment*>(msg)) {
         int vid = req->getVid();
         if (vid == nodeId_) {
-            EV << "[Vehicle " << nodeId_ << "]: I received a message of CoinAssignment" << endl;
+//            EV << "[Vehicle " << nodeId_ << "]: I received a message of CoinAssignment at " << currentTime << endl;
+//            EV << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinRequestTime << endl;
+            std::cout << "[Vehicle " << nodeId_ << "]: I received a message of CoinAssignment at time " << currentTime << std::endl;
+            std::cout << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinRequestTime << std::endl;
             coinAssignmentStage = CoinAssignmentStage::FINISHED;
         }
     } else if (CoinDepositSignatureRequest* req = dynamic_cast<CoinDepositSignatureRequest*>(msg)) {
         int vid = req->getVid();
         if (vid == nodeId_) {
-            EV << "[Vehicle " << nodeId_ << "]: I received a message of CoinDepositSignatureRequest" << endl;
+//            EV << "[Vehicle " << nodeId_ << "]: I received a message of CoinDepositSignatureRequest at time " << currentTime << endl;
+//            EV << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinDepositTime << endl;
+            std::cout << "[Vehicle " << nodeId_ << "]: I received a message of CoinDepositSignatureRequest at time " << currentTime << std::endl;
+            std::cout << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinDepositTime << std::endl;
+
             CoinDepositSignatureResponse* packet = new CoinDepositSignatureResponse();
             packet->setByteLength(COIN_DEPOSIT_SIGNATURE_RESPONSE_BYTE_SIZE);
             packet->setVid(nodeId_);
@@ -84,10 +94,20 @@ void RcsCarApp::handleLowerMessage(cMessage* msg)
             lteControlInfo->setDstAddr(RSU_ADDR);
             lteControlInfo->setDirection(D2D);
             packet->setControlInfo(lteControlInfo);
-            sendDelayedDown(packet,
-                    cpuModel.getLatency(simTime().dbl(), COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_STDDEV));
+
+            std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_STDDEV);
+            double totalLatency = latency.first + latency.second;
+            sendDelayedDown(packet,totalLatency);
+//            sendDelayedDown(packet,cpuModel.getLatency(simTime().dbl(), COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_STDDEV));
+
             coinDepositStage = CoinDepositStage::SIGNATURE_SENT;
-            EV << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDepositSignatureResponse" << endl;
+//            EV << "[Vehicle " << nodeId_ << "] When processing the CoinDepositSignatureRequest message, queuing time = "
+//                    << latency.first << " and computation time = " << latency.second << endl;
+//            EV << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDepositSignatureResponse at " << currentTime + totalLatency << endl;
+            std::cout << "[Vehicle " << nodeId_ << "] When processing the CoinDepositSignatureRequest message, total time = "
+                    << totalLatency << ", queuing time = "
+                    << latency.first << " and computation time = " << latency.second << std::endl;
+            std::cout << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDepositSignatureResponse at " << currentTime + totalLatency << std::endl;
         }
     }
 }
@@ -97,6 +117,7 @@ void RcsCarApp::handlePositionUpdate(cObject* obj)
     veins::VeinsInetMobility* const mobility = check_and_cast<veins::VeinsInetMobility*>(obj);
     inet::Coord curPosition = mobility->getCurrentPosition();
     double distanceToRSU = sqrt(pow(curPosition.x - RSU_POSITION_X, 2) + pow(curPosition.y - RSU_POSITION_Y, 2));
+    double currentTime = simTime().dbl();
 
     if (distanceToRSU < 100) {
         if (coinAssignmentStage == CoinAssignmentStage::INIT) {
@@ -108,10 +129,21 @@ void RcsCarApp::handlePositionUpdate(cObject* obj)
             lteControlInfo->setDstAddr(RSU_ADDR);
             lteControlInfo->setDirection(D2D);
             packet->setControlInfo(lteControlInfo);
-            sendDelayedDown(packet,
-                    cpuModel.getLatency(simTime().dbl(), COIN_REQUEST_LATENCY_MEAN, COIN_REQUEST_LATENCY_STDDEV));
+
+            std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_REQUEST_LATENCY_MEAN, COIN_REQUEST_LATENCY_STDDEV);
+            double totalLatency = latency.first + latency.second;
+            sendDelayedDown(packet,totalLatency);
+//            sendDelayedDown(packet,cpuModel.getLatency(simTime().dbl(), COIN_REQUEST_LATENCY_MEAN, COIN_REQUEST_LATENCY_STDDEV));
+
+            CoinRequestTime = currentTime + totalLatency;
             coinAssignmentStage = CoinAssignmentStage::REQUESTED;
-            EV << "[Vehicle " << nodeId_ << "]: I sent a message of CoinRequest" << endl;
+//            EV << "[Vehicle " << nodeId_ << "] When preparing the CoinRequest message, queuing time = "
+//                                            << latency.first << " and computation time = " << latency.second << endl;
+//            EV << "[Vehicle " << nodeId_ << "]: I sent a message of CoinRequest at " << CoinRequestTime << endl;
+            std::cout << "[Vehicle " << nodeId_ << "] When preparing the CoinRequest message, total time = "
+                    << totalLatency << ", queuing time = "
+                    << latency.first << " and computation time = " << latency.second << std::endl;
+            std::cout << "[Vehicle " << nodeId_ << "]: I sent a message of CoinRequest at " << CoinRequestTime << std::endl;
         }
         if (coinDepositStage == CoinDepositStage::INIT) {
             CoinDeposit* packet = new CoinDeposit();
@@ -122,10 +154,22 @@ void RcsCarApp::handlePositionUpdate(cObject* obj)
             lteControlInfo->setDstAddr(RSU_ADDR);
             lteControlInfo->setDirection(D2D);
             packet->setControlInfo(lteControlInfo);
-            sendDelayedDown(packet,
-                    cpuModel.getLatency(simTime().dbl(), COIN_DEPOSIT_LATENCY_MEAN, COIN_DEPOSIT_LATENCY_STDDEV));
+
+            std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_LATENCY_MEAN, COIN_DEPOSIT_LATENCY_STDDEV);
+            double totalLatency = latency.first + latency.second;
+            sendDelayedDown(packet,totalLatency);
+//            sendDelayedDown(packet,cpuModel.getLatency(simTime().dbl(), COIN_DEPOSIT_LATENCY_MEAN, COIN_DEPOSIT_LATENCY_STDDEV));
+
+            CoinDepositTime = currentTime + totalLatency;
             coinDepositStage = CoinDepositStage::REQUESTED;
-            EV << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDeposit" << endl;
+
+//            EV << "[Vehicle " << nodeId_ << "] When preparing the CoinDeposit message, queuing time = "
+//                                << latency.first << " and computation time = " << latency.second << endl;
+//            EV << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDeposit at " << CoinDepositTime << endl;
+            std::cout << "[Vehicle " << nodeId_ << "] When preparing the CoinDeposit message, total time = "
+                    << totalLatency << ", queuing time = "
+                    << latency.first << " and computation time = " << latency.second << std::endl;
+            std::cout << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDeposit at " << CoinDepositTime << std::endl;
         }
     } else {
         if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED) {

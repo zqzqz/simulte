@@ -20,7 +20,8 @@ public:
     CpuModel(int numCores);
     void init(int numCores);
     double randomGaussian(double mean, double std);
-    double getLatency(double currentTime, double mean, double std);
+    std::pair<double,double> getLatency(double currentTime, double mean, double std);
+//    double getLatency(double currentTime, double mean, double std);
 };
 
 

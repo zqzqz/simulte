@@ -30,6 +30,10 @@ protected:
     CoinDepositStage coinDepositStage;
     CpuModel cpuModel;
 
+    // timestamp of message traffic
+    double CoinRequestTime;
+    double CoinDepositTime;
+
     MacNodeId nodeId_;
     LteBinder* binder_;
 
