@@ -40,6 +40,9 @@ protected:
     uint CoinAssignmentSegCnt;
     uint CoinDepositSignatureRequestSegCnt;
 
+    double coinAssignmentLastTry;
+    double coinDepositLastTry;
+
     MacNodeId nodeId_;
     LteBinder* binder_;
 

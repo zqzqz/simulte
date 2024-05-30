@@ -6,7 +6,7 @@
 #ifndef PACKAGE_H_
 #define PACKAGE_H_
 
-#define MACPKG_MAXSIZE 207
+#define MACPKG_MAXSIZE 40
 #include <map>
 
 // global map: Vehicle/RSU, packageType, message #segment
