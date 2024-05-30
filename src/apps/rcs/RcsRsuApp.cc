@@ -34,23 +34,23 @@ Define_Module(RcsRsuApp);
 
 RcsRsuApp::~RcsRsuApp() {
     // TODO Auto-generated destructor stub
-    std::cout << "VehicleMsgSegCntMap:" <<std::endl;
-    for (const auto& e : VehicleMsgSegCntMap)
-    {
-        std::cout << "Vehicle #" << e.first << ": ";
-        for (const auto& v : e.second)
-            std::cout << "msgType " << v.first << " length " << v.second <<" ";
-        std::cout << std::endl;
-    }
-    
-    std::cout << "RSUMsgSegCntMap:" <<std::endl;
-    for (const auto& e : RSUMsgSegCntMap)
-    {
-        std::cout << "Vehicle #" << e.first << ": ";
-        for (const auto& v : e.second)
-            std::cout << "msgType " << v.first << " length " << v.second <<" ";
-        std::cout << std::endl;
-    }
+//    std::cout << "VehicleMsgSegCntMap:" <<std::endl;
+//    for (const auto& e : VehicleMsgSegCntMap)
+//    {
+//        std::cout << "Vehicle #" << e.first << ": ";
+//        for (const auto& v : e.second)
+//            std::cout << "msgType " << v.first << " length " << v.second <<" ";
+//        std::cout << std::endl;
+//    }
+//
+//    std::cout << "RSUMsgSegCntMap:" <<std::endl;
+//    for (const auto& e : RSUMsgSegCntMap)
+//    {
+//        std::cout << "Vehicle #" << e.first << ": ";
+//        for (const auto& v : e.second)
+//            std::cout << "msgType " << v.first << " length " << v.second <<" ";
+//        std::cout << std::endl;
+//    }
 }
 
 void RcsRsuApp::initialize(int stage)
@@ -73,8 +73,8 @@ void RcsRsuApp::initialize(int stage)
         binder_->setMacNodeId(nodeId_, nodeId_);
     } else if (stage==inet::INITSTAGE_APPLICATION_LAYER) {
         cpuModel.init(1);
-//        EV << "[RSU] address " << nodeId_ << endl;
-        std::cout << "[RSU] address " << nodeId_ << std::endl;
+        EV << "[RSU] address " << nodeId_ << endl;
+//        std::cout << "[RSU] address " << nodeId_ << std::endl;
     }
 }
 
@@ -95,12 +95,12 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
         recvMsgSegCnt[vid][COIN_REQUEST]++;
         if (recvMsgSegCnt[vid][COIN_REQUEST]>=VehicleMsgSegCntMap[vid][COIN_REQUEST])
         {
-//        EV << "[RSU] I received a message of CoinRequest from " << req->getVid() << " at " << currentTime << endl;
-            std::cout << "[RSU] I received a message of CoinRequest from " << req->getVid() << " at " << currentTime << std::endl;
+        EV << "[RSU] I received a message of CoinRequest from " << req->getVid() << endl;
+//            std::cout << "[RSU] I received a message of CoinRequest from " << req->getVid() << std::endl;
             
             if (coinDepositStages.find(vid) == coinDepositStages.end()) {
                 uint segCnt = COIN_ASSIGNMENT_BYTE_SIZE / MACPKG_MAXSIZE + 1;
-                double totalLatency = 0, queueLatency = 0, computeLatency = 0;
+                std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_ASSIGNMENT_LATENCY_MEAN, COIN_ASSIGNMENT_LATENCY_STDDEV);
                 for (uint i = 0; i < segCnt; i++){
                     CoinAssignment* packet = new CoinAssignment();
                     packet->setByteLength(MACPKG_MAXSIZE);
@@ -110,15 +110,9 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
                     lteControlInfo->setDstAddr(vid);
                     lteControlInfo->setDirection(D2D);
                     packet->setControlInfo(lteControlInfo);
-                    // package list for loop
-
-                    std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_ASSIGNMENT_LATENCY_MEAN, COIN_ASSIGNMENT_LATENCY_STDDEV);
-                    queueLatency += latency.first;
-                    computeLatency += latency.second;
-                    totalLatency += (latency.first+latency.second);
-                    sendDelayedDown(packet,totalLatency);
+                    sendDelayedDown(packet,latency.first+latency.second);
     //            sendDelayedDown(packet, cpuModel.getLatency(simTime().dbl(), COIN_ASSIGNMENT_LATENCY_MEAN, COIN_ASSIGNMENT_LATENCY_STDDEV));
-                    std::cout << "[RSU] send #" << i << " segment of CoinAssignment" << std::endl;
+//                    std::cout << "[RSU] send #" << i << " segment of CoinAssignment" << std::endl;
                 }
                 // update RSUMsgSegCntMap
                 // if (RSUMsgSegCntMap.find(vid)==RSUMsgSegCntMap.end())
@@ -128,13 +122,12 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
 
                 coinAssignmentStages[vid] = CoinAssignmentStage::SENT;
 
-    //            EV << "[RSU] When processing the CoinRequest message, queuing time = "
-    //                    << queueLatency << " and computation time = " << computeLatency << endl;
-    //            EV << "[RSU] I sent a message of CoinAssignment to " << req->getVid() << " at " << currentTime + totalLatency << endl;
-                std::cout << "[RSU] When processing the CoinRequest message from " << req->getVid() << ", total time = "
-                        << totalLatency << ", queuing time = "
-                        << queueLatency << " and computation time = " << computeLatency << std::endl;
-                std::cout << "[RSU] I sent a message of CoinAssignment to " << req->getVid() << " at " << currentTime + totalLatency << endl;
+                EV << "[RSU]: I sent a message of CoinAssignment. Queue time " << latency.first
+                        << " Computation time " << latency.second << endl;
+//                std::cout << "[RSU] When processing the CoinRequest message from " << req->getVid() << ", total time = "
+//                        << totalLatency << ", queuing time = "
+//                        << queueLatency << " and computation time = " << computeLatency << std::endl;
+//                std::cout << "[RSU] I sent a message of CoinAssignment to " << req->getVid() << " at " << currentTime + totalLatency << endl;
             }
         }
     } else if (CoinDeposit* req = dynamic_cast<CoinDeposit*>(msg)) {
@@ -144,11 +137,11 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
         recvMsgSegCnt[vid][COIN_DEPOSIT]++;
         if (recvMsgSegCnt[vid][COIN_DEPOSIT]>=VehicleMsgSegCntMap[vid][COIN_DEPOSIT]){
     //        EV << "[RSU] I received a message of CoinDeposit from " << req->getVid() << " at " << simTime().dbl() << std::endl;
-            std::cout << "[RSU] I received a message of CoinDeposit from " << req->getVid() << " at " << simTime().dbl() << std::endl;
+            std::cout << "[RSU] I received a message of CoinDeposit from " << req->getVid() << std::endl;
             
             if (coinDepositStages.find(vid) == coinDepositStages.end()) {
                 uint segCnt = COIN_DEPOSIT_SIGNATURE_REQUEST_BYTE_SIZE / MACPKG_MAXSIZE + 1;
-                double totalLatency = 0, queueLatency = 0, computeLatency = 0;
+                std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_STDDEV);
                 for (uint i = 0; i < segCnt; i++){
                     CoinDepositSignatureRequest* packet = new CoinDepositSignatureRequest();
                     packet->setByteLength(MACPKG_MAXSIZE);
@@ -158,14 +151,9 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
                     lteControlInfo->setDstAddr(vid);
                     lteControlInfo->setDirection(D2D);
                     packet->setControlInfo(lteControlInfo);
-
-                    std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_STDDEV);
-                    queueLatency += latency.first;
-                    computeLatency += latency.second;
-                    totalLatency += (latency.first+latency.second);
-                    sendDelayedDown(packet,totalLatency);
+                    sendDelayedDown(packet,latency.first+latency.second);
     //            sendDelayedDown(packet, cpuModel.getLatency(simTime().dbl(), COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_STDDEV));
-                    std::cout << "[RSU] send #" << i << " segment of CoinDepositSignatureRequest" << std::endl;
+//                    std::cout << "[RSU] send #" << i << " segment of CoinDepositSignatureRequest" << std::endl;
                 }
                 // update RSUMsgSegCntMap
                 // if (RSUMsgSegCntMap.find(vid)==RSUMsgSegCntMap.end())
@@ -175,13 +163,12 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
 
                 coinDepositStages[vid] = CoinDepositStage::SIGNATURE_REQUESTED;
 
-    //            EV << "[RSU] When processing the CoinDeposit message, queuing time = "
-    //                    << queueLatency << " and computation time = " << computeLatency << endl;
-    //            EV << "[RSU] I sent a message of CoinDepositSignatureRequest to " << req->getVid() << " at " << currentTime + totalLatency << endl;
-                std::cout << "[RSU] When processing the CoinDeposit message from " << req->getVid() << ", total time = "
-                        << totalLatency << ", queuing time = "
-                        << queueLatency << " and computation time = " << computeLatency << std::endl;
-                std::cout << "[RSU] I sent a message of CoinDepositSignatureRequest to " << req->getVid() << " at " << currentTime + totalLatency << std::endl;
+                EV << "[RSU]: I sent a message of CoinDepositSignatureRequest. Queue time " << latency.first
+                        << " Computation time " << latency.second << endl;
+//                std::cout << "[RSU] When processing the CoinDeposit message from " << req->getVid() << ", total time = "
+//                        << totalLatency << ", queuing time = "
+//                        << queueLatency << " and computation time = " << computeLatency << std::endl;
+//                std::cout << "[RSU] I sent a message of CoinDepositSignatureRequest to " << req->getVid() << " at " << currentTime + totalLatency << std::endl;
             
             }
         }
@@ -192,7 +179,7 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
         recvMsgSegCnt[vid][COIN_DEPOSIT_SIGNATURE_RESPONSE]++;
         if (recvMsgSegCnt[vid][COIN_DEPOSIT_SIGNATURE_RESPONSE]>=VehicleMsgSegCntMap[vid][COIN_DEPOSIT_SIGNATURE_RESPONSE]){
     //        EV << "[RSU] I received a message of CoinDepositSignatureResponse from " << req->getVid() << " at " << currentTime << endl;
-            std::cout << "[RSU] I received a message of CoinDepositSignatureResponse from " << req->getVid() << " at " << currentTime << std::endl;
+            std::cout << "[RSU] I received a message of CoinDepositSignatureResponse from " << req->getVid() << std::endl;
             
             if (coinDepositStages.find(vid) != coinDepositStages.end() && coinDepositStages[vid] == CoinDepositStage::SIGNATURE_REQUESTED) {
                 // TODO: The communication to central database.
