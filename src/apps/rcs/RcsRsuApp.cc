@@ -26,10 +26,6 @@
 #include <iostream>
 #include <map>
 
-// global recorder of message segCnt
-//extern std::unordered_map<MacNodeId, MsgSegCnt> VehicleMsgSegCntMap;// msg sent by vehicle to RSU
-std::map<MacNodeId, MsgSegCnt> RSUMsgSegCntMap;// msg sent by RSU to vehicle
-
 Define_Module(RcsRsuApp);
 
 RcsRsuApp::~RcsRsuApp() {
@@ -73,81 +69,57 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
     if (CoinRequest* req = dynamic_cast<CoinRequest*>(msg)) {
         EV_WARN << "[RSU] I received a fragment of CoinRequest from " << req->getVid() << endl;
         int vid = req->getVid();
-        // wait until receive all segments
-        if(recvMsgSegCnt.find(vid)==recvMsgSegCnt.end()) recvMsgSegCnt[vid][COIN_REQUEST]=0;
-        recvMsgSegCnt[vid][COIN_REQUEST]++;
-        if (recvMsgSegCnt[vid][COIN_REQUEST]>=VehicleMsgSegCntMap[vid][COIN_REQUEST])
-        {
-            EV_WARN << "[RSU] I received a message of CoinRequest from " << req->getVid() << endl;
+        EV_WARN << "[RSU] I received a message of CoinRequest from " << req->getVid() << endl;
 
-            if (coinAssignmentStages.find(vid) == coinAssignmentStages.end()) {
-                uint segCnt = COIN_ASSIGNMENT_BYTE_SIZE / MACPKG_MAXSIZE + 1;
-                std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_ASSIGNMENT_LATENCY_MEAN, COIN_ASSIGNMENT_LATENCY_STDDEV);
-                for (uint i = 0; i < segCnt; i++){
-                    CoinAssignment* packet = new CoinAssignment();
-                    packet->setByteLength(MACPKG_MAXSIZE);
-                    packet->setVid(vid);
-                    auto lteControlInfo = new FlowControlInfoNonIp();
-                    lteControlInfo->setSrcAddr(nodeId_);
-                    lteControlInfo->setDstAddr(vid);
-                    lteControlInfo->setDirection(D2D);
-                    packet->setControlInfo(lteControlInfo);
-                    sendDelayedDown(packet,latency.first+latency.second);
-                }
-                RSUMsgSegCntMap[vid][COIN_ASSIGNMENT]=segCnt;
+        if (coinAssignmentStages.find(vid) == coinAssignmentStages.end()) {
+            std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_ASSIGNMENT_LATENCY_MEAN, COIN_ASSIGNMENT_LATENCY_STDDEV);
+            CoinAssignment* packet = new CoinAssignment();
+            packet->setByteLength(COIN_ASSIGNMENT_BYTE_SIZE);
+            packet->setVid(vid);
+            auto lteControlInfo = new FlowControlInfoNonIp();
+            lteControlInfo->setSrcAddr(nodeId_);
+            lteControlInfo->setDstAddr(vid);
+            lteControlInfo->setDirection(D2D);
+            packet->setControlInfo(lteControlInfo);
+            sendDelayedDown(packet,latency.first+latency.second);
 
-                coinAssignmentStages[vid] = CoinAssignmentStage::SENT;
+            coinAssignmentStages[vid] = CoinAssignmentStage::SENT;
 
-                EV_WARN << "[RSU]: I sent a message of CoinAssignment. Queue time " << latency.first
-                        << " Computation time " << latency.second << endl;
-            }
+            EV_WARN << "[RSU]: I sent a message of CoinAssignment. Queue time " << latency.first
+                    << " Computation time " << latency.second << endl;
         }
     } else if (CoinDeposit* req = dynamic_cast<CoinDeposit*>(msg)) {
         EV_WARN << "[RSU] I received a fragment of CoinDeposit from " << req->getVid() << endl;
         int vid = req->getVid();
-        // wait until receive all segments
-        if(recvMsgSegCnt.find(vid)==recvMsgSegCnt.end()) recvMsgSegCnt[vid][COIN_DEPOSIT]=0;
-        recvMsgSegCnt[vid][COIN_DEPOSIT]++;
-        if (recvMsgSegCnt[vid][COIN_DEPOSIT]>=VehicleMsgSegCntMap[vid][COIN_DEPOSIT]){
-            EV_WARN << "[RSU] I received a message of CoinDeposit from " << req->getVid() << endl;
-            
-            if (coinDepositStages.find(vid) == coinDepositStages.end()) {
-                uint segCnt = COIN_DEPOSIT_SIGNATURE_REQUEST_BYTE_SIZE / MACPKG_MAXSIZE + 1;
-                std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_STDDEV);
-                for (uint i = 0; i < segCnt; i++){
-                    CoinDepositSignatureRequest* packet = new CoinDepositSignatureRequest();
-                    packet->setByteLength(MACPKG_MAXSIZE);
-                    packet->setVid(vid);
-                    auto lteControlInfo = new FlowControlInfoNonIp();
-                    lteControlInfo->setSrcAddr(nodeId_);
-                    lteControlInfo->setDstAddr(vid);
-                    lteControlInfo->setDirection(D2D);
-                    packet->setControlInfo(lteControlInfo);
-                    sendDelayedDown(packet,latency.first+latency.second);
-                }
-                RSUMsgSegCntMap[vid][COIN_DEPOSIT_SIGNATURE_REQUEST]=segCnt;
+        EV_WARN << "[RSU] I received a message of CoinDeposit from " << req->getVid() << endl;
 
-                coinDepositStages[vid] = CoinDepositStage::SIGNATURE_REQUESTED;
+        if (coinDepositStages.find(vid) == coinDepositStages.end()) {
+            std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_STDDEV);
+            CoinDepositSignatureRequest* packet = new CoinDepositSignatureRequest();
+            packet->setByteLength(COIN_DEPOSIT_SIGNATURE_REQUEST_BYTE_SIZE);
+            packet->setVid(vid);
+            auto lteControlInfo = new FlowControlInfoNonIp();
+            lteControlInfo->setSrcAddr(nodeId_);
+            lteControlInfo->setDstAddr(vid);
+            lteControlInfo->setDirection(D2D);
+            packet->setControlInfo(lteControlInfo);
+            sendDelayedDown(packet,latency.first+latency.second);
 
-                EV_WARN << "[RSU]: I sent a message of CoinDepositSignatureRequest. Queue time " << latency.first
-                        << " Computation time " << latency.second << endl;
-            
-            }
+            coinDepositStages[vid] = CoinDepositStage::SIGNATURE_REQUESTED;
+
+            EV_WARN << "[RSU]: I sent a message of CoinDepositSignatureRequest. Queue time " << latency.first
+                    << " Computation time " << latency.second << endl;
+
         }
     } else if (CoinDepositSignatureResponse* req = dynamic_cast<CoinDepositSignatureResponse*>(msg)) {
         EV_WARN << "[RSU] I received a fragment of CoinDepositSignatureResponse from " << req->getVid() << endl;
         int vid = req->getVid();
-        // wait until receive all segments
-        if(recvMsgSegCnt.find(vid)==recvMsgSegCnt.end()) recvMsgSegCnt[vid][COIN_DEPOSIT_SIGNATURE_RESPONSE]=0;
-        recvMsgSegCnt[vid][COIN_DEPOSIT_SIGNATURE_RESPONSE]++;
-        if (recvMsgSegCnt[vid][COIN_DEPOSIT_SIGNATURE_RESPONSE]>=VehicleMsgSegCntMap[vid][COIN_DEPOSIT_SIGNATURE_RESPONSE]){
-            EV_WARN << "[RSU] I received a message of CoinDepositSignatureResponse from " << req->getVid() << endl;
-            
-            if (coinDepositStages.find(vid) != coinDepositStages.end() && coinDepositStages[vid] == CoinDepositStage::SIGNATURE_REQUESTED) {
-                // TODO: The communication to central database.
-                coinDepositStages[vid] = CoinDepositStage::SUBMITTED;
-                EV_WARN << "[Vehicle " << vid << "]: Coin deposit succeed." << endl;
-            }
+        EV_WARN << "[RSU] I received a message of CoinDepositSignatureResponse from " << req->getVid() << endl;
+
+        if (coinDepositStages.find(vid) != coinDepositStages.end() && coinDepositStages[vid] == CoinDepositStage::SIGNATURE_REQUESTED) {
+            // TODO: The communication to central database.
+            coinDepositStages[vid] = CoinDepositStage::SUBMITTED;
+            EV_WARN << "[Vehicle " << vid << "]: Coin deposit succeed." << endl;
         }
     }
 }
