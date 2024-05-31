@@ -667,7 +667,7 @@ void LteMacVUeMode4::handleMessage(cMessage *msg)
 
 void LteMacVUeMode4::handleSelfMessage()
 {
-    EV << "----- UE MAIN LOOP -----" << endl;
+//    EV << "----- UE MAIN LOOP -----" << endl;
 
     // extract pdus from all harqrxbuffers and pass them to unmaker
     HarqRxBuffers::iterator hit = harqRxBuffers_.begin();
@@ -692,9 +692,9 @@ void LteMacVUeMode4::handleSelfMessage()
     {
         purged += hit->second->purgeCorruptedPdus();
     }
-    EV << NOW << " LteMacVUeMode4::handleSelfMessage Purged " << purged << " PDUS" << endl;
+//    EV << NOW << " LteMacVUeMode4::handleSelfMessage Purged " << purged << " PDUS" << endl;
 
-    EV << NOW << "LteMacVUeMode4::handleSelfMessage " << nodeId_ << " - HARQ process " << (unsigned int)currentHarq_ << endl;
+//    EV << NOW << "LteMacVUeMode4::handleSelfMessage " << nodeId_ << " - HARQ process " << (unsigned int)currentHarq_ << endl;
     // updating current HARQ process for next TTI
 
     //unsigned char currentHarq = currentHarq_;
@@ -706,7 +706,7 @@ void LteMacVUeMode4::handleSelfMessage()
 
     if (mode4Grant == NULL)
     {
-        EV << NOW << " LteMacVUeMode4::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
+//        EV << NOW << " LteMacVUeMode4::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
 
         // No configured Grant simply continue
     }
@@ -834,7 +834,7 @@ void LteMacVUeMode4::handleSelfMessage()
     //============================ DEBUG ==========================
     HarqTxBuffers::iterator it;
 
-    EV << "\n htxbuf.size " << harqTxBuffers_.size() << endl;
+//    EV << "\n htxbuf.size " << harqTxBuffers_.size() << endl;
 
     int cntOuter = 0;
     int cntInner = 0;
@@ -859,7 +859,7 @@ void LteMacVUeMode4::handleSelfMessage()
         currentHarq_ = (currentHarq_+1) % harqProcesses_;
     }
 
-    EV << "--- END UE MAIN LOOP ---" << endl;
+//    EV << "--- END UE MAIN LOOP ---" << endl;
 }
 
 void LteMacVUeMode4::macHandleSps(cPacket* pkt)

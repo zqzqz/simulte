@@ -235,10 +235,11 @@ void LtePdcpRrcUeD2D::handleMessage(cMessage* msg)
     }
     else if (strcmp(pkt->getName(), "CBR") == 0)
     {
-        EV << "LtePdcp : Sending packet " << pkt->getName() << " on port DataOut\n";
-        // Send message
-        send(pkt, dataOut_);
-        emit(sentPacketToUpperLayer, pkt);
+        /* discard cbr message here! */
+//        EV << "LtePdcp : Sending packet " << pkt->getName() << " on port DataOut\n";
+//        // Send message
+//        send(pkt, dataOut_);
+//        emit(sentPacketToUpperLayer, pkt);
     }
     else
     {
