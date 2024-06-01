@@ -35,7 +35,6 @@ void CarAuctionApp::initialize(int stage) {
 
 
 void CarAuctionApp::handleLowerMessage(cMessage* msg) {
-    Mode4BaseApp::handleLowerMessage(msg);
     double currentTime = simTime().dbl();
     if (CoinAssignment* req = dynamic_cast<CoinAssignment*>(msg)) {
         int vid = req->getVid();

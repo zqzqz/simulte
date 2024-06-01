@@ -41,10 +41,14 @@ std::pair<double,double> CpuModel::getLatency(double currentTime, double mean, d
             selectCoreId = i;
         }
     }
-    double computeLatency = randomGaussian(mean, std);
+
     double queueLatency = coreLoads[selectCoreId] - currentTime;
+    // avoid negative delay
+    double computeLatency;
+    do {
+        computeLatency = randomGaussian(mean, std);
+    } while (computeLatency <= 0);
     coreLoads[selectCoreId] = coreLoads[selectCoreId] + computeLatency;
-    // coreLoads[selectCoreId] - currentTime = queueLatency + computeLatency
     return std::make_pair(queueLatency,computeLatency);
 }
 

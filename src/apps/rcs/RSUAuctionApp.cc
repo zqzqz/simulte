@@ -27,7 +27,6 @@ Define_Module(RSUAuctionApp);
 
 void RSUAuctionApp::handleLowerMessage(cMessage* msg)
 {
-    Mode4BaseApp::handleLowerMessage(msg);
     double currentTime = simTime().dbl();
 
     if (CoinRequest* req = dynamic_cast<CoinRequest*>(msg)) {

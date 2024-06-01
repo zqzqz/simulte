@@ -26,7 +26,6 @@
 Define_Module(RSUPerceptionApp);
 
 void RSUPerceptionApp::handleLowerMessage(cMessage* msg) {
-    Mode4BaseApp::handleLowerMessage(msg);
     double currentTime = simTime().dbl();
 
     if (CoinRequest* req = dynamic_cast<CoinRequest*>(msg)) {
