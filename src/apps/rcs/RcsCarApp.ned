@@ -15,16 +15,21 @@
 
 package lte.apps.rcs;
 
-import lte.apps.mode4App.Mode4BaseApp;
+import lte.apps.rcs.RcsBaseApp;
 
 //
 // TODO auto-generated type
 //
-simple RcsCarApp like Mode4BaseApp
+simple RcsCarApp extends RcsBaseApp
 {
     parameters:
-        int macNodeId = default(1);
-        int rsuMacNodeId = default(0);
+        @class(RcsCarApp);
+        double RSU_POSITION_X;
+        double RSU_POSITION_Y;
+        int RSU_ADDR;
+        
+//        int macNodeId = default(1);
+//        int rsuMacNodeId = default(0);
         
         @signal[sentMsg];
         @statistic[sentMsg](title="Messages sent"; unit=""; source="sentMsg"; record=sum,vector);
@@ -35,7 +40,4 @@ simple RcsCarApp like Mode4BaseApp
         @signal[cbr];
         @statistic[cbr](title="Channel Busy Ratio"; unit=""; source="cbr"; record=vector);         
         @display("i=block/source");
-    gates:
-        input lowerGateIn; // FROM NIC
-        output lowerGateOut;  // TO NIC
 }

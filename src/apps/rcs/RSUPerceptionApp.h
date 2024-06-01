@@ -13,21 +13,14 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package lte.apps.rcs;
+#ifndef RCS_APPS_RSUPERCEPTIONAPP_H_
+#define RCS_APPS_RSUPERCEPTIONAPP_H_
 
-import inet.applications.contract.ITCPApp;
+#include "RcsRsuApp.h"
 
-//
-// TODO auto-generated type
-//
-simple RcsTcpRsuApp like ITCPApp
-{
-    parameters:
-		string localAddress = default("");
-		int localPort = default(1000);
-		string serverThreadClass = default("RcsTcpRsuThread");
-		string dataTransferMode @enum("bytecount", "object", "bytestream") = default("bytecount");
-    gates:
-        input tcpIn @labels(TCPCommand/up);
-        output tcpOut @labels(TCPCommand/up);
-}
+class RSUPerceptionApp : public RcsRsuApp {
+protected:
+    virtual void handleLowerMessage(cMessage* msg) override;
+};
+
+#endif /* RCS_APPS_RSUPERCEPTIONAPP_H_ */

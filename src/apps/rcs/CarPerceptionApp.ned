@@ -15,24 +15,13 @@
 
 package lte.apps.rcs;
 
-import lte.apps.rcs.RcsBaseApp;
+import lte.apps.rcs.RcsCarApp;
 
 //
 // TODO auto-generated type
 //
-simple RcsRsuApp extends RcsBaseApp
+simple CarPerceptionApp extends RcsCarApp
 {
     parameters:
-        @class(RcsRsuApp);
-//        int macNodeId = default(0);
-        
-        @signal[sentMsg];
-        @statistic[sentMsg](title="Messages sent"; unit=""; source="sentMsg"; record=sum,vector);
-        @signal[delay];
-        @statistic[delay](title="Message Delay"; unit="s"; source="delay"; record=mean,vector);    
-        @signal[rcvdMsg]; 
-        @statistic[rcvdMsg](title="Messages Received"; unit="s"; source="rcvdMsg"; record=sum,vector);
-        @signal[cbr];
-        @statistic[cbr](title="Channel Busy Ratio"; unit=""; source="cbr"; record=vector);         
-        @display("i=block/source");
+        @class(CarPerceptionApp);
 }

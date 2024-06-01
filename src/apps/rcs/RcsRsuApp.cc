@@ -14,16 +14,15 @@
 // 
 
 #include "RcsRsuApp.h"
+#include "common.h"
 #include "common/LteControlInfo.h"
-#include "CoinRequest_m.h"
-#include "CoinAssignment_m.h"
-#include "CoinDeposit_m.h"
-#include "CoinDepositSignatureRequest_m.h"
-#include "CoinDepositSignatureResponse_m.h"
-#include "CoinSubmission_m.h"
-#include "package.h"
+#include "message/CoinRequest_m.h"
+#include "message/CoinAssignment_m.h"
+#include "message/CoinDeposit_m.h"
+#include "message/CoinDepositSignatureRequest_m.h"
+#include "message/CoinDepositSignatureResponse_m.h"
+#include "message/CoinSubmission_m.h"
 
-#include <iostream>
 #include <map>
 
 Define_Module(RcsRsuApp);
@@ -34,7 +33,7 @@ RcsRsuApp::~RcsRsuApp() {
 
 void RcsRsuApp::initialize(int stage)
 {
-    Mode4BaseApp::initialize(stage);
+    RcsBaseApp::initialize(stage);
     if (stage==inet::INITSTAGE_LOCAL){
         // Register the node with the binder
         // Issue primarily is how do we set the link layer address
@@ -65,11 +64,9 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
 {
     Mode4BaseApp::handleLowerMessage(msg);
     double currentTime = simTime().dbl();
-    // receive num package
     if (CoinRequest* req = dynamic_cast<CoinRequest*>(msg)) {
-        EV_WARN << "[RSU] I received a fragment of CoinRequest from " << req->getVid() << endl;
         int vid = req->getVid();
-        EV_WARN << "[RSU] I received a message of CoinRequest from " << req->getVid() << endl;
+        EV_WARN << "[RSU] I received a message of CoinRequest from " << vid << endl;
 
         if (coinAssignmentStages.find(vid) == coinAssignmentStages.end()) {
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_ASSIGNMENT_LATENCY_MEAN, COIN_ASSIGNMENT_LATENCY_STDDEV);
@@ -85,13 +82,12 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
 
             coinAssignmentStages[vid] = CoinAssignmentStage::SENT;
 
-            EV_WARN << "[RSU]: I sent a message of CoinAssignment. Queue time " << latency.first
+            EV_WARN << "[RSU]: I sent a message of CoinAssignment to " << vid << ". Queue time " << latency.first
                     << " Computation time " << latency.second << endl;
         }
     } else if (CoinDeposit* req = dynamic_cast<CoinDeposit*>(msg)) {
-        EV_WARN << "[RSU] I received a fragment of CoinDeposit from " << req->getVid() << endl;
         int vid = req->getVid();
-        EV_WARN << "[RSU] I received a message of CoinDeposit from " << req->getVid() << endl;
+        EV_WARN << "[RSU] I received a message of CoinDeposit from " << vid << endl;
 
         if (coinDepositStages.find(vid) == coinDepositStages.end()) {
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_STDDEV);
@@ -107,14 +103,13 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
 
             coinDepositStages[vid] = CoinDepositStage::SIGNATURE_REQUESTED;
 
-            EV_WARN << "[RSU]: I sent a message of CoinDepositSignatureRequest. Queue time " << latency.first
+            EV_WARN << "[RSU]: I sent a message of CoinDepositSignatureRequest to " << vid << ". Queue time " << latency.first
                     << " Computation time " << latency.second << endl;
 
         }
     } else if (CoinDepositSignatureResponse* req = dynamic_cast<CoinDepositSignatureResponse*>(msg)) {
-        EV_WARN << "[RSU] I received a fragment of CoinDepositSignatureResponse from " << req->getVid() << endl;
         int vid = req->getVid();
-        EV_WARN << "[RSU] I received a message of CoinDepositSignatureResponse from " << req->getVid() << endl;
+        EV_WARN << "[RSU] I received a message of CoinDepositSignatureResponse from " << vid << endl;
 
         if (coinDepositStages.find(vid) != coinDepositStages.end() && coinDepositStages[vid] == CoinDepositStage::SIGNATURE_REQUESTED) {
             // TODO: The communication to central database.

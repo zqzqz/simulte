@@ -3,7 +3,7 @@
 	<name>lte</name>
 	<comment></comment>
 	<projects>
-		<project>inet</project>
+		<project>inet-3.6.6</project>
 		<project>veins</project>
 		<project>veins_inet3</project>
 	</projects>

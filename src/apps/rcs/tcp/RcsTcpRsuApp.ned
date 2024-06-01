@@ -13,26 +13,21 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package lte.apps.rcs;
+package lte.apps.rcs.tcp;
 
-import lte.apps.rcs.RcsBaseApp;
+import inet.applications.contract.ITCPApp;
 
 //
 // TODO auto-generated type
 //
-simple RcsRsuApp extends RcsBaseApp
+simple RcsTcpRsuApp like ITCPApp
 {
     parameters:
-        @class(RcsRsuApp);
-//        int macNodeId = default(0);
-        
-        @signal[sentMsg];
-        @statistic[sentMsg](title="Messages sent"; unit=""; source="sentMsg"; record=sum,vector);
-        @signal[delay];
-        @statistic[delay](title="Message Delay"; unit="s"; source="delay"; record=mean,vector);    
-        @signal[rcvdMsg]; 
-        @statistic[rcvdMsg](title="Messages Received"; unit="s"; source="rcvdMsg"; record=sum,vector);
-        @signal[cbr];
-        @statistic[cbr](title="Channel Busy Ratio"; unit=""; source="cbr"; record=vector);         
-        @display("i=block/source");
+		string localAddress = default("");
+		int localPort = default(1000);
+		string serverThreadClass = default("RcsTcpRsuThread");
+		string dataTransferMode @enum("bytecount", "object", "bytestream") = default("bytecount");
+    gates:
+        input tcpIn @labels(TCPCommand/up);
+        output tcpOut @labels(TCPCommand/up);
 }
