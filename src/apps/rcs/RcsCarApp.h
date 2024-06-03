@@ -45,7 +45,7 @@ protected:
     virtual void handleSelfMessage(cMessage *msg) override;
     virtual void handleLowerMessage(cMessage* msg) override;
     virtual void receiveSignal(cComponent* source, simsignal_t signalID, cObject* obj, cObject* details) override;
-    void handlePositionUpdate(cObject* obj);
+    virtual void handlePositionUpdate(cObject* obj);
 };
 
 #endif /* APPS_RCS_RCSCARAPP_H_ */

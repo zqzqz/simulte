@@ -42,8 +42,5 @@ void RcsBaseApp::initialize(int stage) {
     COIN_SUBMISSION_LATENCY_MEAN = par("COIN_SUBMISSION_LATENCY_MEAN");
     COIN_SUBMISSION_LATENCY_STDDEV = par("COIN_SUBMISSION_LATENCY_STDDEV");
 }
-
+//
 void RcsBaseApp::handleSelfMessage(cMessage *msg) {}
-void RcsBaseApp::handleLowerMessage(cMessage* msg) {}
-void RcsBaseApp::receiveSignal(cComponent* source, simsignal_t signalID, cObject* obj, cObject* details) {}
-void RcsBaseApp::handlePositionUpdate(cObject* obj) {}

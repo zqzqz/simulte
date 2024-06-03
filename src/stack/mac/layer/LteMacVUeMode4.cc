@@ -408,11 +408,19 @@ void LteMacVUeMode4::macPduMake()
         {
             // Add SDU to PDU
             // Find Mac Pkt
-            if (mbuf_.find(destCid) == mbuf_.end())
+            if (mbuf_.find(destCid) == mbuf_.end()){
+//                change those lines to avoid strange error!
+//                sduPerCid--;
+//                continue;
                 throw cRuntimeError("Unable to find mac buffer for cid %d", destCid);
+            }
 
-            if (mbuf_[destCid]->empty())
+            if (mbuf_[destCid]->empty()){
+//                change those lines to avoid strange error!
+//                  sduPerCid--;
+//                  continue;
                 throw cRuntimeError("Empty buffer for cid %d, while expected SDUs were %d", destCid, sduPerCid);
+            }
 
             pkt = mbuf_[destCid]->popFront();
 

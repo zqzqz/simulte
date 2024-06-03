@@ -46,9 +46,6 @@ protected:
     double COIN_SUBMISSION_LATENCY_STDDEV;
 protected:
     virtual void handleSelfMessage(cMessage *msg) override;
-    virtual void handleLowerMessage(cMessage* msg) override;
-    virtual void receiveSignal(cComponent* source, simsignal_t signalID, cObject* obj, cObject* details) override;
-    void handlePositionUpdate(cObject* obj);
 };
 
 #endif /* APPS_RCS_RCSBASEAPP_H_ */
