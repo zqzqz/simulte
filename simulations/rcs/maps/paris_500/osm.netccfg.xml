@@ -7,11 +7,11 @@
 
     <input>
         <type-files value="${SUMO_HOME}/data/typemap/osmNetconvert.typ.xml"/>
-        <osm-files value="osm_bbox.osm.xml.gz"/>
+        <osm-files value="/home/veins/workspace.omnetpp2/simulte/simulations/rcs/maps/paris_500/osm_bbox.osm.xml.gz"/>
     </input>
 
     <output>
-        <output-file value="osm.net.xml.gz"/>
+        <output-file value="/home/veins/workspace.omnetpp2/simulte/simulations/rcs/maps/paris_500/osm.net.xml.gz"/>
         <output.street-names value="true"/>
         <output.original-names value="true"/>
     </output>
