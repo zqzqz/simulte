@@ -32,7 +32,10 @@ network Intersection
         double playgroundSizeX @unit(m); // x size of the area the nodes are in (in meters)
         double playgroundSizeY @unit(m); // y size of the area the nodes are in (in meters)
         double playgroundSizeZ @unit(m); // z size of the area the nodes are in (in meters)
-        @display("bgb=732,483");
+		//# default (1000.1000)
+		//# beijing (2000,2000)
+		//# paris (1100,1300)
+        @display("bgb=2000,2000");
 
     submodules:
         //# Veins manager module
@@ -54,9 +57,10 @@ network Intersection
         }
         //# Network instances
 		rsu[1]: CarNonIp {
-            @display("p=220,220;i=veins/sign/yellowdiamond;is=vs");
-        }
-        node[0]: CarNonIp {
+		    //# default (225,225)
+			//# beijing (940,870)
+			//# paris (670,570)
+            @display("p=940,870;i=veins/sign/yellowdiamond;is=vs");
         }
 }
 

@@ -364,7 +364,7 @@ void LtePhyVUeMode4::handleAirFrame(cMessage* msg)
 
     connectedNodeId_ = masterId_;
     LteAirFrame* frame = check_and_cast<LteAirFrame*>(msg);
-    EV << "LtePhyVUeMode4: received new LteAirFrame with ID " << frame->getId() << " from channel" << endl;
+//    EV << "LtePhyVUeMode4: received new LteAirFrame with ID " << frame->getId() << " from channel" << endl;
     //Update coordinates of this user
     if (lteInfo->getFrameType() == HANDOVERPKT)
     {
@@ -464,8 +464,8 @@ void LtePhyVUeMode4::handleUpperMessage(cMessage* msg)
     // if this is a multicast/broadcast connection, send the frame to all neighbors in the hearing range
     // otherwise, send unicast to the destination
 
-    EV << "LtePhyVUeMode4::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
-       << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
+//    EV << "LtePhyVUeMode4::handleUpperMessage - " << nodeTypeToA(nodeType_) << " with id " << nodeId_
+//       << " sending message to the air channel. Dest=" << lteInfo->getDestId() << endl;
 
     // Mark that we are in the process of transmitting a packet therefore when we go to decode messages we can mark as failure due to half duplex
     beginTransmission_ = true;
@@ -577,7 +577,7 @@ RbMap LtePhyVUeMode4::sendSciMessage(cMessage* msg, UserControlInfo* lteInfo)
      * Ensure that it will fit into it's grant
      * if not don't send anything except a break reservation message
      */
-    EV << NOW << " LtePhyVUeMode4::handleUpperMessage - message from stack" << endl;
+//    EV << NOW << " LtePhyVUeMode4::handleUpperMessage - message from stack" << endl;
 
     // create LteAirFrame and encapsulate the received packet
     SidelinkControlInformation* SCI = createSCIMessage();
@@ -665,7 +665,7 @@ void LtePhyVUeMode4::computeRandomCSRs(LteMode4SchedulingGrant* &grant) {
 }
 
 void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
-    EV << NOW << " LtePhyVUeMode4::computeCSRs - going through sensing window to compute CSRS..." << endl;
+//    EV << NOW << " LtePhyVUeMode4::computeCSRs - going through sensing window to compute CSRS..." << endl;
     // Determine the total number of possible CSRs
     if (grant->getMaximumLatency() >= 100) {
         if (grant->getPeriod() == 50){
@@ -677,9 +677,9 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
         }
     }
 
-    EV << NOW
-       << " LtePhyVUeMode4::computeCSRs - eliminating CSRS which were not sensed in sensing window and those above the threshold ..."
-       << endl;
+//    EV << NOW
+//       << " LtePhyVUeMode4::computeCSRs - eliminating CSRS which were not sensed in sensing window and those above the threshold ..."
+//       << endl;
     int pRsvpTx = grant->getPeriod();
     int grantLength = grant->getNumSubchannels();
     int cResel = grant->getResourceReselectionCounter();
@@ -1060,7 +1060,7 @@ void LtePhyVUeMode4::computeCSRs(LteMode4SchedulingGrant* &grant) {
 std::vector<std::tuple<double, int, int, bool>> LtePhyVUeMode4::selectBestRSSIs(std::unordered_map<int, std::set<int>> possibleCSRs,
         LteMode4SchedulingGrant* &grant, int totalPossibleCSRs, std::unordered_map<int, std::unordered_map<int, bool>> reservedCSRs)
 {
-    EV << NOW << " LtePhyVUeMode4::selectBestRSSIs - Selecting best CSRs from possible CSRs..." << endl;
+//    EV << NOW << " LtePhyVUeMode4::selectBestRSSIs - Selecting best CSRs from possible CSRs..." << endl;
     int decrease = pStep_;
     if (grant->getPeriod() < 100)
     {
@@ -1166,7 +1166,7 @@ std::vector<std::tuple<double, int, int, bool>> LtePhyVUeMode4::selectBestRSSIs(
 std::vector<std::tuple<double, int, int, bool>> LtePhyVUeMode4::selectBestRSRPs(std::unordered_map<int, std::set<int>> possibleCSRs,
         LteMode4SchedulingGrant* &grant, int totalPossibleCSRs, std::unordered_map<int, std::unordered_map<int, bool>> reservedCSRs)
 {
-    EV << NOW << " LtePhyVUeMode4::selectBestRSSIs - Selecting best CSRs from possible CSRs..." << endl;
+//    EV << NOW << " LtePhyVUeMode4::selectBestRSSIs - Selecting best CSRs from possible CSRs..." << endl;
     int decrease = pStep_;
     if (grant->getPeriod() < 100)
     {
@@ -1271,7 +1271,7 @@ std::vector<std::tuple<double, int, int, bool>> LtePhyVUeMode4::selectBestRSRPs(
 
 SidelinkControlInformation* LtePhyVUeMode4::createSCIMessage()
 {
-    EV << NOW << " LtePhyVUeMode4::createSCIMessage - Start creating SCI..." << endl;
+//    EV << NOW << " LtePhyVUeMode4::createSCIMessage - Start creating SCI..." << endl;
 
     SidelinkControlInformation* sci = new SidelinkControlInformation("SCI Message");
 
@@ -1439,7 +1439,7 @@ void LtePhyVUeMode4::storeAirFrame(LteAirFrame* newFrame)
 
 void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo, std::vector<double> &rsrpVector, std::vector<double> &rssiVector, std::vector<double> &sinrVector, double &attenuation)
 {
-    EV << NOW << " LtePhyVUeMode4::decodeAirFrame - Start decoding..." << endl;
+//    EV << NOW << " LtePhyVUeMode4::decodeAirFrame - Start decoding..." << endl;
 
     // apply decider to received packet
     bool interference_result = false;
@@ -1678,13 +1678,13 @@ void LtePhyVUeMode4::decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo
         numAirFrameNotReceived_++;
     }
 
-    EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
-       << (interference_result ? "RECEIVED" : "NOT RECEIVED") << endl;
+//    EV << "Handled LteAirframe with ID " << frame->getId() << " with result "
+//       << (interference_result ? "RECEIVED" : "NOT RECEIVED") << endl;
 }
 
 std::tuple<int,int> LtePhyVUeMode4::decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo)
 {
-    EV << NOW << " LtePhyVUeMode4::decodeRivValue - Decoding RIV value of SCI allows correct placement in sensing window..." << endl;
+//    EV << NOW << " LtePhyVUeMode4::decodeRivValue - Decoding RIV value of SCI allows correct placement in sensing window..." << endl;
     //UserControlInfo* lteInfo = check_and_cast<UserControlInfo*>(pkt->removeControlInfo());
     RbMap rbMap = sciInfo->getGrantedBlocks();
     RbMap::iterator it;
@@ -1909,7 +1909,7 @@ void LtePhyVUeMode4::updateSubframe()
 
 void LtePhyVUeMode4::initialiseSensingWindow()
 {
-    EV << NOW << " LtePhyVUeMode4::initialiseSensingWindow - creating subframes to be added to sensingWindow..." << endl;
+//    EV << NOW << " LtePhyVUeMode4::initialiseSensingWindow - creating subframes to be added to sensingWindow..." << endl;
 
     simtime_t subframeTime = NOW - TTI;
 

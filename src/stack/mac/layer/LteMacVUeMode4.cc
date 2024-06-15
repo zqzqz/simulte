@@ -404,10 +404,10 @@ void LteMacVUeMode4::macPduMake()
             macPkt = pit->second;
         }
         // debug info for mac buffer
-        EV << NOW << "debug info for mac buffer" << endl;
-        for (auto [macCid,queue] : mbuf_){
-            EV << NOW << "MacCid = " << macCid << " "  << queue << endl;
-        }
+//        EV << NOW << "debug info for mac buffer" << endl;
+//        for (auto [macCid,queue] : mbuf_){
+//            EV << NOW << "MacCid = " << macCid << " "  << queue << endl;
+//        }
 
         while (sduPerCid > 0)
         {
@@ -417,10 +417,6 @@ void LteMacVUeMode4::macPduMake()
 //                change those lines to avoid strange error!
                 sduPerCid--;
                 continue;
-//                EV << NOW << "debug info for mac buffer" << endl;
-//                for (auto [macCid,queue] : mbuf_){
-//                    EV << NOW << "MacCid = " << macCid  << queue << endl;
-//                }
 //                throw cRuntimeError("Unable to find mac buffer for cid %d", destCid);
             }
 
@@ -428,10 +424,6 @@ void LteMacVUeMode4::macPduMake()
 //                change those lines to avoid strange error!
                   sduPerCid--;
                   continue;
-//                EV << NOW << "debug info for mac buffer" << endl;
-//                for (auto [macCid,queue] : mbuf_){
-//                    EV << NOW << "MacCid = " << macCid  << queue << endl;
-//                }
 //                throw cRuntimeError("Empty buffer for cid %d, while expected SDUs were %d", destCid, sduPerCid);
             }
 
@@ -493,16 +485,16 @@ void LteMacVUeMode4::macPduMake()
 
         // search for an empty unit within current harq process
         UnitList txList = txBuf->getEmptyUnits(currentHarq_);
-        EV << "LteMacUeRealisticD2D::macPduMake - [Used Acid=" << (unsigned int)txList.first << "] , [curr=" << (unsigned int)currentHarq_ << "]" << endl;
+//        EV << "LteMacUeRealisticD2D::macPduMake - [Used Acid=" << (unsigned int)txList.first << "] , [curr=" << (unsigned int)currentHarq_ << "]" << endl;
 
         //Get a reference of the LteMacPdu from pit pointer (extract Pdu from the MAP)
         LteMacPdu* macPkt = pit->second;
 
-        EV << "LteMacUeRealisticD2D: pduMaker created PDU: " << macPkt->info() << endl;
+//        EV << "LteMacUeRealisticD2D: pduMaker created PDU: " << macPkt->info() << endl;
 
         if (txList.second.empty())
         {
-            EV << "LteMacUeRealisticD2D() : no available process for this MAC pdu in TxHarqBuffer" << endl;
+//            EV << "LteMacUeRealisticD2D() : no available process for this MAC pdu in TxHarqBuffer" << endl;
             delete macPkt;
         }
         else
@@ -588,8 +580,8 @@ void LteMacVUeMode4::handleMessage(cMessage *msg)
     {
         if (strcmp(pkt->getName(), "CSRs") == 0)
         {
-            EV << "LteMacVUeMode4::handleMessage - Received packet " << pkt->getName() <<
-            " from port " << pkt->getArrivalGate()->getName() << endl;
+//            EV << "LteMacVUeMode4::handleMessage - Received packet " << pkt->getName() <<
+//            " from port " << pkt->getArrivalGate()->getName() << endl;
 
             // message from PHY_to_MAC gate (from lower layer)
             emit(receivedPacketFromLowerLayer, pkt);
@@ -688,7 +680,7 @@ void LteMacVUeMode4::handleMessage(cMessage *msg)
 
 void LteMacVUeMode4::handleSelfMessage()
 {
-    EV << "----- UE MAIN LOOP -----" << endl;
+    // EV << "----- UE MAIN LOOP -----" << endl;
 
     // extract pdus from all harqrxbuffers and pass them to unmaker
     HarqRxBuffers::iterator hit = harqRxBuffers_.begin();
@@ -713,9 +705,9 @@ void LteMacVUeMode4::handleSelfMessage()
     {
         purged += hit->second->purgeCorruptedPdus();
     }
-    EV << NOW << " LteMacVUeMode4::handleSelfMessage Purged " << purged << " PDUS" << endl;
+    // EV << NOW << " LteMacVUeMode4::handleSelfMessage Purged " << purged << " PDUS" << endl;
 
-    EV << NOW << "LteMacVUeMode4::handleSelfMessage " << nodeId_ << " - HARQ process " << (unsigned int)currentHarq_ << endl;
+    // EV << NOW << "LteMacVUeMode4::handleSelfMessage " << nodeId_ << " - HARQ process " << (unsigned int)currentHarq_ << endl;
     // updating current HARQ process for next TTI
 
     //unsigned char currentHarq = currentHarq_;
@@ -727,7 +719,7 @@ void LteMacVUeMode4::handleSelfMessage()
 
     if (mode4Grant == NULL)
     {
-        EV << NOW << " LteMacVUeMode4::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
+        // EV << NOW << " LteMacVUeMode4::handleSelfMessage " << nodeId_ << " NO configured grant" << endl;
 
         // No configured Grant simply continue
     }
@@ -781,13 +773,13 @@ void LteMacVUeMode4::handleSelfMessage()
         }
         if(!firstTx)
         {
-            EV << "\t currentHarq_ counter initialized " << endl;
+            // EV << "\t currentHarq_ counter initialized " << endl;
             firstTx=true;
             currentHarq_ = UE_TX_HARQ_PROCESSES - 2;
         }
-        EV << "\t " << schedulingGrant_ << endl;
+//        EV << "\t " << schedulingGrant_ << endl;
 
-        EV << NOW << " LteMacVUeMode4::handleSelfMessage " << nodeId_ << " entered scheduling" << endl;
+        // EV << NOW << " LteMacVUeMode4::handleSelfMessage " << nodeId_ << " entered scheduling" << endl;
 
         bool retx = false;
         bool availablePdu = false;
@@ -796,7 +788,7 @@ void LteMacVUeMode4::handleSelfMessage()
         LteHarqBufferTx * currHarq;
         for(it2 = harqTxBuffers_.begin(); it2 != harqTxBuffers_.end(); it2++)
         {
-            EV << "\t Looking for retx in acid " << (unsigned int)currentHarq_ << endl;
+            // EV << "\t Looking for retx in acid " << (unsigned int)currentHarq_ << endl;
             currHarq = it2->second;
 
             // check if the current process has unit ready for retx
@@ -819,8 +811,9 @@ void LteMacVUeMode4::handleSelfMessage()
                 }
             }
 
-            EV << "\t [process=" << (unsigned int)currentHarq_ << "] , [retx=" << ((retx)?"true":"false")
-               << "] , [n=" << cwListRetx.size() << "]" << endl;
+            // EV << "\t [process=" << (unsigned int)currentHarq_ << "] , [retx=" << ((retx)?"true":"false")
+            //    << "] , [n=" << cwLessage - Received packet " << pkt->getName() <<
+            //            " from port " << pkt->getArrivalistRetx.size() << "]" << endl;
 
             // if a retransmission is needed
             if(retx)
@@ -853,25 +846,25 @@ void LteMacVUeMode4::handleSelfMessage()
         scheduleAt(NOW, flushHarqMsg);
     }
     //============================ DEBUG ==========================
-    HarqTxBuffers::iterator it;
+    // HarqTxBuffers::iterator it;
 
-    EV << "\n htxbuf.size " << harqTxBuffers_.size() << endl;
+    // EV << "\n htxbuf.size " << harqTxBuffers_.size() << endl;
 
-    int cntOuter = 0;
-    int cntInner = 0;
-    for(it = harqTxBuffers_.begin(); it != harqTxBuffers_.end(); it++)
-    {
-        LteHarqBufferTx* currHarq = it->second;
-        BufferStatus harqStatus = currHarq->getBufferStatus();
-        BufferStatus::iterator jt = harqStatus.begin(), jet= harqStatus.end();
+    // int cntOuter = 0;
+    // int cntInner = 0;
+    // for(it = harqTxBuffers_.begin(); it != harqTxBuffers_.end(); it++)
+    // {
+    //     LteHarqBufferTx* currHarq = it->second;
+    //     BufferStatus harqStatus = currHarq->getBufferStatus();
+    //     BufferStatus::iterator jt = harqStatus.begin(), jet= harqStatus.end();
 
-        EV_DEBUG << "\t cicloOuter " << cntOuter << " - bufferStatus.size=" << harqStatus.size() << endl;
-        for(; jt != jet; ++jt)
-        {
-            EV_DEBUG << "\t\t cicloInner " << cntInner << " - jt->size=" << jt->size()
-               << " - statusCw(0/1)=" << jt->at(0).second << "/" << jt->at(1).second << endl;
-        }
-    }
+    //     EV_DEBUG << "\t cicloOuter " << cntOuter << " - bufferStatus.size=" << harqStatus.size() << endl;
+    //     for(; jt != jet; ++jt)
+    //     {
+    //         EV_DEBUG << "\t\t cicloInner " << cntInner << " - jt->size=" << jt->size()
+    //            << " - statusCw(0/1)=" << jt->at(0).second << "/" << jt->at(1).second << endl;
+    //     }
+    // }
     //======================== END DEBUG ==========================
 
     if (!requestSdu)
@@ -880,7 +873,7 @@ void LteMacVUeMode4::handleSelfMessage()
         currentHarq_ = (currentHarq_+1) % harqProcesses_;
     }
 
-    EV << "--- END UE MAIN LOOP ---" << endl;
+    // EV << "--- END UE MAIN LOOP ---" << endl;
 }
 
 void LteMacVUeMode4::macHandleSps(cPacket* pkt)

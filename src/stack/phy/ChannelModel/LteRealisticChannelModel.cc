@@ -1088,8 +1088,10 @@ std::tuple<std::vector<double>, double> LteRealisticChannelModel::getRSRP_D2D(Lt
             else if (fadingType_ == NAKAGAMI)
             {
                 int distance = sourceCoord.distance(destCoord);
+                distance = max(distance, 1);
                 double pathLossFree = 20*std::log10(distance) + 46.4 + 20*std::log10(carrierFrequency_ * 1e-9 / 5);
 
+                // I encounter error of -Inf theta(3rd para)
                 fadingAttenuation = gamma_d(getEnvir()->getRNG(0), shapeFactor_, pathLossFree / 1000.0 / shapeFactor_) * 1000.0;
             }
         }

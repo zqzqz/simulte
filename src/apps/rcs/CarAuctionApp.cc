@@ -75,18 +75,18 @@ void CarAuctionApp::handlePositionUpdate(cObject* obj) {
     double currentTime = simTime().dbl();
 
     if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED && coinAssignmentStage != CoinAssignmentStage::FAILED) {
-        if (currentTime > coinAssignmentLastTry + 5) {
+        if (currentTime > coinAssignmentLastTry + 1) {
             coinAssignmentStage = CoinAssignmentStage::INIT;
         }
     }
     if (coinDepositStage != CoinDepositStage::INIT && coinDepositStage != CoinDepositStage::SIGNATURE_SENT && coinDepositStage != CoinDepositStage::FAILED) {
-        if (currentTime > coinDepositLastTry + 5) {
+        if (currentTime > coinDepositLastTry + 1) {
             coinDepositStage = CoinDepositStage::INIT;
         }
     }
 
     // When leaving the intersection, trigger coin assignment.
-    if (distanceToRSU > 10 && distanceToRSU > lastDistanceToRSU) {
+    if (distanceToRSU > lastDistanceToRSU) {
         if (coinAssignmentStage == CoinAssignmentStage::INIT) {
             coinAssignmentLastTry = currentTime;
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_REQUEST_LATENCY_MEAN, COIN_REQUEST_LATENCY_STDDEV);
@@ -109,7 +109,7 @@ void CarAuctionApp::handlePositionUpdate(cObject* obj) {
     }
 
     // When approaching the intersection, trigger coin deposit.
-    if (distanceToRSU < 150 && distanceToRSU < lastDistanceToRSU) {
+    if (distanceToRSU < 300 && distanceToRSU < lastDistanceToRSU) {
         if (coinDepositStage == CoinDepositStage::INIT) {
             coinDepositLastTry = currentTime;
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_LATENCY_MEAN, COIN_DEPOSIT_LATENCY_STDDEV);
@@ -131,7 +131,7 @@ void CarAuctionApp::handlePositionUpdate(cObject* obj) {
         }
     }
 
-    if (distanceToRSU > 150) {
+    if (distanceToRSU > 300) {
         if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED && coinAssignmentStage != CoinAssignmentStage::FAILED) {
             coinAssignmentStage = CoinAssignmentStage::FAILED;
             EV_WARN << "[Vehicle " << nodeId_ << "]: Coin assignment failed." << endl;

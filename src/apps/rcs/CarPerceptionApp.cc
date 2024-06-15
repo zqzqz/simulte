@@ -52,13 +52,13 @@ void CarPerceptionApp::handlePositionUpdate(cObject* obj) {
     double currentTime = simTime().dbl();
 
     if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED && coinAssignmentStage != CoinAssignmentStage::FAILED) {
-        if (simTime().dbl() > coinAssignmentLastTry + 5) {
+        if (simTime().dbl() > coinAssignmentLastTry + 1) {
             coinAssignmentStage= CoinAssignmentStage::INIT;
         }
     }
 
     // Triggers coin assignment when leaving the intersection.
-    if (distanceToRSU > 5 && distanceToRSU > lastDistanceToRSU) {
+    if (distanceToRSU > lastDistanceToRSU) {
         if (coinAssignmentStage == CoinAssignmentStage::INIT) {
             coinAssignmentLastTry = currentTime;
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_REQUEST_LATENCY_MEAN, COIN_REQUEST_LATENCY_STDDEV);
@@ -79,7 +79,7 @@ void CarPerceptionApp::handlePositionUpdate(cObject* obj) {
                     << " Computation time " << latency.second << endl;
         }
     }
-    if (distanceToRSU > 150 && distanceToRSU > lastDistanceToRSU) {
+    if (distanceToRSU > 300 && distanceToRSU > lastDistanceToRSU) {
         if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED && coinAssignmentStage != CoinAssignmentStage::FAILED) {
             coinAssignmentStage = CoinAssignmentStage::FAILED;
             EV_WARN << "[Vehicle " << nodeId_ << "]: Coin assignment failed." << endl;
