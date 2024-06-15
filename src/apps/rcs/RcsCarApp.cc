@@ -33,6 +33,7 @@ Define_Module(RcsCarApp);
 
 RcsCarApp::~RcsCarApp() {
     // TODO Auto-generated destructor stub
+    binder_->unregisterNode(nodeId_);
 }
 
 void RcsCarApp::initialize(int stage)
@@ -98,6 +99,8 @@ void RcsCarApp::handleLowerMessage(cMessage* msg)
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(RSU_ADDR);
             lteControlInfo->setDirection(D2D);
+            lteControlInfo->setPriority(priority_);
+            lteControlInfo->setDuration(duration_);
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
 
@@ -138,6 +141,8 @@ void RcsCarApp::handlePositionUpdate(cObject* obj)
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(RSU_ADDR);
             lteControlInfo->setDirection(D2D);
+            lteControlInfo->setPriority(priority_);
+            lteControlInfo->setDuration(duration_);
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
 
@@ -157,6 +162,8 @@ void RcsCarApp::handlePositionUpdate(cObject* obj)
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(RSU_ADDR);
             lteControlInfo->setDirection(D2D);
+            lteControlInfo->setPriority(priority_);
+            lteControlInfo->setDuration(duration_);
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
             

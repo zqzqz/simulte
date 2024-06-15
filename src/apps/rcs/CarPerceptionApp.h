@@ -21,6 +21,7 @@
 class CarPerceptionApp : public RcsCarApp {
 public:
     void initialize(int stage) override;
+    ~CarPerceptionApp() override;
 protected:
     double lastDistanceToRSU;
 protected:

@@ -56,7 +56,7 @@ network Intersection
 		rsu[1]: CarNonIp {
             @display("p=220,220;i=veins/sign/yellowdiamond;is=vs");
         }
-        car[0]: CarNonIp {
+        node[0]: CarNonIp {
         }
 }
 

@@ -19,6 +19,8 @@
 #include "RcsRsuApp.h"
 
 class RSUPerceptionApp : public RcsRsuApp {
+public:
+    ~RSUPerceptionApp() override;
 protected:
     virtual void handleLowerMessage(cMessage* msg) override;
 };

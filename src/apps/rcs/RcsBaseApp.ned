@@ -24,8 +24,10 @@ simple RcsBaseApp like Mode4BaseApp
 {
 parameters:
     @class(RcsBaseApp);
+    int priority = default(3); // Priority of the packets sent
+    int duration = default(1000); // MS before packet must be dropped
+
     int numCpuCores;
-    int HEADER_BYTE_SIZE;
     int COIN_REQUEST_BYTE_SIZE;
     int COIN_ASSIGNMENT_BYTE_SIZE;
     int COIN_DEPOSIT_BYTE_SIZE;

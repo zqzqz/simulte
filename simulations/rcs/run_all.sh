@@ -23,18 +23,25 @@ if [[ ! -d ${data_dir} ]]; then
 	mkdir -p ${data_dir}
 fi
 
-schemes="Scheme3 Scheme2"
+# Scheme2 Scheme3
+schemes="Scheme2 Scheme3" 
+# 1 2 3 4
 numCpuCores="1 2 3 4"
-maps="intersection_500 intersection_1000 intersection_1500 intersection_max"
-apps="PerceptionApp AuctionApp"
+# intersection_500 intersection_1000 intersection_1500 intersection_max
+# beijing_200 beijing_500 beijing_1000 beijing_1500 beijing_2000
+# paris_100 paris_300 paris_500 paris_700 paris_1000
+maps="intersection intersection_500 intersection_1000 intersection_1500 intersection_max"
+# PerceptionApp AuctionApp GeneralApp
+apps="PerceptionApp AuctionApp GeneralApp"
 
 config="omnetpp.ini"
 logfile="simulation.log"
+endrecord="endrecord.log"
 cp ${config} ${config}.bk
 
-for scheme in $schemes
+for map in $maps
 do
-	for map in $maps
+	for scheme in $schemes
 	do
 		for app in $apps
 		do
@@ -43,10 +50,16 @@ do
 				echo "Experiment ${scheme} ${map} ${app} ${numCpuCore}"
 				sed -i "s/maps\/intersection/maps\/${map}/g" ${config}
 				sed -i "s/rsu\[\*\]\.appl\.numCpuCores = 1/rsu[*].appl.numCpuCores = ${numCpuCore}/g" ${config}
-				opp_run -r 0 -m -u Cmdenv -c "${scheme}_${app}" -n .:../../src/veins --image-path=../../images -l ../../src/veins ${config}
+				# opp_run -r 0 -m -u Cmdenv -c "${scheme}_${app}" -n .:../../src/veins --image-path=../../images -l ../../src/veins ${config}
+				opp_run -r 0 -m -u Cmdenv -c "${scheme}_${app}" -n ..:../../src:../../../inet-3.6.6/src:../../../inet-3.6.6/examples:../../../inet-3.6.6/tutorials:../../../inet-3.6.6/showcases:../../../veins/examples/veins:../../../veins/src/veins:../../../veins/subprojects/veins_inet3/src/veins_inet:../../../veins/subprojects/veins_inet3/examples/veins_inet --image-path=../../images:../../../inet-3.6.6/images:../../../veins/images:../../../veins/subprojects/veins_inet3/images -l ../../src/lte -l ../../../inet-3.6.6/src/INET -l ../../../veins/src/veins -l ../../../veins/subprojects/veins_inet3/src/veins_inet ${config}|| {
+				# I found all lte simulate will ends with error (but data is logged correctly), strange...
+				echo "Experiment ${scheme} ${map} ${app} ${numCpuCore} finished at: $(tail -n 1 ${logfile})" >> ${endrecord}
+				}
 				sed -i -n "/\[WARN\]/p" ${logfile}
 				echo "Succeeded transactions: "
 				cat ${logfile} | grep -c "succeed"
+				echo "Failed transactions: "
+				cat ${logfile} | grep -c "fail" || echo "All succeeded!"
 				mv ${logfile} ${data_dir}/dsrc_${scheme}_${map}_${app}_${numCpuCore}.log
 				cp ${config}.bk ${config}
 			done

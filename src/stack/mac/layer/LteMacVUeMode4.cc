@@ -403,6 +403,11 @@ void LteMacVUeMode4::macPduMake()
             // Never goes here because of the macPduList_.clear() at the beginning
             macPkt = pit->second;
         }
+        // debug info for mac buffer
+        EV << NOW << "debug info for mac buffer" << endl;
+        for (auto [macCid,queue] : mbuf_){
+            EV << NOW << "MacCid = " << macCid << " "  << queue << endl;
+        }
 
         while (sduPerCid > 0)
         {
@@ -410,16 +415,24 @@ void LteMacVUeMode4::macPduMake()
             // Find Mac Pkt
             if (mbuf_.find(destCid) == mbuf_.end()){
 //                change those lines to avoid strange error!
-//                sduPerCid--;
-//                continue;
-                throw cRuntimeError("Unable to find mac buffer for cid %d", destCid);
+                sduPerCid--;
+                continue;
+//                EV << NOW << "debug info for mac buffer" << endl;
+//                for (auto [macCid,queue] : mbuf_){
+//                    EV << NOW << "MacCid = " << macCid  << queue << endl;
+//                }
+//                throw cRuntimeError("Unable to find mac buffer for cid %d", destCid);
             }
 
             if (mbuf_[destCid]->empty()){
 //                change those lines to avoid strange error!
-//                  sduPerCid--;
-//                  continue;
-                throw cRuntimeError("Empty buffer for cid %d, while expected SDUs were %d", destCid, sduPerCid);
+                  sduPerCid--;
+                  continue;
+//                EV << NOW << "debug info for mac buffer" << endl;
+//                for (auto [macCid,queue] : mbuf_){
+//                    EV << NOW << "MacCid = " << macCid  << queue << endl;
+//                }
+//                throw cRuntimeError("Empty buffer for cid %d, while expected SDUs were %d", destCid, sduPerCid);
             }
 
             pkt = mbuf_[destCid]->popFront();

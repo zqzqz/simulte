@@ -18,9 +18,9 @@
 
 #include "RcsRsuApp.h"
 
-class RSUAuctionApp : public RcsRsuApp {
+class RSUGeneralApp : public RcsRsuApp {
 public:
-    ~RSUAuctionApp() override;
+    ~RSUGeneralApp() override;
 protected:
     virtual void handleLowerMessage(cMessage* msg) override;
 };

@@ -79,7 +79,6 @@ void Mode4BaseApp::sendLowerPackets(cPacket* pkt)
 
 void Mode4BaseApp::sendDelayedDown(cPacket* pkt, simtime_t delay)
 {
-    // package partition
     sendDelayed(pkt, delay, lowerGateOut_);
 }
 

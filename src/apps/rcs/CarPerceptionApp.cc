@@ -50,7 +50,6 @@ void CarPerceptionApp::handlePositionUpdate(cObject* obj) {
     inet::Coord curPosition = mobility->getCurrentPosition();
     double distanceToRSU = sqrt(pow(curPosition.x - RSU_POSITION_X, 2) + pow(curPosition.y - RSU_POSITION_Y, 2));
     double currentTime = simTime().dbl();
-    EV_WARN << "[Vehicle " << nodeId_ << "] distanceToRSU " << distanceToRSU << endl;
 
     if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED && coinAssignmentStage != CoinAssignmentStage::FAILED) {
         if (simTime().dbl() > coinAssignmentLastTry + 5) {
@@ -93,4 +92,8 @@ void CarPerceptionApp::handlePositionUpdate(cObject* obj) {
 void CarPerceptionApp::receiveSignal(cComponent* source, simsignal_t signalID, cObject* obj, cObject* details)
 {
     RcsCarApp::receiveSignal(source,signalID,obj,details);
+}
+
+CarPerceptionApp::~CarPerceptionApp(){
+    binder_->unregisterNode(nodeId_);
 }

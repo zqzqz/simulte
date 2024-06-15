@@ -22,7 +22,8 @@ void RcsBaseApp::initialize(int stage) {
     Mode4BaseApp::initialize(stage);
     int numCpuCores = par("numCpuCores");
     cpuModel.init(numCpuCores);
-    HEADER_BYTE_SIZE = par("HEADER_BYTE_SIZE");
+    priority_ = par("priority");
+    duration_ = par("duration");
     COIN_REQUEST_BYTE_SIZE = par("COIN_REQUEST_BYTE_SIZE");
     COIN_ASSIGNMENT_BYTE_SIZE = par("COIN_ASSIGNMENT_BYTE_SIZE");
     COIN_DEPOSIT_BYTE_SIZE = par("COIN_DEPOSIT_BYTE_SIZE");

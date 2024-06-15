@@ -25,7 +25,8 @@ public:
     void initialize(int stage) override;
 protected:
     CpuModel cpuModel;
-    int HEADER_BYTE_SIZE;
+    int priority_;
+    int duration_;
     int COIN_REQUEST_BYTE_SIZE;
     int COIN_ASSIGNMENT_BYTE_SIZE;
     int COIN_DEPOSIT_BYTE_SIZE;

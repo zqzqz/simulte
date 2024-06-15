@@ -29,6 +29,7 @@ Define_Module(RcsRsuApp);
 
 RcsRsuApp::~RcsRsuApp() {
     // TODO Auto-generated destructor stub
+    binder_->unregisterNode(nodeId_);
 }
 
 void RcsRsuApp::initialize(int stage)
@@ -77,6 +78,8 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(vid);
             lteControlInfo->setDirection(D2D);
+            lteControlInfo->setPriority(priority_);
+            lteControlInfo->setDuration(duration_);
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
 
@@ -98,6 +101,8 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(vid);
             lteControlInfo->setDirection(D2D);
+            lteControlInfo->setPriority(priority_);
+            lteControlInfo->setDuration(duration_);
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
 
@@ -105,7 +110,6 @@ void RcsRsuApp::handleLowerMessage(cMessage* msg)
 
             EV_WARN << "[RSU]: I sent a message of CoinDepositSignatureRequest to " << vid << ". Queue time " << latency.first
                     << " Computation time " << latency.second << endl;
-
         }
     } else if (CoinDepositSignatureResponse* req = dynamic_cast<CoinDepositSignatureResponse*>(msg)) {
         int vid = req->getVid();

@@ -13,7 +13,7 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#include "RSUAuctionApp.h"
+#include "RSUGeneralApp.h"
 #include "common.h"
 #include "common/LteControlInfo.h"
 #include "message/CoinRequest_m.h"
@@ -23,9 +23,9 @@
 #include "message/CoinDepositSignatureResponse_m.h"
 #include "message/CoinSubmission_m.h"
 
-Define_Module(RSUAuctionApp);
+Define_Module(RSUGeneralApp);
 
-void RSUAuctionApp::handleLowerMessage(cMessage* msg)
+void RSUGeneralApp::handleLowerMessage(cMessage* msg)
 {
     double currentTime = simTime().dbl();
 
@@ -86,6 +86,6 @@ void RSUAuctionApp::handleLowerMessage(cMessage* msg)
         }
     }
 }
-RSUAuctionApp::~RSUAuctionApp(){
+RSUGeneralApp::~RSUGeneralApp(){
     binder_->unregisterNode(nodeId_);
 }

@@ -13,7 +13,7 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#include "CarAuctionApp.h"
+#include "CarGeneralApp.h"
 #include "common.h"
 #include "veins/base/utils/FindModule.h"
 #include "common/LteControlInfo.h"
@@ -26,15 +26,15 @@
 #include "message/CoinDepositSignatureResponse_m.h"
 #include "message/CoinSubmission_m.h"
 
-Define_Module(CarAuctionApp);
+Define_Module(CarGeneralApp);
 
-void CarAuctionApp::initialize(int stage) {
+void CarGeneralApp::initialize(int stage) {
     RcsCarApp::initialize(stage);
     lastDistanceToRSU = 10000;
 }
 
 
-void CarAuctionApp::handleLowerMessage(cMessage* msg) {
+void CarGeneralApp::handleLowerMessage(cMessage* msg) {
     double currentTime = simTime().dbl();
     if (CoinAssignment* req = dynamic_cast<CoinAssignment*>(msg)) {
         int vid = req->getVid();
@@ -68,7 +68,7 @@ void CarAuctionApp::handleLowerMessage(cMessage* msg) {
     }
 }
 
-void CarAuctionApp::handlePositionUpdate(cObject* obj) {
+void CarGeneralApp::handlePositionUpdate(cObject* obj) {
     veins::VeinsInetMobility* const mobility = check_and_cast<veins::VeinsInetMobility*>(obj);
     inet::Coord curPosition = mobility->getCurrentPosition();
     double distanceToRSU = sqrt(pow(curPosition.x - RSU_POSITION_X, 2) + pow(curPosition.y - RSU_POSITION_Y, 2));
@@ -144,11 +144,11 @@ void CarAuctionApp::handlePositionUpdate(cObject* obj) {
     lastDistanceToRSU = distanceToRSU;
 }
 
-void CarAuctionApp::receiveSignal(cComponent* source, simsignal_t signalID, cObject* obj, cObject* details)
+void CarGeneralApp::receiveSignal(cComponent* source, simsignal_t signalID, cObject* obj, cObject* details)
 {
     RcsCarApp::receiveSignal(source,signalID,obj,details);
 }
 
-CarAuctionApp::~CarAuctionApp(){
+CarGeneralApp::~CarGeneralApp(){
     binder_->unregisterNode(nodeId_);
 }

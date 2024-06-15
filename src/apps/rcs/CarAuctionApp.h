@@ -21,6 +21,7 @@
 class CarAuctionApp : public RcsCarApp {
 public:
     void initialize(int stage) override;
+    ~CarAuctionApp() override;
 protected:
     double lastDistanceToRSU;
 protected:

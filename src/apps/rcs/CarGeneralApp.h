@@ -13,16 +13,21 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef RCS_APPS_RSUAUCTIONAPP_H_
-#define RCS_APPS_RSUAUCTIONAPP_H_
+#ifndef APPS_CARAUCTIONAPP_H_
+#define APPS_CARAUCTIONAPP_H_
 
-#include "RcsRsuApp.h"
+#include "RcsCarApp.h"
 
-class RSUAuctionApp : public RcsRsuApp {
+class CarGeneralApp : public RcsCarApp {
 public:
-    ~RSUAuctionApp() override;
+    void initialize(int stage) override;
+    ~CarGeneralApp() override;
+protected:
+    double lastDistanceToRSU;
 protected:
     virtual void handleLowerMessage(cMessage* msg) override;
+    virtual void receiveSignal(cComponent* source, simsignal_t signalID, cObject* obj, cObject* details) override;
+    void handlePositionUpdate(cObject* obj);
 };
 
-#endif /* RCS_APPS_RSUAUCTIONAPP_H_ */
+#endif /* APPS_CARAUCTIONAPP_H_ */

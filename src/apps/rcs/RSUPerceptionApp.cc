@@ -48,3 +48,7 @@ void RSUPerceptionApp::handleLowerMessage(cMessage* msg) {
                 << " Computation time " << latency.second << endl;
     }
 }
+
+RSUPerceptionApp::~RSUPerceptionApp(){
+    binder_->unregisterNode(nodeId_);
+}
