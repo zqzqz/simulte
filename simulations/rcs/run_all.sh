@@ -30,7 +30,7 @@ numCpuCores="1 2 3 4"
 # intersection_500 intersection_1000 intersection_1500 intersection_max
 # beijing_200 beijing_500 beijing_1000 beijing_1500 beijing_2000
 # paris_100 paris_300 paris_500 paris_700 paris_1000
-maps="beijing_500 beijing_1000 beijing_1500 beijing_2000"
+maps="beijing_200 beijing_500 beijing_1000 beijing_1500 beijing_2000"
 # PerceptionApp AuctionApp GeneralApp
 apps="PerceptionApp AuctionApp GeneralApp"
 

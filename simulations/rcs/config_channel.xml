@@ -3,7 +3,7 @@
 		<!-- Channel Model Type (REAL, DUMMY) -->
         <ChannelModel type="REAL">
         	<!-- Enable/disable shadowing -->       
-            <parameter name="shadowing" type="bool" value="true"/>
+            <parameter name="shadowing" type="bool" value="false"/>
             <!-- Pathloss scenario from ITU -->   
             <parameter name="scenario" type="string" value="ANALYTICAL"/>
             <!-- eNodeB height -->
@@ -39,17 +39,17 @@
             <!-- If dynamic-los is false this parameter, if true, compute LOS pathloss otherwise compute NLOS pathloss -->
             <parameter name="fixed-los" type="bool" value="true"/>
             <!-- Enable/disable fading -->  
-            <parameter name="fading" type="bool" value="true"/>
+            <parameter name="fading" type="bool" value="false"/>
             <!-- Fading type (JAKES or RAYGHLEY) -->  
             <parameter name="fading-type" type="string" value="NAKAGAMI"/>
             <!-- If jakes fading this parameter specify the number of path (tap channel) -->  
             <parameter name="fading-paths" type="int" value="6"/> 
 			<!-- if true, enables the inter-cell interference computation -->  
-            <parameter name="extCell-interference" type="bool" value="true"/>
+            <parameter name="extCell-interference" type="bool" value="false"/>
 			<!-- if true, enables the multi-cell interference computation -->  
             <parameter name="multiCell-interference" type="bool" value="false"/>
             <!-- if true, enables the UEs to calculate interference from other UEs -->
-            <parameter name="inCellD2D-interference" type="bool" value="true"/>
+            <parameter name="inCellD2D-interference" type="bool" value="false"/>
         </ChannelModel>        
              
         <!-- Feedback Type (REAL, DUMMY) -->

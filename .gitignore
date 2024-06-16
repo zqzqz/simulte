@@ -35,6 +35,7 @@ out/
 backups
 *~
 *.log
+*.bk
 
 
 *.FAILED

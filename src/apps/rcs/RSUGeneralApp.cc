@@ -35,14 +35,7 @@ void RSUGeneralApp::handleLowerMessage(cMessage* msg)
 
         CoinAssignment* packet = new CoinAssignment();
         packet->setVid(vid);
-        // RSU (randomly) chooses auction winners and misbehaving vehicles. They do not receive reputation coins.
-        // We simply set a small packet size indicating that it is a simple notification package without coins.
-        // Here we set the probability to about 30% because about 30% of lanes are in green light for a typical intersection.
-        if (((double) rand() / RAND_MAX) < 0.3) {
-            packet->setByteLength(60);
-        } else {
-            packet->setByteLength(COIN_ASSIGNMENT_BYTE_SIZE);
-        }
+        packet->setByteLength(COIN_ASSIGNMENT_BYTE_SIZE);
         std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_ASSIGNMENT_LATENCY_MEAN, COIN_ASSIGNMENT_LATENCY_STDDEV);
         auto lteControlInfo = new FlowControlInfoNonIp();
         lteControlInfo->setSrcAddr(nodeId_);
@@ -52,6 +45,7 @@ void RSUGeneralApp::handleLowerMessage(cMessage* msg)
         sendDelayedDown(packet,latency.first+latency.second);
 
         coinAssignmentStages[vid] = CoinAssignmentStage::SENT;
+
         EV_WARN << "[RSU]: I sent a message of CoinAssignment to " << vid << ". Queue time " << latency.first
                 << " Computation time " << latency.second << endl;
     }
