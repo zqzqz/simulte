@@ -55,11 +55,9 @@ do
 				# I found all lte simulate will ends with error (but data is logged correctly), strange...
 				echo "Experiment ${scheme} ${map} ${app} ${numCpuCore} finished at: $(tail -n 1 ${logfile})" >> ${endrecord}
 				}
-				sed -i -n "/\[WARN\]/p" ${logfile}
-				echo "Succeeded transactions: "
-				cat ${logfile} | grep -c "succeed"
-				echo "Failed transactions: "
-				cat ${logfile} | grep -c "fail" || echo "All succeeded!"
+				sed -i -n "/\[WARN\]/p" ${logfile} 
+				echo "Succeeded transactions: $(cat ${logfile} | grep -c "succeed" )" >> ${endrecord}
+				echo "Failed transactions: $(cat ${logfile} | grep -c "fail" )" >> ${endrecord}
 				mv ${logfile} ${data_dir}/dsrc_${scheme}_${map}_${app}_${numCpuCore}.log
 				cp ${config}.bk ${config}
 			done
