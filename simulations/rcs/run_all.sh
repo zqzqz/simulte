@@ -24,13 +24,13 @@ if [[ ! -d ${data_dir} ]]; then
 fi
 
 # Scheme2 Scheme3
-schemes="Scheme2 Scheme3" 
+schemes="Scheme3 Scheme2" 
 # 1 2 3 4
-numCpuCores="1 2 3 4"
+numCpuCores="2 3 4"
 # intersection_500 intersection_1000 intersection_1500 intersection_max
 # beijing_200 beijing_500 beijing_1000 beijing_1500 beijing_2000
 # paris_100 paris_300 paris_500 paris_700 paris_1000
-maps="beijing_2000 beijing_1500 beijing_1000 beijing_500 beijing_200"
+maps="paris_100 paris_500 paris_700 paris_1000"
 # PerceptionApp AuctionApp GeneralApp
 apps="GeneralApp"
 
@@ -39,16 +39,16 @@ logfile="simulation.log"
 endrecord="endrecord.log"
 cp ${config} ${config}.bk
 
-for map in $maps
+for scheme in $schemes
 do
-	for scheme in $schemes
+	for map in $maps
 	do
 		for app in $apps
 		do
-			for numCpuCore in $numCpuCores
+			for numCpuCore in $numCpuCores 
 			do
 				echo "Experiment ${scheme} ${map} ${app} ${numCpuCore}"
-				sed -i "s/maps\/beijing_200/maps\/${map}/g" ${config}
+				sed -i "s/maps\/intersection/maps\/${map}/g" ${config}
 				sed -i "s/\*\*\.numCpuCores = 1/\*\*\.numCpuCores = ${numCpuCore}/g" ${config}
 				# opp_run -r 0 -m -u Cmdenv -c "${scheme}_${app}" -n .:../../src/veins --image-path=../../images -l ../../src/veins ${config}
 				opp_run -r 0 -m -u Cmdenv -c "${scheme}_${app}" -n ..:../../src:../../../inet-3.6.6/src:../../../inet-3.6.6/examples:../../../inet-3.6.6/tutorials:../../../inet-3.6.6/showcases:../../../veins/examples/veins:../../../veins/src/veins:../../../veins/subprojects/veins_inet3/src/veins_inet:../../../veins/subprojects/veins_inet3/examples/veins_inet --image-path=../../images:../../../inet-3.6.6/images:../../../veins/images:../../../veins/subprojects/veins_inet3/images -l ../../src/lte -l ../../../inet-3.6.6/src/INET -l ../../../veins/src/veins -l ../../../veins/subprojects/veins_inet3/src/veins_inet ${config}|| {
