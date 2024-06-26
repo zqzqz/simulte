@@ -25,6 +25,10 @@
 
 Define_Module(RSUPerceptionApp);
 
+// global set to record which cars are assigned coins and have deposited coins
+using std::unordered_set;
+unordered_set<int> carCoinAssignedSet;
+
 void RSUPerceptionApp::handleLowerMessage(cMessage* msg) {
     double currentTime = simTime().dbl();
 
@@ -44,6 +48,8 @@ void RSUPerceptionApp::handleLowerMessage(cMessage* msg) {
         sendDelayedDown(packet,latency.first+latency.second);
 
         coinAssignmentStages[vid] = CoinAssignmentStage::SENT;
+        carCoinAssignedSet.insert(vid);
+
         EV_WARN << "[RSU]: I sent a message of CoinAssignment to " << vid << ". Queue time " << latency.first
                 << " Computation time " << latency.second << endl;
     }

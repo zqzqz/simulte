@@ -22,8 +22,14 @@
 #include "message/CoinDepositSignatureRequest_m.h"
 #include "message/CoinDepositSignatureResponse_m.h"
 #include "message/CoinSubmission_m.h"
+#include <unordered_set>
 
 Define_Module(RSUGeneralApp);
+
+// global set to record which cars are assigned coins and have deposited coins
+using std::unordered_set;
+unordered_set<int> carCoinAssignedSet;
+unordered_set<int> carCoinDepositedSet;
 
 void RSUGeneralApp::handleLowerMessage(cMessage* msg)
 {
@@ -45,6 +51,7 @@ void RSUGeneralApp::handleLowerMessage(cMessage* msg)
         sendDelayedDown(packet,latency.first+latency.second);
 
         coinAssignmentStages[vid] = CoinAssignmentStage::SENT;
+        carCoinAssignedSet.insert(vid);
 
         EV_WARN << "[RSU]: I sent a message of CoinAssignment to " << vid << ". Queue time " << latency.first
                 << " Computation time " << latency.second << endl;
@@ -65,6 +72,7 @@ void RSUGeneralApp::handleLowerMessage(cMessage* msg)
         sendDelayedDown(packet,latency.first+latency.second);
 
         coinDepositStages[vid] = CoinDepositStage::SIGNATURE_REQUESTED;
+        carCoinDepositedSet.insert(vid);
 
         EV_WARN << "[RSU]: I sent a message of CoinDepositSignatureRequest to " << vid << ". Queue time " << latency.first
                 << " Computation time " << latency.second << endl;

@@ -25,8 +25,14 @@
 #include "message/CoinDepositSignatureRequest_m.h"
 #include "message/CoinDepositSignatureResponse_m.h"
 #include "message/CoinSubmission_m.h"
+#include <unordered_set>
 
 Define_Module(CarGeneralApp);
+
+// global set to record which cars are assigned coins and have deposited coins
+using std::unordered_set;
+extern unordered_set<int> carCoinAssignedSet;
+extern unordered_set<int> carCoinDepositedSet;
 
 void CarGeneralApp::initialize(int stage) {
     RcsCarApp::initialize(stage);
@@ -38,7 +44,7 @@ void CarGeneralApp::handleLowerMessage(cMessage* msg) {
     double currentTime = simTime().dbl();
     if (CoinAssignment* req = dynamic_cast<CoinAssignment*>(msg)) {
         int vid = req->getVid();
-        if (vid == nodeId_) {
+        if (vid == nodeId_ && coinAssignmentStage != CoinAssignmentStage::FINISHED) {
             EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinAssignment" << endl;
             EV_WARN << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinRequestTime << endl;
             coinAssignmentStage = CoinAssignmentStage::FINISHED;
@@ -46,7 +52,7 @@ void CarGeneralApp::handleLowerMessage(cMessage* msg) {
         }
     } else if (CoinDepositSignatureRequest* req = dynamic_cast<CoinDepositSignatureRequest*>(msg)) {
         int vid = req->getVid();
-        if (vid == nodeId_) {
+        if (vid == nodeId_ && coinDepositStage != CoinDepositStage::SIGNATURE_SENT) {
             EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinDepositSignatureRequest" << endl;
             EV_WARN << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinDepositTime << endl;
 
@@ -87,7 +93,17 @@ void CarGeneralApp::handlePositionUpdate(cObject* obj) {
 
     // When leaving the intersection, trigger coin assignment.
     if (distanceToRSU > lastDistanceToRSU) {
-        if (coinAssignmentStage == CoinAssignmentStage::INIT) {
+//        // debug
+//        if (coinRequestCount >= 3 && coinAssignmentStage != CoinAssignmentStage::FINISHED){
+//        }
+        // RSU already send a coin assignment to me
+        if (coinAssignmentStage != CoinAssignmentStage::FINISHED && carCoinAssignedSet.find(nodeId_)!=carCoinAssignedSet.end()){
+            coinAssignmentStage = CoinAssignmentStage::FINISHED;
+            EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinAssignment" << endl;
+            EV_WARN << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinRequestTime << endl;
+            EV_WARN << "[Vehicle " << nodeId_ << "]: Coin assignment succeed." << endl;
+        }
+        else if (coinAssignmentStage == CoinAssignmentStage::INIT) {
             coinAssignmentLastTry = currentTime;
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_REQUEST_LATENCY_MEAN, COIN_REQUEST_LATENCY_STDDEV);
 
@@ -103,6 +119,7 @@ void CarGeneralApp::handlePositionUpdate(cObject* obj) {
 
             CoinRequestTime = currentTime + latency.first+latency.second;
             coinAssignmentStage = CoinAssignmentStage::REQUESTED;
+            coinRequestCount++;
             EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinRequest. Queue time " << latency.first
                     << " Computation time " << latency.second << endl;
         }
@@ -110,7 +127,30 @@ void CarGeneralApp::handlePositionUpdate(cObject* obj) {
 
     // When approaching the intersection, trigger coin deposit.
     if (distanceToRSU < 300 && distanceToRSU < lastDistanceToRSU) {
-        if (coinDepositStage == CoinDepositStage::INIT) {
+//        // debug
+//        if (coinDepositCount >= 3 && coinDepositStage != CoinDepositStage::SIGNATURE_SENT){
+//        }
+        // RSU already sends signature request to me
+        if (coinDepositStage != CoinDepositStage::SIGNATURE_SENT && carCoinDepositedSet.find(nodeId_)!=carCoinDepositedSet.end()){
+            EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinDepositSignatureRequest" << endl;
+            EV_WARN << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinDepositTime << endl;
+
+            std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_STDDEV);
+            CoinDepositSignatureResponse* packet = new CoinDepositSignatureResponse();
+            packet->setByteLength(COIN_DEPOSIT_SIGNATURE_RESPONSE_BYTE_SIZE);
+            packet->setVid(nodeId_);
+            auto lteControlInfo = new FlowControlInfoNonIp();
+            lteControlInfo->setSrcAddr(nodeId_);
+            lteControlInfo->setDstAddr(RSU_ADDR);
+            lteControlInfo->setDirection(D2D);
+            packet->setControlInfo(lteControlInfo);
+            sendDelayedDown(packet,latency.first+latency.second);
+
+            coinDepositStage = CoinDepositStage::SIGNATURE_SENT;
+            EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDepositSignatureResponse. Queue time " << latency.first
+                    << " Computation time " << latency.second << endl;
+        }
+        else if (coinDepositStage == CoinDepositStage::INIT) {
             coinDepositLastTry = currentTime;
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_LATENCY_MEAN, COIN_DEPOSIT_LATENCY_STDDEV);
 
@@ -126,6 +166,7 @@ void CarGeneralApp::handlePositionUpdate(cObject* obj) {
 
             CoinDepositTime = currentTime + latency.first+latency.second;
             coinDepositStage = CoinDepositStage::REQUESTED;
+            coinDepositCount++;
             EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDeposit. Queue time " << latency.first
                     << " Computation time " << latency.second << endl;
         }

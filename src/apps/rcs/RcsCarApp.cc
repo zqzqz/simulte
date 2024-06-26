@@ -59,6 +59,8 @@ void RcsCarApp::initialize(int stage)
         // It seems if we do not initialize these two flags early, custom failure warnings are falsely triggered.
         coinAssignmentStage = CoinAssignmentStage::INIT;
         coinDepositStage = CoinDepositStage::INIT;
+        coinRequestCount = 0;
+        coinDepositCount = 0;
         RSU_POSITION_X = par("RSU_POSITION_X");
         RSU_POSITION_Y = par("RSU_POSITION_Y");
         RSU_ADDR = par("RSU_ADDR");
