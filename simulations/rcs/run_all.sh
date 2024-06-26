@@ -24,6 +24,7 @@ if [[ ! -d ${data_dir} ]]; then
 fi
 
 # Scheme2 Scheme3
+# Scheme2_Pi Scheme3_Pi
 schemes="Scheme3 Scheme2" 
 # 1 2 3 4
 numCpuCores="2 3 4"
