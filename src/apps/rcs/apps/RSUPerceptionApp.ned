@@ -13,16 +13,12 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef RCS_APPS_RSUPERCEPTIONAPP_H_
-#define RCS_APPS_RSUPERCEPTIONAPP_H_
+package lte.apps.rcs.apps;
 
-#include "RcsRsuApp.h"
+import lte.apps.rcs.RcsRsuApp;
 
-class RSUPerceptionApp : public RcsRsuApp {
-public:
-    ~RSUPerceptionApp() override;
-protected:
-    virtual void handleLowerMessage(cMessage* msg) override;
-};
-
-#endif /* RCS_APPS_RSUPERCEPTIONAPP_H_ */
+simple RSUPerceptionApp extends RcsRsuApp
+{
+parameters:
+    @class(RSUPerceptionApp);
+}

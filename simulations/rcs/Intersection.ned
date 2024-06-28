@@ -60,7 +60,7 @@ network Intersection
 		    //# default (225,225)
 			//# beijing (940,870)
 			//# paris (670,570)
-            @display("p=670,570;i=veins/sign/yellowdiamond;is=vs");
+            @display("p=940,870;i=veins/sign/yellowdiamond;is=vs");
         }
 }
 

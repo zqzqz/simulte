@@ -13,15 +13,15 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef APPS_CARAUCTIONAPP_H_
-#define APPS_CARAUCTIONAPP_H_
+#ifndef APPS_CARPERCEPTIONAPP_H_
+#define APPS_CARPERCEPTIONAPP_H_
 
-#include "RcsCarApp.h"
+#include "apps/rcs/RcsCarApp.h"
 
-class CarAuctionApp : public RcsCarApp {
+class CarPerceptionApp : public RcsCarApp {
 public:
     void initialize(int stage) override;
-    ~CarAuctionApp() override;
+    ~CarPerceptionApp() override;
 protected:
     double lastDistanceToRSU;
 protected:
@@ -30,4 +30,4 @@ protected:
     void handlePositionUpdate(cObject* obj);
 };
 
-#endif /* APPS_CARAUCTIONAPP_H_ */
+#endif /* APPS_CARPERCEPTIONAPP_H_ */

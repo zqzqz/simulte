@@ -13,16 +13,16 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef RCS_APPS_RSUAUCTIONAPP_H_
-#define RCS_APPS_RSUAUCTIONAPP_H_
+#ifndef RCS_APPS_RSUPERCEPTIONAPP_H_
+#define RCS_APPS_RSUPERCEPTIONAPP_H_
 
-#include "RcsRsuApp.h"
+#include "apps/rcs/RcsRsuApp.h"
 
-class RSUAuctionApp : public RcsRsuApp {
+class RSUPerceptionApp : public RcsRsuApp {
 public:
-    ~RSUAuctionApp() override;
+    ~RSUPerceptionApp() override;
 protected:
     virtual void handleLowerMessage(cMessage* msg) override;
 };
 
-#endif /* RCS_APPS_RSUAUCTIONAPP_H_ */
+#endif /* RCS_APPS_RSUPERCEPTIONAPP_H_ */

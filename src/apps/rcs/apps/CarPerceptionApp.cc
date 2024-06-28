@@ -14,23 +14,19 @@
 // 
 
 #include "CarPerceptionApp.h"
-#include "common.h"
+#include "apps/rcs/common.h"
 #include "veins/base/utils/FindModule.h"
 #include "common/LteControlInfo.h"
 #include "veins_inet/VeinsInetMobility.h"
 
-#include "message/CoinRequest_m.h"
-#include "message/CoinAssignment_m.h"
-#include "message/CoinDeposit_m.h"
-#include "message/CoinDepositSignatureRequest_m.h"
-#include "message/CoinDepositSignatureResponse_m.h"
-#include "message/CoinSubmission_m.h"
+#include "apps/rcs/message/CoinRequest_m.h"
+#include "apps/rcs/message/CoinAssignment_m.h"
+#include "apps/rcs/message/CoinDeposit_m.h"
+#include "apps/rcs/message/CoinDepositSignatureRequest_m.h"
+#include "apps/rcs/message/CoinDepositSignatureResponse_m.h"
+#include "apps/rcs/message/CoinSubmission_m.h"
 
 Define_Module(CarPerceptionApp);
-
-// global set to record which cars are assigned coins and have deposited coins
-using std::unordered_set;
-extern unordered_set<int> carCoinAssignedSet;
 
 void CarPerceptionApp::initialize(int stage) {
     RcsCarApp::initialize(stage);
@@ -63,17 +59,7 @@ void CarPerceptionApp::handlePositionUpdate(cObject* obj) {
 
     // Triggers coin assignment when leaving the intersection.
     if (distanceToRSU > lastDistanceToRSU) {
-//        // debug
-//        if (coinRequestCount >= 3 && coinAssignmentStage != CoinAssignmentStage::FINISHED){
-//        }
-        // RSU already send a coin assignment to me
-        if (coinAssignmentStage != CoinAssignmentStage::FINISHED && carCoinAssignedSet.find(nodeId_)!=carCoinAssignedSet.end()){
-            coinAssignmentStage = CoinAssignmentStage::FINISHED;
-            EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinAssignment" << endl;
-            EV_WARN << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinRequestTime << endl;
-            EV_WARN << "[Vehicle " << nodeId_ << "]: Coin assignment succeed." << endl;
-        }
-        else if (coinAssignmentStage == CoinAssignmentStage::INIT) {
+        if (coinAssignmentStage == CoinAssignmentStage::INIT) {
             coinAssignmentLastTry = currentTime;
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_REQUEST_LATENCY_MEAN, COIN_REQUEST_LATENCY_STDDEV);
 

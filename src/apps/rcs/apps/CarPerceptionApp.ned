@@ -13,12 +13,15 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package lte.apps.rcs;
+package lte.apps.rcs.apps;
 
-import lte.apps.rcs.RcsRsuApp;
+import lte.apps.rcs.RcsCarApp;
 
-simple RSUPerceptionApp extends RcsRsuApp
+//
+// TODO auto-generated type
+//
+simple CarPerceptionApp extends RcsCarApp
 {
-parameters:
-    @class(RSUPerceptionApp);
+    parameters:
+        @class(CarPerceptionApp);
 }

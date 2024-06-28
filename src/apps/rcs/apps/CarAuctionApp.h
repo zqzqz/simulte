@@ -13,12 +13,21 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package lte.apps.rcs;
+#ifndef APPS_CARAUCTIONAPP_H_
+#define APPS_CARAUCTIONAPP_H_
 
-import lte.apps.rcs.RcsCarApp;
+#include "apps/rcs/RcsCarApp.h"
 
-simple CarAuctionApp extends RcsCarApp
-{
-parameters:
-    @class(CarAuctionApp);
-}
+class CarAuctionApp : public RcsCarApp {
+public:
+    void initialize(int stage) override;
+    ~CarAuctionApp() override;
+protected:
+    double lastDistanceToRSU;
+protected:
+    virtual void handleLowerMessage(cMessage* msg) override;
+    virtual void receiveSignal(cComponent* source, simsignal_t signalID, cObject* obj, cObject* details) override;
+    void handlePositionUpdate(cObject* obj);
+};
+
+#endif /* APPS_CARAUCTIONAPP_H_ */

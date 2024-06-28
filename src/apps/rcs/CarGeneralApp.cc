@@ -25,6 +25,7 @@
 #include "message/CoinDepositSignatureRequest_m.h"
 #include "message/CoinDepositSignatureResponse_m.h"
 #include "message/CoinSubmission_m.h"
+
 #include <unordered_set>
 
 Define_Module(CarGeneralApp);
@@ -80,6 +81,34 @@ void CarGeneralApp::handlePositionUpdate(cObject* obj) {
     double distanceToRSU = sqrt(pow(curPosition.x - RSU_POSITION_X, 2) + pow(curPosition.y - RSU_POSITION_Y, 2));
     double currentTime = simTime().dbl();
 
+    // RSU already send a coin assignment to me
+    if (coinAssignmentStage != CoinAssignmentStage::FINISHED && carCoinAssignedSet.find(nodeId_)!=carCoinAssignedSet.end()){
+        coinAssignmentStage = CoinAssignmentStage::FINISHED;
+        EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinAssignment" << endl;
+        EV_WARN << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinRequestTime << endl;
+        EV_WARN << "[Vehicle " << nodeId_ << "]: Coin assignment succeed." << endl;
+    }
+    // RSU already sends signature request to me
+    if (coinDepositStage != CoinDepositStage::SIGNATURE_SENT && carCoinDepositedSet.find(nodeId_)!=carCoinDepositedSet.end()){
+        EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinDepositSignatureRequest" << endl;
+        EV_WARN << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinDepositTime << endl;
+
+        std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_STDDEV);
+        CoinDepositSignatureResponse* packet = new CoinDepositSignatureResponse();
+        packet->setByteLength(COIN_DEPOSIT_SIGNATURE_RESPONSE_BYTE_SIZE);
+        packet->setVid(nodeId_);
+        auto lteControlInfo = new FlowControlInfoNonIp();
+        lteControlInfo->setSrcAddr(nodeId_);
+        lteControlInfo->setDstAddr(RSU_ADDR);
+        lteControlInfo->setDirection(D2D);
+        packet->setControlInfo(lteControlInfo);
+        sendDelayedDown(packet,latency.first+latency.second);
+
+        coinDepositStage = CoinDepositStage::SIGNATURE_SENT;
+        EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDepositSignatureResponse. Queue time " << latency.first
+                << " Computation time " << latency.second << endl;
+    }
+
     if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED && coinAssignmentStage != CoinAssignmentStage::FAILED) {
         if (currentTime > coinAssignmentLastTry + 1) {
             coinAssignmentStage = CoinAssignmentStage::INIT;
@@ -92,18 +121,8 @@ void CarGeneralApp::handlePositionUpdate(cObject* obj) {
     }
 
     // When leaving the intersection, trigger coin assignment.
-    if (distanceToRSU > lastDistanceToRSU) {
-//        // debug
-//        if (coinRequestCount >= 3 && coinAssignmentStage != CoinAssignmentStage::FINISHED){
-//        }
-        // RSU already send a coin assignment to me
-        if (coinAssignmentStage != CoinAssignmentStage::FINISHED && carCoinAssignedSet.find(nodeId_)!=carCoinAssignedSet.end()){
-            coinAssignmentStage = CoinAssignmentStage::FINISHED;
-            EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinAssignment" << endl;
-            EV_WARN << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinRequestTime << endl;
-            EV_WARN << "[Vehicle " << nodeId_ << "]: Coin assignment succeed." << endl;
-        }
-        else if (coinAssignmentStage == CoinAssignmentStage::INIT) {
+    if (distanceToRSU < 150 && distanceToRSU > lastDistanceToRSU) {
+        if (coinAssignmentStage == CoinAssignmentStage::INIT) {
             coinAssignmentLastTry = currentTime;
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_REQUEST_LATENCY_MEAN, COIN_REQUEST_LATENCY_STDDEV);
 
@@ -119,38 +138,14 @@ void CarGeneralApp::handlePositionUpdate(cObject* obj) {
 
             CoinRequestTime = currentTime + latency.first+latency.second;
             coinAssignmentStage = CoinAssignmentStage::REQUESTED;
-            coinRequestCount++;
             EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinRequest. Queue time " << latency.first
                     << " Computation time " << latency.second << endl;
         }
     }
 
     // When approaching the intersection, trigger coin deposit.
-    if (distanceToRSU < 300 && distanceToRSU < lastDistanceToRSU) {
-//        // debug
-//        if (coinDepositCount >= 3 && coinDepositStage != CoinDepositStage::SIGNATURE_SENT){
-//        }
-        // RSU already sends signature request to me
-        if (coinDepositStage != CoinDepositStage::SIGNATURE_SENT && carCoinDepositedSet.find(nodeId_)!=carCoinDepositedSet.end()){
-            EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinDepositSignatureRequest" << endl;
-            EV_WARN << "[Vehicle " << nodeId_ << "]: Time waiting for RSU response = " << currentTime - CoinDepositTime << endl;
-
-            std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_STDDEV);
-            CoinDepositSignatureResponse* packet = new CoinDepositSignatureResponse();
-            packet->setByteLength(COIN_DEPOSIT_SIGNATURE_RESPONSE_BYTE_SIZE);
-            packet->setVid(nodeId_);
-            auto lteControlInfo = new FlowControlInfoNonIp();
-            lteControlInfo->setSrcAddr(nodeId_);
-            lteControlInfo->setDstAddr(RSU_ADDR);
-            lteControlInfo->setDirection(D2D);
-            packet->setControlInfo(lteControlInfo);
-            sendDelayedDown(packet,latency.first+latency.second);
-
-            coinDepositStage = CoinDepositStage::SIGNATURE_SENT;
-            EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDepositSignatureResponse. Queue time " << latency.first
-                    << " Computation time " << latency.second << endl;
-        }
-        else if (coinDepositStage == CoinDepositStage::INIT) {
+    if (distanceToRSU < 150 && distanceToRSU < lastDistanceToRSU) {
+        if (coinDepositStage == CoinDepositStage::INIT) {
             coinDepositLastTry = currentTime;
             std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_LATENCY_MEAN, COIN_DEPOSIT_LATENCY_STDDEV);
 
@@ -166,13 +161,13 @@ void CarGeneralApp::handlePositionUpdate(cObject* obj) {
 
             CoinDepositTime = currentTime + latency.first+latency.second;
             coinDepositStage = CoinDepositStage::REQUESTED;
-            coinDepositCount++;
             EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDeposit. Queue time " << latency.first
                     << " Computation time " << latency.second << endl;
         }
     }
 
-    if (distanceToRSU > 300) {
+    // When leaving the intersection, claim failure when the vehicle is too far from RSU
+    if (distanceToRSU > 150) {
         if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED && coinAssignmentStage != CoinAssignmentStage::FAILED) {
             coinAssignmentStage = CoinAssignmentStage::FAILED;
             EV_WARN << "[Vehicle " << nodeId_ << "]: Coin assignment failed." << endl;

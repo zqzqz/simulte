@@ -14,20 +14,16 @@
 // 
 
 #include "RSUPerceptionApp.h"
-#include "common.h"
+#include "apps/rcs/common.h"
 #include "common/LteControlInfo.h"
-#include "message/CoinRequest_m.h"
-#include "message/CoinAssignment_m.h"
-#include "message/CoinDeposit_m.h"
-#include "message/CoinDepositSignatureRequest_m.h"
-#include "message/CoinDepositSignatureResponse_m.h"
-#include "message/CoinSubmission_m.h"
+#include "apps/rcs/message/CoinRequest_m.h"
+#include "apps/rcs/message/CoinAssignment_m.h"
+#include "apps/rcs/message/CoinDeposit_m.h"
+#include "apps/rcs/message/CoinDepositSignatureRequest_m.h"
+#include "apps/rcs/message/CoinDepositSignatureResponse_m.h"
+#include "apps/rcs/message/CoinSubmission_m.h"
 
 Define_Module(RSUPerceptionApp);
-
-// global set to record which cars are assigned coins and have deposited coins
-using std::unordered_set;
-unordered_set<int> carCoinAssignedSet;
 
 void RSUPerceptionApp::handleLowerMessage(cMessage* msg) {
     double currentTime = simTime().dbl();
@@ -48,7 +44,6 @@ void RSUPerceptionApp::handleLowerMessage(cMessage* msg) {
         sendDelayedDown(packet,latency.first+latency.second);
 
         coinAssignmentStages[vid] = CoinAssignmentStage::SENT;
-        carCoinAssignedSet.insert(vid);
 
         EV_WARN << "[RSU]: I sent a message of CoinAssignment to " << vid << ". Queue time " << latency.first
                 << " Computation time " << latency.second << endl;

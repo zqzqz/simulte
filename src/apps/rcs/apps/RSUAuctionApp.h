@@ -13,12 +13,16 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package lte.apps.rcs;
+#ifndef RCS_APPS_RSUAUCTIONAPP_H_
+#define RCS_APPS_RSUAUCTIONAPP_H_
 
-import lte.apps.rcs.RcsRsuApp;
+#include "apps/rcs/RcsRsuApp.h"
 
-simple RSUAuctionApp extends RcsRsuApp
-{
-parameters:
-    @class(RSUAuctionApp);
-}
+class RSUAuctionApp : public RcsRsuApp {
+public:
+    ~RSUAuctionApp() override;
+protected:
+    virtual void handleLowerMessage(cMessage* msg) override;
+};
+
+#endif /* RCS_APPS_RSUAUCTIONAPP_H_ */

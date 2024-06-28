@@ -14,21 +14,16 @@
 // 
 
 #include "RSUAuctionApp.h"
-#include "common.h"
+#include "apps/rcs/common.h"
 #include "common/LteControlInfo.h"
-#include "message/CoinRequest_m.h"
-#include "message/CoinAssignment_m.h"
-#include "message/CoinDeposit_m.h"
-#include "message/CoinDepositSignatureRequest_m.h"
-#include "message/CoinDepositSignatureResponse_m.h"
-#include "message/CoinSubmission_m.h"
+#include "apps/rcs/message/CoinRequest_m.h"
+#include "apps/rcs/message/CoinAssignment_m.h"
+#include "apps/rcs/message/CoinDeposit_m.h"
+#include "apps/rcs/message/CoinDepositSignatureRequest_m.h"
+#include "apps/rcs/message/CoinDepositSignatureResponse_m.h"
+#include "apps/rcs/message/CoinSubmission_m.h"
 
 Define_Module(RSUAuctionApp);
-
-// global set to record which cars are assigned coins and have deposited coins
-using std::unordered_set;
-unordered_set<int> carCoinAssignedSet;
-unordered_set<int> carCoinDepositedSet;
 
 void RSUAuctionApp::handleLowerMessage(cMessage* msg)
 {
@@ -57,7 +52,6 @@ void RSUAuctionApp::handleLowerMessage(cMessage* msg)
         sendDelayedDown(packet,latency.first+latency.second);
 
         coinAssignmentStages[vid] = CoinAssignmentStage::SENT;
-        carCoinAssignedSet.insert(vid);
         EV_WARN << "[RSU]: I sent a message of CoinAssignment to " << vid << ". Queue time " << latency.first
                 << " Computation time " << latency.second << endl;
     }
@@ -77,7 +71,6 @@ void RSUAuctionApp::handleLowerMessage(cMessage* msg)
         sendDelayedDown(packet,latency.first+latency.second);
 
         coinDepositStages[vid] = CoinDepositStage::SIGNATURE_REQUESTED;
-        carCoinDepositedSet.insert(vid);
 
         EV_WARN << "[RSU]: I sent a message of CoinDepositSignatureRequest to " << vid << ". Queue time " << latency.first
                 << " Computation time " << latency.second << endl;

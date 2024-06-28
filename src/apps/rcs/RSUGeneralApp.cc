@@ -22,6 +22,7 @@
 #include "message/CoinDepositSignatureRequest_m.h"
 #include "message/CoinDepositSignatureResponse_m.h"
 #include "message/CoinSubmission_m.h"
+
 #include <unordered_set>
 
 Define_Module(RSUGeneralApp);
