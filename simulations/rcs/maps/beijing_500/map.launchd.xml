@@ -33,7 +33,7 @@
 
 <!-- debug config -->
 <launch>
-	<basedir path="/home/veins/workspace.omnetpp2/simulte/simulations/rcs/maps/beijing_500" />
+	<basedir path="/home/veins/workspace.omnetpp/simulte/simulations/rcs/maps/beijing_500" />
     <copy file="osm.netccfg.xml" />
     <copy file="osm.passenger.trips.xml" />
     <copy file="osm.polycfg.xml" />

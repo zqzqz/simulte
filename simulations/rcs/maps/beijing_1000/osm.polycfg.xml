@@ -6,14 +6,14 @@
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/polyconvertConfiguration.xsd">
 
     <input>
-        <net-file value="/home/veins/workspace.omnetpp2/simulte/simulations/rcs/maps/beijing_1000/osm.net.xml.gz"/>
-        <osm-files value="/home/veins/workspace.omnetpp2/simulte/simulations/rcs/maps/beijing_1000/osm_bbox.osm.xml.gz"/>
+        <net-file value="/home/veins/workspace.omnetpp/simulte/simulations/rcs/maps/beijing_1000/osm.net.xml.gz"/>
+        <osm-files value="/home/veins/workspace.omnetpp/simulte/simulations/rcs/maps/beijing_1000/osm_bbox.osm.xml.gz"/>
         <osm.keep-full-type value="true"/>
         <type-file value="${SUMO_HOME}/data/typemap/osmPolyconvert.typ.xml"/>
     </input>
 
     <output>
-        <output-file value="/home/veins/workspace.omnetpp2/simulte/simulations/rcs/maps/beijing_1000/osm.poly.xml.gz"/>
+        <output-file value="/home/veins/workspace.omnetpp/simulte/simulations/rcs/maps/beijing_1000/osm.poly.xml.gz"/>
     </output>
 
     <report>

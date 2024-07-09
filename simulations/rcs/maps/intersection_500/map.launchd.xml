@@ -33,7 +33,7 @@
 
 <!-- debug config -->
 <launch>
-	<basedir path="/home/veins/workspace.omnetpp2/simulte/simulations/rcs/maps/intersection_500" />
+	<basedir path="/home/veins/workspace.omnetpp/simulte/simulations/rcs/maps/intersection_500" />
     <copy file="map.net.xml" />
     <copy file="map.rou.xml" />
     <copy file="map.sumo.cfg" type="config" />

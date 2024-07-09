@@ -57,6 +57,25 @@ do
 	echo "Experiment ${scheme} ${map} GeneralApp ${numCpuCore}"
 	sed -i "s/maps\/intersection/maps\/${map}/g" ${config}
 	sed -i "s/\*\*\.numCpuCores = 1/\*\*\.numCpuCores = ${numCpuCore}/g" ${config}
+	# customize RSU position
+	if [[ $map == intersection_* ]]
+		sed -i "s/.*\.rsu\[0\]\.mobility\.x = 225/.*\.rsu\[0\]\.mobility\.x = 225/g" ${config}
+		sed -i "s/.*\.rsu\[0\]\.mobility\.y = 225/.*\.rsu\[0\]\.mobility\.y = 225/g" ${config}
+		sed -i "s/.*\.node\[\*\]\.mobility\.rsu_x = 225/.*\.node\[\*\]\.mobility\.rsu_x = 225/g" ${config}
+		sed -i "s/.*\.node\[\*\]\.mobility\.rsu_y = 225/.*\.node\[\*\]\.mobility\.rsu_y = 225/g" ${config}
+	fi
+	if [[ $map == beijing_* ]]
+		sed -i "s/.*\.rsu\[0\]\.mobility\.x = 225/.*\.rsu\[0\]\.mobility\.x = 940/g" ${config}
+		sed -i "s/.*\.rsu\[0\]\.mobility\.y = 225/.*\.rsu\[0\]\.mobility\.y = 870/g" ${config}
+		sed -i "s/.*\.node\[\*\]\.mobility\.rsu_x = 225/.*\.node\[\*\]\.mobility\.rsu_x = 940/g" ${config}
+		sed -i "s/.*\.node\[\*\]\.mobility\.rsu_y = 225/.*\.node\[\*\]\.mobility\.rsu_y = 870/g" ${config}
+	fi
+	if [[ $map == paris_* ]]
+		sed -i "s/.*\.rsu\[0\]\.mobility\.x = 225/.*\.rsu\[0\]\.mobility\.x = 670/g" ${config}
+		sed -i "s/.*\.rsu\[0\]\.mobility\.y = 225/.*\.rsu\[0\]\.mobility\.y = 570/g" ${config}
+		sed -i "s/.*\.node\[\*\]\.mobility\.rsu_x = 225/.*\.node\[\*\]\.mobility\.rsu_x = 670/g" ${config}
+		sed -i "s/.*\.node\[\*\]\.mobility\.rsu_y = 225/.*\.node\[\*\]\.mobility\.rsu_y = 570/g" ${config}
+	fi
 	opp_run -r 0 -m -u Cmdenv -c "${scheme}_GeneralApp" -n ..:../../src:../../../inet-3.6.6/src:../../../inet-3.6.6/examples:../../../inet-3.6.6/tutorials:../../../inet-3.6.6/showcases:../../../veins/examples/veins:../../../veins/src/veins:../../../veins/subprojects/veins_inet3/src/veins_inet:../../../veins/subprojects/veins_inet3/examples/veins_inet --image-path=../../images:../../../inet-3.6.6/images:../../../veins/images:../../../veins/subprojects/veins_inet3/images -l ../../src/lte -l ../../../inet-3.6.6/src/INET -l ../../../veins/src/veins -l ../../../veins/subprojects/veins_inet3/src/veins_inet ${config}|| {
 	echo "Experiment ${scheme} ${map} GeneralApp ${numCpuCore} finished at: $(tail -n 1 ${logfile})" >> ${endrecord}
 	}
