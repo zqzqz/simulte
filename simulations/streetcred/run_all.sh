@@ -55,18 +55,18 @@ do
 	scheme=${paras[1]}
 	numCpuCore=${paras[2]}
 	echo "Experiment ${scheme} ${map} ${numCpuCore}"
-	sed -i "s/maps\/intersection/maps\/${map}/g" ${config}
+	sed -i "s/maps\/intersection_500/maps\/${map}/g" ${config}
 	sed -i "s/rsu\[\*\]\.appl\.numCpuCores = 1/rsu\[\*\]\.appl\.numCpuCores = ${numCpuCore}/g" ${config}
 	# customize RSU position
-	if [[ $map == intersection_* ]]
+	if [[ $map == intersection_* ]]; then
 		sed -i "s/RSU_POSITION_X = 225/RSU_POSITION_X = 225/g" ${config}
 		sed -i "s/RSU_POSITION_Y = 225/RSU_POSITION_Y = 225/g" ${config}
 	fi
-	if [[ $map == beijing_* ]]
+	if [[ $map == beijing_* ]]; then
 		sed -i "s/RSU_POSITION_X = 225/RSU_POSITION_X = 940/g" ${config}
 		sed -i "s/RSU_POSITION_Y = 225/RSU_POSITION_Y = 870/g" ${config}
 	fi
-	if [[ $map == paris_* ]]
+	if [[ $map == paris_* ]]; then
 		sed -i "s/RSU_POSITION_X = 225/RSU_POSITION_X = 670/g" ${config}
 		sed -i "s/RSU_POSITION_Y = 225/RSU_POSITION_Y = 570/g" ${config}
 	fi
