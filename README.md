@@ -14,7 +14,7 @@ Unfortunately, Instant Veins VM doesn't support ARM architecture, so it cannot r
 4. Go to the "workspace.omnetpp" directory under "Home" directory, which is a default workspace of OMNeT++ in Instant Veins VM.
 5. Clone the repo [simulte](https://github.com/zqzqz/simulte) and [veins](https://github.com/zqzqz/veins). Switch to branch "streetcred" in both repo. Download [inet-3.6.6](https://github.com/inet-framework/inet/archive/refs/tags/v3.6.6.zip) in this directory.
 6. Start OMNeT++ and SUMO server launcher(veins_launchd) via clicking their icon in "Activity" toolbar.
-7. Import simulte, veins and inet-3.6.6 to OMNeT++ workspace according to the tutorial here.
+7. Import simulte, veins and inet-3.6.6 to OMNeT++ workspace according to the tutorial [here (Page 2)](https://www.cs.ucc.ie/cv2x/media/OpenCV2X_Documentation.pdf).
 
 ## Running StreetCred Simulation
 
