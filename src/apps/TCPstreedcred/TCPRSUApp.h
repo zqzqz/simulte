@@ -13,38 +13,41 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef APPS_RCS_RCSBASEAPP_H_
-#define APPS_RCS_RCSBASEAPP_H_
+#ifndef APPS_TCPSTREEDCRED_TCPRSUAPP_H_
+#define APPS_TCPSTREEDCRED_TCPRSUAPP_H_
 
-#include "apps/mode4App/Mode4BaseApp.h"
-#include "common.h"
-#include "CpuModel.h"
+#include "apps/streetcred/BaseApp.h"
+#include "apps/streetcred/common.h"
+#include "apps/streetcred/CpuModel.h"
+#include "corenetwork/binder/LteBinder.h"
+#include "inet/common/INETDefs.h"
+#include "inet/applications/tcpapp/TCPSrvHostApp.h"
+#include <map>
 
-class BaseApp : public Mode4BaseApp {
+class TCPRSUApp : public inet::TCPSrvHostApp {
 public:
     void initialize(int stage) override;
+    virtual ~TCPRSUApp();
 protected:
+    std::map<int, CoinAssignmentStage> coinAssignmentStages;
+    std::map<int, CoinDepositStage> coinDepositStages;
+
+    MacNodeId nodeId_;
+    LteBinder* binder_;
+
+    void handleMessage(cMessage *msg) override;
+
+    /* RSUApp parameters */
     CpuModel cpuModel;
-    int COIN_REQUEST_BYTE_SIZE;
     int COIN_ASSIGNMENT_BYTE_SIZE;
-    int COIN_DEPOSIT_BYTE_SIZE;
     int COIN_DEPOSIT_SIGNATURE_REQUEST_BYTE_SIZE;
-    int COIN_DEPOSIT_SIGNATURE_RESPONSE_BYTE_SIZE;
     int COIN_SUBMISSION_BYTE_SIZE;
-    double COIN_REQUEST_LATENCY_MEAN;
-    double COIN_REQUEST_LATENCY_STDDEV;
     double COIN_ASSIGNMENT_LATENCY_MEAN;
     double COIN_ASSIGNMENT_LATENCY_STDDEV;
-    double COIN_DEPOSIT_LATENCY_MEAN;
-    double COIN_DEPOSIT_LATENCY_STDDEV;
     double COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_MEAN;
     double COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_STDDEV;
-    double COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_MEAN;
-    double COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_STDDEV;
     double COIN_SUBMISSION_LATENCY_MEAN;
     double COIN_SUBMISSION_LATENCY_STDDEV;
-
-    void handleSelfMessage(cMessage *msg) override {}; // we don't need to handle self message
 };
 
-#endif /* APPS_RCS_RCSBASEAPP_H_ */
+#endif /* APPS_TCPSTREEDCRED_TCPRSUAPP_H_ */

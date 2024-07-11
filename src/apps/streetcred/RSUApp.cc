@@ -32,11 +32,6 @@ unordered_set<int> carCoinDepositedSet;
 
 Define_Module(RSUApp);
 
-RSUApp::~RSUApp() {
-    // TODO Auto-generated destructor stub
-    binder_->unregisterNode(nodeId_);
-}
-
 void RSUApp::initialize(int stage)
 {
     BaseApp::initialize(stage);
@@ -56,7 +51,6 @@ void RSUApp::initialize(int stage)
         // Register the nodeId_ with the binder.
         binder_->setMacNodeId(nodeId_, nodeId_);
     } else if (stage==inet::INITSTAGE_APPLICATION_LAYER) {
-        cpuModel.init(1);
         EV_WARN << "[RSU] address " << nodeId_ << endl;
     }
 }
@@ -119,3 +113,7 @@ void RSUApp::handleLowerMessage(cMessage* msg)
     }
 }
 
+RSUApp::~RSUApp() {
+    // TODO Auto-generated destructor stub
+    binder_->unregisterNode(nodeId_);
+}

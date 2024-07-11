@@ -42,7 +42,7 @@ module Car
 
         //# Node specs
         string nodeType = "UE";  // DO NOT CHANGE
-        int masterId;
+        int masterId= default(0); // Not yet removed from SimuLTE for Mode 4 simulations
         int macNodeId = default(0); // TODO: this is not a real parameter
         int macCellId = default(0); // TODO: this is not a real parameter
 

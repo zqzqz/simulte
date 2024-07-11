@@ -29,16 +29,12 @@ public:
 protected:
     CoinAssignmentStage coinAssignmentStage;
     CoinDepositStage coinDepositStage;
-    uint coinRequestCount;
-    uint coinDepositCount;
     double RSU_POSITION_X;
     double RSU_POSITION_Y;
     int RSU_ADDR;
     double lastDistanceToRSU;
 
     // timestamp of message traffic
-    double CoinRequestTime;
-    double CoinDepositTime;
     double coinAssignmentLastTry;
     double coinDepositLastTry;
 

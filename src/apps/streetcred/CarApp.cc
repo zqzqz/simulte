@@ -63,8 +63,6 @@ void CarApp::initialize(int stage)
         // It seems if we do not initialize these two flags early, custom failure warnings are falsely triggered.
         coinAssignmentStage = CoinAssignmentStage::INIT;
         coinDepositStage = CoinDepositStage::INIT;
-        coinRequestCount = 0;
-        coinDepositCount = 0;
         RSU_POSITION_X = par("RSU_POSITION_X");
         RSU_POSITION_Y = par("RSU_POSITION_Y");
         RSU_ADDR = par("RSU_ADDR");
@@ -167,8 +165,6 @@ void CarApp::handlePositionUpdate(cObject* obj)
             lteControlInfo->setDirection(D2D);
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
-
-            CoinRequestTime = currentTime + latency.first+latency.second;
             coinAssignmentStage = CoinAssignmentStage::REQUESTED;
             EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinRequest. Queue time " << latency.first
                     << " Computation time " << latency.second << endl;
@@ -190,8 +186,6 @@ void CarApp::handlePositionUpdate(cObject* obj)
             lteControlInfo->setDirection(D2D);
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
-
-            CoinDepositTime = currentTime + latency.first+latency.second;
             coinDepositStage = CoinDepositStage::REQUESTED;
             EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDeposit. Queue time " << latency.first
                     << " Computation time " << latency.second << endl;

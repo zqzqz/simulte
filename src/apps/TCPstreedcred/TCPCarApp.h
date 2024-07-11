@@ -13,38 +13,50 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef APPS_RCS_RCSBASEAPP_H_
-#define APPS_RCS_RCSBASEAPP_H_
+#ifndef APPS_TCPSTREEDCRED_TCPCARAPP_H_
+#define APPS_TCPSTREEDCRED_TCPCARAPP_H_
 
-#include "apps/mode4App/Mode4BaseApp.h"
-#include "common.h"
-#include "CpuModel.h"
+#include <omnetpp.h>
+#include "apps/streetcred/BaseApp.h"
+#include "apps/streetcred/common.h"
+#include "apps/streetcred/CpuModel.h"
+#include "corenetwork/binder/LteBinder.h"
+#include "inet/common/INETDefs.h"
+#include "inet/applications/tcpapp/TCPAppBase.h"
 
-class BaseApp : public Mode4BaseApp {
+class TCPCarApp : public inet::TCPAppBase, public cListener {
 public:
     void initialize(int stage) override;
+    virtual ~TCPCarApp();
+
 protected:
+    CoinAssignmentStage coinAssignmentStage;
+    CoinDepositStage coinDepositStage;
+    double coinAssignmentLastTry;
+    double coinDepositLastTry;
+    double RSU_POSITION_X;
+    double RSU_POSITION_Y;
+    double lastDistanceToRSU;
+
+    MacNodeId nodeId_;
+    LteBinder* binder_;
+
+    /* TCPSocket::CallbackInterface callback methods */
+    virtual void handleTimer(cMessage *msg) override {};
+    void receiveSignal(cComponent* source, simsignal_t signalID, cObject* obj, cObject* details) override;
+    void handlePositionUpdate(cObject* obj);
+
+    /* CarApp parameters */
     CpuModel cpuModel;
     int COIN_REQUEST_BYTE_SIZE;
-    int COIN_ASSIGNMENT_BYTE_SIZE;
     int COIN_DEPOSIT_BYTE_SIZE;
-    int COIN_DEPOSIT_SIGNATURE_REQUEST_BYTE_SIZE;
     int COIN_DEPOSIT_SIGNATURE_RESPONSE_BYTE_SIZE;
-    int COIN_SUBMISSION_BYTE_SIZE;
     double COIN_REQUEST_LATENCY_MEAN;
     double COIN_REQUEST_LATENCY_STDDEV;
-    double COIN_ASSIGNMENT_LATENCY_MEAN;
-    double COIN_ASSIGNMENT_LATENCY_STDDEV;
     double COIN_DEPOSIT_LATENCY_MEAN;
     double COIN_DEPOSIT_LATENCY_STDDEV;
-    double COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_MEAN;
-    double COIN_DEPOSIT_SIGNATURE_REQUEST_LATENCY_STDDEV;
     double COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_MEAN;
     double COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_STDDEV;
-    double COIN_SUBMISSION_LATENCY_MEAN;
-    double COIN_SUBMISSION_LATENCY_STDDEV;
-
-    void handleSelfMessage(cMessage *msg) override {}; // we don't need to handle self message
 };
 
-#endif /* APPS_RCS_RCSBASEAPP_H_ */
+#endif /* APPS_TCPSTREEDCRED_TCPCARAPP_H_ */
