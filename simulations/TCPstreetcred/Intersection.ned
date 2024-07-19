@@ -60,12 +60,12 @@ network Intersection
             @display("p=600,80;is=s");
         }
 
-//        //# Network instances
-//        rsu[1]: Car {
-//		    //# default (225,225)
-//			//# beijing (940,870)
-//			//# paris (670,570)
-//            @display("p=940,870;i=veins/sign/yellowdiamond;is=vs");
-//        }
+        //# Network instances
+        rsu[1]: Car {
+		    //# default (225,225)
+			//# beijing (940,870)
+			//# paris (670,570)
+            @display("p=940,870;i=veins/sign/yellowdiamond;is=vs");
+        }
 }
 

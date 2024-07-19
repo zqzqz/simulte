@@ -24,7 +24,7 @@
 #include "inet/common/INETDefs.h"
 #include "inet/applications/tcpapp/TCPAppBase.h"
 
-class TCPCarApp : public inet::TCPAppBase, public cListener {
+class TCPCarApp : public TCPAppBase, public cListener {
 public:
     void initialize(int stage) override;
     virtual ~TCPCarApp();

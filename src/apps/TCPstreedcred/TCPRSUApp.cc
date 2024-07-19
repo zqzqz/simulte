@@ -15,6 +15,7 @@
 
 #include "TCPRSUApp.h"
 #include <omnetpp.h>
+#include "inet/networklayer/common/L3AddressResolver.h"
 #include "apps/streetcred/message/CoinAssignment_m.h"
 #include "apps/streetcred/message/CoinDepositSignatureRequest_m.h"
 #include "apps/streetcred/message/CoinSubmission_m.h"
@@ -25,21 +26,8 @@ void TCPRSUApp::initialize(int stage)
 {
     TCPSrvHostApp::initialize(stage);
     if (stage==inet::INITSTAGE_LOCAL){
-        // Register the node with the binder
-        // Issue primarily is how do we set the link layer address
-
-        // Get the binder
-        binder_ = getBinder();
-
-        // Get our UE
-        cModule *ue = getParentModule();
-
-        //Register with the binder
-        nodeId_ = binder_->registerNode(ue, UE, 0);
-
-        // Register the nodeId_ with the binder.
-        binder_->setMacNodeId(nodeId_, nodeId_);
-
+        int numCpuCores = par("numCpuCores");
+        cpuModel.init(numCpuCores);
         COIN_ASSIGNMENT_BYTE_SIZE = par("COIN_ASSIGNMENT_BYTE_SIZE");
         COIN_DEPOSIT_SIGNATURE_REQUEST_BYTE_SIZE = par("COIN_DEPOSIT_SIGNATURE_REQUEST_BYTE_SIZE");
         COIN_SUBMISSION_BYTE_SIZE = par("COIN_SUBMISSION_BYTE_SIZE");
@@ -50,9 +38,20 @@ void TCPRSUApp::initialize(int stage)
         COIN_SUBMISSION_LATENCY_MEAN = par("COIN_SUBMISSION_LATENCY_MEAN");
         COIN_SUBMISSION_LATENCY_STDDEV = par("COIN_SUBMISSION_LATENCY_STDDEV");
     } else if (stage==inet::INITSTAGE_APPLICATION_LAYER) {
-        int numCpuCores = par("numCpuCores");
-        cpuModel.init(numCpuCores);
-        EV_WARN << "[RSU] address " << nodeId_ << endl;
+        // Register the node with the binder
+        // Issue primarily is how do we set the link layer address
+        // Get the binder
+        binder_ = getBinder();
+        // Get our UE
+        cModule *ue = getParentModule();
+        // Register with the binder
+        nodeId_ = binder_->registerNode(ue, UE, 0);
+        // Get my IP address
+        L3Address ip;
+        L3AddressResolver().tryResolve(par("localAddress"), ip);
+        // Register the nodeId_ with the binder.
+        binder_->setMacNodeId(ip.toIPv4(), nodeId_);
+        EV_WARN << "[RSU] MAC address: " << nodeId_ << " IP address: " << ip << endl;
     }
 }
 

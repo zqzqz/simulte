@@ -92,6 +92,10 @@ class FlowControlInfo extends LteControlInfo {
     uint16 srcPort;                                       // source port
     uint16 dstPort;                                       // destination port
     int headerSize;                                       // IP + Transport header size (used by pdcp ROHC)
+    //# Mode4 control Information
+    int priority;
+    long duration;
+    simtime_t creationTime;
 }
 
 class FlowControlInfoNonIp extends LteControlInfo {

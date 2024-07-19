@@ -62,7 +62,6 @@ void TCPCarApp::initialize(int stage)
     } else if (stage==inet::INITSTAGE_APPLICATION_LAYER) {
         cpuModel.init(1);
         EV_WARN << "[Vehicle " << nodeId_ << "]: Initialized" << endl;
-        connect();
     }
 }
 
@@ -71,17 +70,6 @@ void TCPCarApp::handlePositionUpdate(cObject* obj){
         inet::Coord curPosition = mobility->getCurrentPosition();
         double distanceToRSU = sqrt(pow(curPosition.x - RSU_POSITION_X, 2) + pow(curPosition.y - RSU_POSITION_Y, 2));
         double currentTime = simTime().dbl();
-
-        if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED && coinAssignmentStage != CoinAssignmentStage::FAILED) {
-            if (currentTime > coinAssignmentLastTry + 1) {
-                coinAssignmentStage = CoinAssignmentStage::INIT;
-            }
-        }
-        if (coinDepositStage != CoinDepositStage::INIT && coinDepositStage != CoinDepositStage::SIGNATURE_SENT && coinDepositStage != CoinDepositStage::FAILED) {
-            if (currentTime > coinDepositLastTry + 1) {
-                coinDepositStage = CoinDepositStage::INIT;
-            }
-        }
 
         // When leaving the intersection, trigger coin assignment.
         if (distanceToRSU < 150 && distanceToRSU > lastDistanceToRSU && coinAssignmentStage == CoinAssignmentStage::INIT) {
@@ -107,6 +95,8 @@ void TCPCarApp::handlePositionUpdate(cObject* obj){
             packet->setByteLength(COIN_DEPOSIT_BYTE_SIZE);
             packet->setVid(nodeId_);
 
+            // before first send connect to RSU
+            connect();
             // TODO: add delay before sending
             sendPacket(packet);
             coinDepositStage = CoinDepositStage::REQUESTED;
