@@ -643,8 +643,8 @@ void LteMacVUeMode4::handleMessage(cMessage *msg)
     {
         if (strcmp(pkt->getName(), "newDataPkt")== 0)
         {
-            // in IP mode we should use FlowControlInfo instead of FlowControlInfoNonIp (haven't change in this commit)
-            FlowControlInfoNonIp* lteInfo = check_and_cast<FlowControlInfoNonIp*>(pkt->removeControlInfo());
+            // in IP mode we should use FlowControlInfo instead of FlowControlInfoNonIp
+            FlowControlInfo* lteInfo = check_and_cast<FlowControlInfo*>(pkt->removeControlInfo());
             receivedTime_ = NOW;
             simtime_t elapsedTime = receivedTime_ - lteInfo->getCreationTime();
             remainingTime_ = lteInfo->getDuration() - (elapsedTime.dbl() * 1000);
