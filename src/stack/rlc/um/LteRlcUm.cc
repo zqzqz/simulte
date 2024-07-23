@@ -107,6 +107,7 @@ void LteRlcUm::handleUpperMessage(cPacket *pkt)
     UmTxQueue* txbuf = getTxBuffer(ctrlInfoToUeId(lteInfo), lteInfo->getLcid());
 
     // Create a new RLC packet
+    EV << NOW << " LteRlcUm::handleUpperMessage - Received packet " << pkt->getName() << " from upper layer\n";
     LteRlcSdu* rlcPkt = new LteRlcSdu("rlcUmPkt");
     rlcPkt->setSnoMainPacket(lteInfo->getSequenceNumber());
     rlcPkt->setByteLength(RLC_HEADER_UM);

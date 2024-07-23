@@ -220,12 +220,11 @@ void LtePdcpRrcUeD2D::initialize(int stage)
 void LtePdcpRrcUeD2D::handleMessage(cMessage* msg)
 {
     cPacket* pkt = check_and_cast<cPacket *>(msg);
+    EV << "LtePdcpRrcUeD2D::handleMessage - Received packet " << pkt->getName() << " from port " << pkt->getArrivalGate()->getName() << endl;
 
     // check whether the message is a notification for mode switch
     if (strcmp(pkt->getName(),"D2DModeSwitchNotification") == 0)
     {
-        EV << "LtePdcpRrcUeD2D::handleMessage - Received packet " << pkt->getName() << " from port " << pkt->getArrivalGate()->getName() << endl;
-
         D2DModeSwitchNotification* switchPkt = check_and_cast<D2DModeSwitchNotification*>(pkt);
 
         // call handler

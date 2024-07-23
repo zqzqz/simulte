@@ -101,8 +101,6 @@ module Car
         configurator: HostAutoConfigurator {
             @display("p=49.068,22.968");
         }
-        //# dummy appl to receive cbr package
-//        appl: Mode4App {}
         
     connections allowunconnected:
         //# 
@@ -129,8 +127,4 @@ module Car
 
         networkLayer.ifOut++ --> lteNic.upperLayerIn;
         networkLayer.ifIn++ <-- lteNic.upperLayerOut;
-        
-        //# send all cbr package to dummy channel
-//        lteNic.upperLayerOut --> appl.lowerGateIn;
-//        lteNic.upperLayerIn <-- appl.lowerGateOut;
 }
