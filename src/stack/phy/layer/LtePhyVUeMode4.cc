@@ -1977,14 +1977,16 @@ void LtePhyVUeMode4::finish()
     if (getSimulation()->getSimulationStage() != CTX_FINISH)
     {
         // do this only at deletion of the module during the simulation
-        //LtePhyUe::finish();
-        LteAmc *amc = getAmcModule(masterId_);
-        if (amc != NULL)
-        {
-            amc->detachUser(nodeId_, UL);
-            amc->detachUser(nodeId_, DL);
-            amc->detachUser(nodeId_, D2D);
-        }
+        // LtePhyUe::finish();
+        // we cannot use getAmcModule here because it try to cast LteMacVUeMode4* upon current physical layer to LteMacEnb*
+        // but in the Mode4 framework we don't use LteMacEnb for mac layer
+//        LteAmc *amc = getAmcModule(masterId_);
+//        if (amc != NULL)
+//        {
+//            amc->detachUser(nodeId_, UL);
+//            amc->detachUser(nodeId_, DL);
+//            amc->detachUser(nodeId_, D2D);
+//        }
 
         // binder call
         binder_->unregisterNextHop(masterId_, nodeId_);
