@@ -23,6 +23,7 @@ import lte.stack.phy.ILteNic;
 import lte.stack.phy.LteNicUe;
 import lte.stack.phy.LteNicUeD2D;
 import lte.stack.phy.LteNicVUeMode4;
+import lte.apps.mode4App.Mode4App;
 
 // 
 // Car Module
@@ -42,7 +43,7 @@ module Car
 
         //# Node specs
         string nodeType = "UE";  // DO NOT CHANGE
-        int masterId= default(0); // Not yet removed from SimuLTE for Mode 4 simulations
+        int masterId = default(0); // Not yet removed from SimuLTE for Mode 4 simulations
         int macNodeId = default(0); // TODO: this is not a real parameter
         int macCellId = default(0); // TODO: this is not a real parameter
 
@@ -51,7 +52,7 @@ module Car
         bool mode4D2D = default(false);
         
         // Check if the car is D2D, if it is further check if it's mode4, otherwise it's a simple Ue
-        string nicType = d2dCapable ? mode4D2D ? "LteNicUeMode4" : "LteNicUeD2D" : "LteNicUe";
+        string nicType = default(d2dCapable ? mode4D2D ? "LteNicUeMode4" : "LteNicUeD2D" : "LteNicUe");
 
         //# Network Layer specs
         string networkLayerType = default("IPv4NetworkLayer");
@@ -100,6 +101,9 @@ module Car
         configurator: HostAutoConfigurator {
             @display("p=49.068,22.968");
         }
+        //# dummy appl to receive cbr package
+//        appl: Mode4App {}
+        
     connections allowunconnected:
         //# 
         //# Internal TCP/UDP applications connections with IP stack
@@ -125,4 +129,8 @@ module Car
 
         networkLayer.ifOut++ --> lteNic.upperLayerIn;
         networkLayer.ifIn++ <-- lteNic.upperLayerOut;
+        
+        //# send all cbr package to dummy channel
+//        lteNic.upperLayerOut --> appl.lowerGateIn;
+//        lteNic.upperLayerIn <-- appl.lowerGateOut;
 }

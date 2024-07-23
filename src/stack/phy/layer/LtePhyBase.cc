@@ -54,7 +54,7 @@ void LtePhyBase::initialize(int stage)
 
 void LtePhyBase::handleMessage(cMessage* msg)
 {
-    EV << " LtePhyBase::handleMessage - new message received" << endl;
+//    EV << " LtePhyBase::handleMessage - new message received" << endl;
 
     if (msg->isSelfMessage())
     {

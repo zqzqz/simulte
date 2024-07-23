@@ -22,6 +22,7 @@ import lte.corenetwork.deployer.LteDeployer;
 import lte.corenetwork.nodes.eNodeB;
 import lte.corenetwork.nodes.Ue;
 import lte.corenetwork.nodes.cars.CarNonIp;
+import lte.corenetwork.nodes.cars.Car;
 
 import org.car2x.veins.subprojects.veins_inet.VeinsInetManager;
 import org.car2x.veins.visualizer.roads.RoadsCanvasVisualizer;
@@ -55,12 +56,13 @@ network Intersection
         deployer: LteDeployer {
         	@display("p=50,270;is=s");
         }
+        //# Network Configurator
+        configurator: IPv4NetworkConfigurator {
+            @display("p=50,125");
+        }
         //# Network instances
-		rsu[1]: CarNonIp {
-		    //# default (225,225)
-			//# beijing (940,870)
-			//# paris (670,570)
-            @display("p=940,870;i=veins/sign/yellowdiamond;is=vs");
+		rsu[1]: Car {
+            @display("p=225,225;i=veins/sign/yellowdiamond;is=vs");
         }
 }
 
