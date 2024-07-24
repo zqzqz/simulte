@@ -25,6 +25,9 @@ class BaseApp : public Mode4BaseApp {
 public:
     void initialize(int stage) override;
 protected:
+    int priority = 3;
+    int duration = 1000;
+
     CpuModel cpuModel;
     int COIN_REQUEST_BYTE_SIZE;
     int COIN_ASSIGNMENT_BYTE_SIZE;

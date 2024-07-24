@@ -26,13 +26,6 @@
 #include "message/CoinDepositSignatureResponse_m.h"
 #include "message/CoinSubmission_m.h"
 
-#include <unordered_set>
-
-// global set to record which cars are assigned coins and have deposited coins
-using std::unordered_set;
-extern unordered_set<int> carCoinAssignedSet;
-extern unordered_set<int> carCoinDepositedSet;
-
 Define_Module(CarApp);
 
 CarApp::~CarApp() {
@@ -95,6 +88,9 @@ void CarApp::handleLowerMessage(cMessage* msg)
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(RSU_ADDR);
             lteControlInfo->setDirection(D2D);
+            lteControlInfo->setPriority(priority);
+            lteControlInfo->setDuration(duration);
+            lteControlInfo->setCreationTime(simTime());
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
 
@@ -111,32 +107,6 @@ void CarApp::handlePositionUpdate(cObject* obj)
     inet::Coord curPosition = mobility->getCurrentPosition();
     double distanceToRSU = sqrt(pow(curPosition.x - RSU_POSITION_X, 2) + pow(curPosition.y - RSU_POSITION_Y, 2));
     double currentTime = simTime().dbl();
-
-    // RSU already send a coin assignment to me
-    if (coinAssignmentStage != CoinAssignmentStage::FINISHED && carCoinAssignedSet.find(nodeId_)!=carCoinAssignedSet.end()){
-        coinAssignmentStage = CoinAssignmentStage::FINISHED;
-        EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinAssignment" << endl;
-        EV_WARN << "[Vehicle " << nodeId_ << "]: Coin assignment succeed." << endl;
-    }
-    // RSU already sends signature request to me
-    if (coinDepositStage != CoinDepositStage::SIGNATURE_SENT && carCoinDepositedSet.find(nodeId_)!=carCoinDepositedSet.end()){
-        EV_WARN << "[Vehicle " << nodeId_ << "]: I received a message of CoinDepositSignatureRequest" << endl;
-
-        std::pair<double,double> latency = cpuModel.getLatency(currentTime, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_MEAN, COIN_DEPOSIT_SIGNATURE_RESPONSE_LATENCY_STDDEV);
-        CoinDepositSignatureResponse* packet = new CoinDepositSignatureResponse();
-        packet->setByteLength(COIN_DEPOSIT_SIGNATURE_RESPONSE_BYTE_SIZE);
-        packet->setVid(nodeId_);
-        auto lteControlInfo = new FlowControlInfoNonIp();
-        lteControlInfo->setSrcAddr(nodeId_);
-        lteControlInfo->setDstAddr(RSU_ADDR);
-        lteControlInfo->setDirection(D2D);
-        packet->setControlInfo(lteControlInfo);
-        sendDelayedDown(packet,latency.first+latency.second);
-
-        coinDepositStage = CoinDepositStage::SIGNATURE_SENT;
-        EV_WARN << "[Vehicle " << nodeId_ << "]: I sent a message of CoinDepositSignatureResponse. Queue time " << latency.first
-                << " Computation time " << latency.second << endl;
-    }
 
     if (coinAssignmentStage != CoinAssignmentStage::INIT && coinAssignmentStage != CoinAssignmentStage::FINISHED && coinAssignmentStage != CoinAssignmentStage::FAILED) {
         if (currentTime > coinAssignmentLastTry + 1) {
@@ -162,6 +132,9 @@ void CarApp::handlePositionUpdate(cObject* obj)
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(RSU_ADDR);
             lteControlInfo->setDirection(D2D);
+            lteControlInfo->setPriority(priority);
+            lteControlInfo->setDuration(duration);
+            lteControlInfo->setCreationTime(simTime());
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
             coinAssignmentStage = CoinAssignmentStage::REQUESTED;
@@ -183,6 +156,9 @@ void CarApp::handlePositionUpdate(cObject* obj)
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(RSU_ADDR);
             lteControlInfo->setDirection(D2D);
+            lteControlInfo->setPriority(priority);
+            lteControlInfo->setDuration(duration);
+            lteControlInfo->setCreationTime(simTime());
             packet->setControlInfo(lteControlInfo);
             sendDelayedDown(packet,latency.first+latency.second);
             coinDepositStage = CoinDepositStage::REQUESTED;
