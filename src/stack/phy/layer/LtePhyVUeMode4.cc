@@ -1790,9 +1790,9 @@ void LtePhyVUeMode4::updateCBR()
     emit(cbr, cbrValue);
     emit(cbrPscch, cbrPscchValue);
 
-    Cbr* cbrPkt = new Cbr("CBR");
-    cbrPkt->setCbr(cbrValue);
-    send(cbrPkt, upperGateOut_);
+//    Cbr* cbrPkt = new Cbr("CBR");
+//    cbrPkt->setCbr(cbrValue);
+//    send(cbrPkt, upperGateOut_);
 }
 
 void LtePhyVUeMode4::recordAwareness()
