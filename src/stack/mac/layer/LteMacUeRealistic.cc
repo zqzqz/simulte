@@ -401,11 +401,28 @@ void LteMacUeRealistic::handleUpperMessage(cPacket* pkt)
         if (pkt->getByteLength() == 0)
             delete pkt;
 
-        // creates pdus from schedule list and puts them in harq buffers
-        macPduMake();
+        //        DEBUG
+        EV << "LteMacUeRealistic::handleUpperMessage - mbuf.size=" << mbuf_.size() << " scheduleList.size=" << scheduleList_->size() << endl;
+        EV << "mbuf content: " << endl;
+        for (auto& mbuf : mbuf_){
+            EV << "macCid:" << mbuf.first << "  "<< mbuf.second << endl;
+        };
 
-        EV << NOW << " LteMacUeRealistic::handleUpperMessage - incrementing counter for HARQ processes " << (unsigned int)currentHarq_ << " --> " << (currentHarq_+1)%harqProcesses_ << endl;
-        currentHarq_ = (currentHarq_+1)%harqProcesses_;
+//        HACK: test if this bug-fix actually fix the problem
+        // creates pdus from schedule list and puts them in harq buffers
+        bool mbufNotEmpty = true;
+        for (auto& mbuf : mbuf_){
+            if (mbuf.second->empty()){
+                mbufNotEmpty = false;
+                break;
+            }
+        };
+        if (mbuf_.size()==scheduleList_->size() && mbufNotEmpty){
+            macPduMake();
+
+            EV << NOW << " LteMacUeRealistic::handleUpperMessage - incrementing counter for HARQ processes " << (unsigned int)currentHarq_ << " --> " << (currentHarq_+1)%harqProcesses_ << endl;
+            currentHarq_ = (currentHarq_+1)%harqProcesses_;
+        }
     }
     else
     {

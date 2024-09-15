@@ -87,7 +87,7 @@ void CarApp::handleLowerMessage(cMessage* msg)
             auto lteControlInfo = new FlowControlInfoNonIp();
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(RSU_ADDR);
-            lteControlInfo->setDirection(D2D);
+            lteControlInfo->setDirection(D2D_MULTI);
             lteControlInfo->setPriority(priority);
             lteControlInfo->setDuration(duration);
             lteControlInfo->setCreationTime(simTime());
@@ -131,7 +131,7 @@ void CarApp::handlePositionUpdate(cObject* obj)
             auto lteControlInfo = new FlowControlInfoNonIp();
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(RSU_ADDR);
-            lteControlInfo->setDirection(D2D);
+            lteControlInfo->setDirection(D2D_MULTI);
             lteControlInfo->setPriority(priority);
             lteControlInfo->setDuration(duration);
             lteControlInfo->setCreationTime(simTime());
@@ -155,7 +155,7 @@ void CarApp::handlePositionUpdate(cObject* obj)
             auto lteControlInfo = new FlowControlInfoNonIp();
             lteControlInfo->setSrcAddr(nodeId_);
             lteControlInfo->setDstAddr(RSU_ADDR);
-            lteControlInfo->setDirection(D2D);
+            lteControlInfo->setDirection(D2D_MULTI);
             lteControlInfo->setPriority(priority);
             lteControlInfo->setDuration(duration);
             lteControlInfo->setCreationTime(simTime());

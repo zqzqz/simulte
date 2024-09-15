@@ -89,6 +89,8 @@ LcgSchedulerRealistic::schedule(unsigned int availableBytes, Direction grantDir)
             LteControlInfo connDesc = mac_->getConnDesc().at(cid);
             // TODO get the QoS parameters
 
+            // DEBUG
+            EV << " LcgSchedulerRealistic::schedule - connection direction: " << dirToA((Direction)connDesc.getDirection()) << "\tgrant direction: " << dirToA(grantDir) << endl;
             // connection must have the same direction of the grant
             if (connDesc.getDirection() != grantDir)
                 continue;

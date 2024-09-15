@@ -63,7 +63,7 @@ void RSUApp::handleLowerMessage(cMessage* msg)
         auto lteControlInfo = new FlowControlInfoNonIp();
         lteControlInfo->setSrcAddr(nodeId_);
         lteControlInfo->setDstAddr(vid);
-        lteControlInfo->setDirection(D2D);
+        lteControlInfo->setDirection(D2D_MULTI);
         lteControlInfo->setPriority(priority);
         lteControlInfo->setDuration(duration);
         lteControlInfo->setCreationTime(simTime());
@@ -86,7 +86,7 @@ void RSUApp::handleLowerMessage(cMessage* msg)
         auto lteControlInfo = new FlowControlInfoNonIp();
         lteControlInfo->setSrcAddr(nodeId_);
         lteControlInfo->setDstAddr(vid);
-        lteControlInfo->setDirection(D2D);
+        lteControlInfo->setDirection(D2D_MULTI);
         lteControlInfo->setPriority(priority);
         lteControlInfo->setDuration(duration);
         lteControlInfo->setCreationTime(simTime());
