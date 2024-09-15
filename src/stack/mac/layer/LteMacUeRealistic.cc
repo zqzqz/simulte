@@ -301,6 +301,9 @@ bool LteMacUeRealistic::bufferizePacket(cPacket* pkt)
     // obtain the cid from the packet informations
     MacCid cid = ctrlInfoToMacCid(lteInfo);
 
+//    DEBUG
+    EV << "LteMacUeRealistic::bufferizePacket - pkt=" << pkt->getName() << endl;
+
     // this packet is used to signal the arrival of new data in the RLC buffers
     if (strcmp(pkt->getName(), "newDataPkt") == 0)
     {
@@ -324,8 +327,21 @@ bool LteMacUeRealistic::bufferizePacket(cPacket* pkt)
 
             lcgMap_.insert(LcgPair(tClass, CidBufferPair(cid, macBuffers_[cid])));
 
-            EV << "LteMacBuffers : Using new buffer on node: " <<
-            MacCidToNodeId(cid) << " for Lcid: " << MacCidToLcid(cid) << ", Bytes in the Queue: " <<
+            // DEBUG
+            EV << "mbuf_ content: " << endl;
+            for (auto& mbuf : mbuf_){
+                EV << "macCid:" << mbuf.first << "  "<< mbuf.second << endl;
+            };
+            EV << "LteMacUeRealistic::bufferizePacket - macBuffers_ update" << endl;
+            for (auto mbuf : macBuffers_){
+                EV << "macCid=" << mbuf.first << ", queue=" << mbuf.second->getQueueLength() << endl;
+            }
+            EV << "LteMacUeRealistic::bufferizePacket - lcgMap_ update" << endl;
+            for (auto lcg : lcgMap_){
+                EV << "macCid=" << lcg.second.first << " macBuf queueLen=" << lcg.second.second->getQueueLength() << endl;
+            }
+            EV << "LteMacUeRealistic::bufferizePacket - macBuffers_ : Using new buffer on node: " <<
+            MacCidToNodeId(cid) << " for Lcid: " << MacCidToLcid(cid) << ", macCid: " << cid << ", Bytes in the Queue: " <<
             vqueue->getQueueOccupancy() << "\n";
         }
         else
@@ -333,17 +349,25 @@ bool LteMacUeRealistic::bufferizePacket(cPacket* pkt)
             LteMacBuffer* vqueue = macBuffers_.find(cid)->second;
             vqueue->pushBack(vpkt);
 
-            EV << "LteMacBuffers : Using old buffer on node: " <<
+            EV << "LteMacUeRealistic::bufferizePacket - macBuffers_  : Using old buffer on node: " <<
             MacCidToNodeId(cid) << " for Lcid: " << MacCidToLcid(cid) << ", Space left in the Queue: " <<
             vqueue->getQueueOccupancy() << "\n";
         }
 
+//        HACK: defer return after the mbuf_ update
         return true;    // notify the activation of the connection
     }
 
     // this is a MAC SDU, bufferize it in the MAC buffer
 
     LteMacBuffers::iterator it = mbuf_.find(cid);
+
+//    DEBUG
+    EV << "LteMacUeRealistic::bufferizePacket - buf_ content before mbuf_ checking" << endl;
+    for (auto mbuf : mbuf_){
+        EV << "macCid=" << mbuf.first << ", queue=" << mbuf.second << endl;
+    }
+
     if (it == mbuf_.end())
     {
         // Queue not found for this cid: create
@@ -353,9 +377,16 @@ bool LteMacUeRealistic::bufferizePacket(cPacket* pkt)
 
         mbuf_[cid] = queue;
 
-        EV << "LteMacBuffers : Using new buffer on node: " <<
-        MacCidToNodeId(cid) << " for Lcid: " << MacCidToLcid(cid) << ", Space left in the Queue: " <<
+        EV << "LteMacUeRealistic::bufferizePacket - mbuf_ : Using new buffer on node: " <<
+        MacCidToNodeId(cid) << " for Lcid: " << MacCidToLcid(cid) << 
+        ", macCid: " << cid << ", Space left in the Queue: " <<
         queue->getQueueSize() - queue->getByteLength() << "\n";
+
+        // DEBUG
+        EV << "current mbuf_ content after mbuf_ checking" << endl;
+        for (auto mbuf : mbuf_){
+            EV << "macCid=" << mbuf.first << ", queue=" << mbuf.second << endl;
+        }
     }
     else
     {
@@ -384,6 +415,8 @@ bool LteMacUeRealistic::bufferizePacket(cPacket* pkt)
         queue->getQueueSize() - queue->getByteLength() << "\n";
     }
 
+//    HACK: return based on packet name, true if pkt->getName()=="newDataPkt"
+//    return !strcmp(pkt->getName(), "newDataPkt");
     return false; // do not need to notify the activation of the connection (already done when received newDataPkt)
 }
 
@@ -403,21 +436,29 @@ void LteMacUeRealistic::handleUpperMessage(cPacket* pkt)
 
         //        DEBUG
         EV << "LteMacUeRealistic::handleUpperMessage - mbuf.size=" << mbuf_.size() << " scheduleList.size=" << scheduleList_->size() << endl;
-        EV << "mbuf content: " << endl;
+        EV << "mbuf_ content: " << endl;
         for (auto& mbuf : mbuf_){
             EV << "macCid:" << mbuf.first << "  "<< mbuf.second << endl;
         };
+        EV << "macBuffer_ content: " << endl;
+        for (auto& mbuf : macBuffers_){
+            EV << "macCid:" << mbuf.first << "  macBuf queueLen="<< mbuf.second->getQueueLength() << endl;
+        };
+        EV << "lcgMap_ content: " << endl;
+        for (auto lcg : lcgMap_){
+            EV << "macCid=" << lcg.second.first << " macBuf queueLen=" << lcg.second.second->getQueueLength() << endl;
+        }
 
 //        HACK: test if this bug-fix actually fix the problem
         // creates pdus from schedule list and puts them in harq buffers
-        bool mbufNotEmpty = true;
-        for (auto& mbuf : mbuf_){
-            if (mbuf.second->empty()){
-                mbufNotEmpty = false;
-                break;
-            }
-        };
-        if (mbuf_.size()==scheduleList_->size() && mbufNotEmpty){
+//        bool mbufNotEmpty = true;
+//        for (auto& mbuf : mbuf_){
+//            if (mbuf.second->empty()){
+//                mbufNotEmpty = false;
+//                break;
+//            }
+//        };
+        if (mbuf_.size()==scheduleList_->size()){// && mbufNotEmpty
             macPduMake();
 
             EV << NOW << " LteMacUeRealistic::handleUpperMessage - incrementing counter for HARQ processes " << (unsigned int)currentHarq_ << " --> " << (currentHarq_+1)%harqProcesses_ << endl;
@@ -558,6 +599,13 @@ void LteMacUeRealistic::handleSelfMessage()
         if(!retx)
         {
             scheduleList_ = lcgScheduler_->schedule();
+
+//            DEBUG
+            EV << "LteMacUeRealistic::handleSelfMessage - scheduleList_ update" << endl;
+            for (auto & it: *scheduleList_){
+                EV << "macCid=" << it.first.first << " codeword=" << it.first.second << " SDU=" << it.second << endl;
+            }
+
             bool sent = macSduRequest();
 
             if (!sent)

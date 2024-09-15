@@ -816,6 +816,12 @@ void LteMacVUeMode4::handleSelfMessage()
         if(!retx && !availablePdu)
         {
             scheduleList_ = lcgScheduler_->schedule();
+//            DEBUG
+            EV << "LteMacVUeMode4::handleSelfMessage - scheduleList_ update" << endl;
+            for (auto & it: *scheduleList_){
+                EV << "macCid=" << it.first.first << " codeword=" << it.first.second << " SDU=" << it.second << endl;
+            }
+
             bool sent = macSduRequest();
 
             if (!sent)

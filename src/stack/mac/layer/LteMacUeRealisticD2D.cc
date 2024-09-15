@@ -701,6 +701,12 @@ void LteMacUeRealisticD2D::handleSelfMessage()
         if(!retx)
         {
             scheduleList_ = lcgScheduler_->schedule();
+//            DEBUG
+            EV << "LteMacUeRealisticD2D::handleSelfMessage - scheduleList_ update" << endl;
+            for (auto & it: *scheduleList_){
+                EV << "macCid=" << it.first.first << " codeword=" << it.first.second << " SDU=" << it.second << endl;
+            }
+
             if ((bsrTriggered_ || bsrD2DMulticastTriggered_) && scheduleList_->empty())
             {
                 // no connection scheduled, but we can use this grant to send a BSR to the eNB
